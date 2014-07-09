@@ -1113,6 +1113,25 @@ dump_regular_file (int fd, struct tar_stat_info *st)
   return dump_status_ok;
 }
 
+static bool
+dir_loop_point (const struct tar_stat_info* st)
+{
+  const struct tar_stat_info *ptr = st;
+
+  if (!dereference_option)
+    return false;
+
+  while (ptr->parent)
+    {
+      ptr = ptr->parent;
+      if (ptr->stat.st_dev == st->stat.st_dev
+          && ptr->stat.st_ino == st->stat.st_ino)
+        return true;
+    }
+
+  return false;
+}
+
 
 /* Dump currently precessed directory in T.  Return true if successful,
    false (emitting diagnostics) otherwise.  Get ST's entries, recurse
@@ -1213,7 +1232,17 @@ dump_dir (tour_t t)
 
 	case exclusion_tag_none:
 	  {
-            char *directory = get_directory_entries (st);
+            char *directory;
+
+
+            if (dir_loop_point (st))
+              {
+                WARN ((0, 0, _("%s: stopping recursion due to directory loop"),
+                       st->orig_file_name));
+                break;
+              }
+
+            directory = get_directory_entries (st);
             if (! directory)
               {
                 savedir_diag (st->orig_file_name);

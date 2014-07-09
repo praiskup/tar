@@ -172,6 +172,11 @@ speed up archivation.
   scenarios) to save stack-space and thus avoid segfaults for rarely deep
   archived directories.
 
+* Bug fixes
+
+Fix segfault during archiving of directory symbolic-link loop with
+--dereference option.
+
 * Manpages
 
 This release includes official tar(1) and rmt(8) manpages.
