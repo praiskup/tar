@@ -40,6 +40,7 @@ tar_SOURCES = \
  suffix.c\
  system.c\
  tar.c\
+ tour.c\
  transform.c\
  unlink.c\
  update.c\

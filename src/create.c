@@ -1114,12 +1114,15 @@ dump_regular_file (int fd, struct tar_stat_info *st)
 }
 
 
-/* Copy info from the directory identified by ST into the archive.
-   DIRECTORY contains the directory's entries.  */
-
-static void
-dump_dir0 (struct tar_stat_info *st, char const *directory)
+/* Dump currently precessed directory in T.  Return true if successful,
+   false (emitting diagnostics) otherwise.  Get ST's entries, recurse
+   through its subfiles, and clean up file descriptors afterwards.
+   */
+static bool
+dump_dir (tour_t t)
 {
+  tour_node_t *n = tour_current (t);
+  struct tar_stat_info *st = &n->st;
   bool top_level = ! st->parent;
   const char *tag_file_name;
   union block *blk = NULL;
@@ -1129,7 +1132,7 @@ dump_dir0 (struct tar_stat_info *st, char const *directory)
 
   blk = start_header (st);
   if (!blk)
-    return;
+    return false;
 
   info_attach_exclist (st);
 
@@ -1184,11 +1187,11 @@ dump_dir0 (struct tar_stat_info *st, char const *directory)
 	      set_next_block_after (blk + (bufsize - 1) / BLOCKSIZE);
 	    }
 	}
-      return;
+      return true;
     }
 
   if (!recursion_option)
-    return;
+    return true;
 
   if (one_file_system_option
       && !top_level
@@ -1202,9 +1205,6 @@ dump_dir0 (struct tar_stat_info *st, char const *directory)
     }
   else
     {
-      char *name_buf;
-      size_t name_size;
-
       switch (check_exclusion_tags (st, &tag_file_name))
 	{
 	case exclusion_tag_all:
@@ -1213,40 +1213,20 @@ dump_dir0 (struct tar_stat_info *st, char const *directory)
 
 	case exclusion_tag_none:
 	  {
-	    char const *entry;
-	    size_t entry_len;
-	    size_t name_len;
-
-	    name_buf = xstrdup (st->orig_file_name);
-	    name_size = name_len = strlen (name_buf);
-
-	    /* Now output all the files in the directory.  */
-	    for (entry = directory; (entry_len = strlen (entry)) != 0;
-		 entry += entry_len + 1)
-	      {
-		if (name_size < name_len + entry_len)
-		  {
-		    name_size = name_len + entry_len;
-		    name_buf = xrealloc (name_buf, name_size + 1);
-		  }
-		strcpy (name_buf + name_len, entry);
-		if (!excluded_name (name_buf, st))
-		  dump_file (st, entry, name_buf);
-	      }
-
-	    free (name_buf);
+            char *directory = get_directory_entries (st);
+            if (! directory)
+              {
+                savedir_diag (st->orig_file_name);
+                return false;
+              }
+            tour_plan_dir (t, directory);
 	  }
 	  break;
 
 	case exclusion_tag_contents:
 	  exclusion_tag_warning (st->orig_file_name, tag_file_name,
 				 _("contents not dumped"));
-	  name_size = strlen (st->orig_file_name) + strlen (tag_file_name) + 1;
-	  name_buf = xmalloc (name_size);
-	  strcpy (name_buf, st->orig_file_name);
-	  strcat (name_buf, tag_file_name);
-	  dump_file (st, tag_file_name, name_buf);
-	  free (name_buf);
+          tour_plan_file (t, tag_file_name);
 	  break;
 
 	case exclusion_tag_under:
@@ -1255,6 +1235,7 @@ dump_dir0 (struct tar_stat_info *st, char const *directory)
 	  break;
 	}
     }
+  return true;
 }
 
 /* Ensure exactly one trailing slash.  */
@@ -1305,30 +1286,19 @@ open_failure_recover (struct tar_stat_info const *dir)
 char *
 get_directory_entries (struct tar_stat_info *st)
 {
-  while (! (st->dirstream = fdopendir (st->fd)))
+  int newfd;
+  while ((newfd = dup (st->fd)) == -1)
     if (! open_failure_recover (st))
       return 0;
-  return streamsavedir (st->dirstream, savedir_sort_order);
-}
 
-/* Dump the directory ST.  Return true if successful, false (emitting
-   diagnostics) otherwise.  Get ST's entries, recurse through its
-   subdirectories, and clean up file descriptors afterwards.  */
-static bool
-dump_dir (struct tar_stat_info *st)
-{
-  char *directory = get_directory_entries (st);
-  if (! directory)
-    {
-      savedir_diag (st->orig_file_name);
-      return false;
-    }
+  while (! (st->dirstream = fdopendir (newfd)))
+    if (! open_failure_recover (st))
+      return 0;
 
-  dump_dir0 (st, directory);
-
-  restore_parent_fd (st);
-  free (directory);
-  return true;
+  char *x = streamsavedir (st->dirstream, savedir_sort_order);
+  closedir (st->dirstream);
+  st->dirstream = 0;
+  return x;
 }
 
 
@@ -1360,7 +1330,7 @@ create_archive (void)
 
       while ((p = name_from_list ()) != NULL)
 	if (!excluded_name (p->name, NULL))
-	  dump_file (0, p->name, p->name);
+	  dump_file_incr (0, p->name, p->name);
 
       blank_name_list ();
       while ((p = name_from_list ()) != NULL)
@@ -1409,7 +1379,7 @@ create_archive (void)
 			  buffer = xrealloc (buffer, buffer_size);
  			}
 		      strcpy (buffer + plen, q + 1);
-		      dump_file (&st, q + 1, buffer);
+		      dump_file_incr (&st, q + 1, buffer);
 		    }
 		  q += qlen + 1;
 		}
@@ -1422,7 +1392,7 @@ create_archive (void)
       const char *name;
       while ((name = name_next (1)) != NULL)
 	if (!excluded_name (name, NULL))
-	  dump_file (0, name, name);
+	  dump_member (name);
     }
 
   write_eot ();
@@ -1647,9 +1617,13 @@ restore_parent_fd (struct tar_stat_info const *st)
 /* FIXME: One should make sure that for *every* path leading to setting
    exit_status to failure, a clear diagnostic has been issued.  */
 
+#include <assert.h>
 static void
-dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
+dump_file0 (tour_t t, char const *name, char const *p)
 {
+  tour_node_t *n = tour_current (t);
+  assert (n);
+  struct tar_stat_info *st = &n->st;
   union block *header;
   char type;
   off_t original_size;
@@ -1657,7 +1631,7 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
   off_t block_ordinal = -1;
   int fd = 0;
   bool is_dir;
-  struct tar_stat_info const *parent = st->parent;
+  struct tar_stat_info const *parent = st->parent = n->parent;
   bool top_level = ! parent;
   int parentfd = top_level ? chdir_fd : parent->fd;
   void (*diag) (char const *) = 0;
@@ -1768,7 +1742,7 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
 	      return;
 	    }
 
-	  ok = dump_dir (st);
+	  ok = dump_dir (t);
 
 	  fd = st->fd;
 	  parentfd = top_level ? chdir_fd : parent->fd;
@@ -1846,7 +1820,6 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
 	    utime_error (p);
 	}
 
-      ok &= tar_stat_close (st);
       if (ok && remove_files_option)
 	queue_deferred_unlink (p, is_dir);
 
@@ -1953,20 +1926,37 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
     queue_deferred_unlink (p, false);
 }
 
-/* Dump a file, recursively.  PARENT describes the file's parent
-   directory, NAME is the file's name relative to PARENT, and FULLNAME
-   its full name, possibly relative to the working directory.  NAME
-   may contain slashes at the top level of invocation.  */
-
+/* Dump a file, recursively.  The local TRINFO keeps gradually enlarging stack
+   of files to be processed in case of directories are present in processed path
+   starting from MEMBER. */
 void
-dump_file (struct tar_stat_info *parent, char const *name,
-	   char const *fullname)
+dump_member (char const *member)
 {
-  struct tar_stat_info st;
-  tar_stat_init (&st);
-  st.parent = parent;
-  dump_file0 (&st, name, fullname);
-  if (parent && listed_incremental_option)
+  const char *fullname;
+  const char *name;
+
+  tour_t t = tour_init (member, 0);
+  while (tour_next (t, &name, &fullname))
+    {
+      tour_node_t *n = tour_current (t);
+      if (n->parent && excluded_name (fullname, n->parent))
+        continue;
+
+      dump_file0 (t, name, fullname);
+    }
+  tour_free (t);
+}
+
+void dump_file_incr (struct tar_stat_info *parent, char const *name,
+                     const char *fullname)
+{
+  /* one-shot traversal;  we are in incremental mode so no sub-folders are going
+     to be added to tour_t directory stack */
+  tour_t t = tour_init (name, parent);
+
+  dump_file0 (t, name, fullname);
+  if (parent)
     update_parent_directory (parent);
-  tar_stat_destroy (&st);
+
+  tour_free (t);
 }

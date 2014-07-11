@@ -499,7 +499,8 @@ char *get_directory_entries (struct tar_stat_info *st);
 
 void create_archive (void);
 void pad_archive (off_t size_left);
-void dump_file (struct tar_stat_info *parent, char const *name,
+void dump_member (char const *member);
+void dump_file_incr (struct tar_stat_info *parent, char const *name,
 		char const *fullname);
 union block *start_header (struct tar_stat_info *st);
 void finish_header (struct tar_stat_info *st, union block *header,
@@ -970,5 +971,33 @@ int owner_map_translate (uid_t uid, uid_t *new_uid, char const **new_name);
 void group_map_read (char const *file);
 int group_map_translate (gid_t gid, gid_t *new_gid, char const **new_name);
 
+/* Module tour.c */
+
+/* hide TOUR definition in tour.c */
+typedef struct tour *tour_t;
+
+/* One tour_node_t represents single directory level in FS hierarchy,
+   i.e. list of files.  At one moment we keep in memory only one path
+   representation. */
+typedef struct
+{
+  struct tar_stat_info *parent;         /* used to fill child's stat info */
+  char                 *items;          /* output from readdir */
+
+  /* per-directory volatile data to avoid reallocation for each file in
+   * directory */
+  const char           *item;     /* processed filename (ptr into ITEMS) */
+  struct tar_stat_info  st;       /* stat of processed file */
+  char                 *namebuf;  /* buffer for constructing full name */
+  size_t                buflen;   /* length of NAMEBUF */
+} tour_node_t;
+
+tour_t tour_init (const char *, struct tar_stat_info *);
+bool tour_next (tour_t, const char **, const char **);
+tour_node_t *tour_current (tour_t);
+void tour_plan_dir (tour_t, char *);
+void tour_plan_file (tour_t, const char *);
+bool tour_has_child (tour_t t);
+void tour_free (tour_t t);
 
 _GL_INLINE_HEADER_END

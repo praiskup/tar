@@ -23,6 +23,7 @@ areadlinkat-with-size
 argmatch
 argp
 argp-version-etc
+array-list
 backupfile
 closeout
 configmake
@@ -100,5 +101,6 @@ version-etc-fsf
 xalloc
 xalloc-die
 xgetcwd
+xlist
 xstrtoumax
 xvasprintf

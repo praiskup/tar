@@ -168,6 +168,10 @@ speed up archivation.
 
 * Tar refuses to read input from and write output to a tty device.
 
+* Tar avoids calling recursive rutines for directory traversal (for usual
+  scenarios) to save stack-space and thus avoid segfaults for rarely deep
+  archived directories.
+
 * Manpages
 
 This release includes official tar(1) and rmt(8) manpages.
