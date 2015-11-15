@@ -1758,6 +1758,25 @@ try_purge_directory (char const *directory_name)
   return true;
 }
 
+bool
+nl_dir_loop_point (struct name *name)
+{
+  const struct name *ptr = name;
+
+  if (!dereference_option)
+    return false;
+
+  while (ptr->parent)
+    {
+      ptr = ptr->parent;
+      if (ptr->directory->device_number == name->directory->device_number
+          && ptr->directory->inode_number == name->directory->inode_number)
+        return true;
+    }
+
+  return false;
+}
+
 void
 purge_directory (char const *directory_name)
 {

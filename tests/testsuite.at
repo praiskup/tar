@@ -242,6 +242,7 @@ m4_include([recurs02.at])
 m4_include([shortrec.at])
 m4_include([numeric.at])
 m4_include([deref01.at])
+m4_include([deref02.at])
 
 AT_BANNER([The --same-order option])
 m4_include([same-order01.at])

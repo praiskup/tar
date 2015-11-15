@@ -1543,6 +1543,14 @@ add_hierarchy_to_namelist (struct tar_stat_info *st, struct name *name)
   const char *buffer;
 
   name->directory = scan_directory (st);
+
+  if (nl_dir_loop_point (name))
+    {
+      WARN ((0, 0, _("%s: stopping recursion due to directory loop"),
+             name->name));
+      return;
+    }
+
   buffer = directory_contents (name->directory);
   if (buffer)
     {

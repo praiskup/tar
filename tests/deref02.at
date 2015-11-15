@@ -1,0 +1,40 @@
+# Process this file with autom4te to create testsuite. -*- Autotest -*-
+#
+# Test suite for GNU tar.
+# Copyright 2015 Free Software Foundation, Inc.
+
+# This file is part of GNU tar.
+
+# GNU tar is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+
+# GNU tar is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Test description:
+# Symlink loop on directory with --dereference and --incremental.
+
+AT_SETUP([dereference: symlink loop and --incremental])
+AT_KEYWORDS([create dereference deref02 incremental])
+
+AT_TAR_CHECK([
+mkdir dir
+ln -s ../dir dir/dir || AT_SKIP_TEST
+tar --incremental -chf test.tar dir && tar -tf test.tar
+],
+[0],
+[dir/
+dir/dir/
+],
+[tar: dir/dir: stopping recursion due to directory loop
+],
+[],[],[gnu, oldgnu, posix])
+
+AT_CLEANUP
