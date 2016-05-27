@@ -702,6 +702,7 @@ struct name_elt *unconsumed_option_tail;
 static void
 unconsumed_option_push (struct name_elt *elt)
 {
+  elt->next = NULL;
   elt->prev = unconsumed_option_tail;
   if (unconsumed_option_tail)
     unconsumed_option_tail->next = elt;
