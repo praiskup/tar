@@ -3879,6 +3879,23 @@ tar -cf a.tar /usr --no-recursion /var/*
 tar -cf a.tar --recursion /usr --no-recursion /var/*
 @end example
 
+During archive creation, @GNUTAR{} keeps track of positional options
+used and arguments affected by them.  If it finds out that any such
+options are used in an obviously erroneous way, the fact is reported
+and exit code is set to 2.  E.g.:
+
+@example
+@group
+$ @kbd{tar -cf a.tar . --exclude '*.o'}
+tar: The following options were used after any non-optional
+arguments in archive create or update mode.  These options are
+positional and affect only arguments that follow them.  Please,
+rearrange them properly.
+tar: --exclude '*.o' has no effect
+tar: Exiting with failure status due to previous errors
+@end group
+@end example
+
 The following table summarizes all position-sensitive options. 
 
 @table @option

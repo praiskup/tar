@@ -1,6 +1,28 @@
-GNU tar NEWS - User visible changes. 2016-05-16
+GNU tar NEWS - User visible changes. 2016-05-27
 Please send GNU tar bug reports to <bug-tar@gnu.org>
 
+
+version 1.29.90 (Git)
+
+* Report erroneous use of positional options.
+
+During archive creation or update, tar keeps track of positional
+options (see the manual, subsection 3.4.4 "Position-Sensitive
+Options"), and reports those that had no effect.  For example, when
+invoked as
+
+   tar -cf a.tar . --exclude '*.o'
+
+tar will create the archive, but will exit with status 2, having
+issued the following error message   
+
+   tar: The following options were used after any non-optional
+   arguments in archive create or update mode.  These options are
+   positional and affect only arguments that follow them.  Please,
+   rearrange them properly.
+   tar: --exclude '*.o' has no effect
+   tar: Exiting with failure status due to previous errors
+   
 
 version 1.29 - Sergey Poznyakoff, 2016-05-16
 

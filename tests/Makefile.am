@@ -166,6 +166,9 @@ TESTSUITE_AT = \
  opcomp04.at\
  opcomp05.at\
  opcomp06.at\
+ positional01.at\
+ positional02.at\
+ positional03.at\
  options.at\
  options02.at\
  owner.at\

@@ -213,6 +213,11 @@ m4_include([opcomp04.at])
 m4_include([opcomp05.at])
 m4_include([opcomp06.at])
 
+AT_BANNER([Positional options])
+m4_include([positional01.at])
+m4_include([positional02.at])
+m4_include([positional03.at])
+
 AT_BANNER([The -T option])
 m4_include([T-mult.at])
 m4_include([T-nest.at])
