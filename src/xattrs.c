@@ -434,8 +434,12 @@ xattrs_clear_setup (void)
   clear_mask_map (&xattrs_setup.excl);
 }
 
-/* get all xattrs from file given by FILE_NAME or FD (when non-zero).  This
-   includes all the user.*, security.*, system.*, etc. available domains */
+static bool xattrs_masked_out (const char *kw, bool archiving);
+
+/* get xattrs from file given by FILE_NAME or FD (when non-zero)
+   xattrs are checked against the user supplied include/exclude mask
+   if no mask is given this includes all the user.*, security.*, system.*,
+   etc. available domains */
 void
 xattrs_xattrs_get (int parentfd, char const *file_name,
                    struct tar_stat_info *st, int fd)
@@ -480,8 +484,6 @@ xattrs_xattrs_get (int parentfd, char const *file_name,
               size_t len = strlen (attr);
               ssize_t aret = 0;
 
-              /* Archive all xattrs during creation, decide at extraction time
-               * which ones are of interest/use for the target filesystem. */
               while (((fd == 0)
                       ? ((aret = lgetxattrat (parentfd, file_name, attr,
                                               val, asz)) == -1)
@@ -492,7 +494,10 @@ xattrs_xattrs_get (int parentfd, char const *file_name,
                 }
 
               if (aret != -1)
-                xheader_xattr_add (st, attr, val, aret);
+                {
+                  if (!xattrs_masked_out(attr, true))
+                    xheader_xattr_add (st, attr, val, aret);
+                }
               else if (errno != ENOATTR)
                 call_arg_warn ((fd == 0) ? "lgetxattrat"
                                : "fgetxattr", file_name);

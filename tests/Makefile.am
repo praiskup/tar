@@ -246,6 +246,7 @@ TESTSUITE_AT = \
  xattr03.at\
  xattr04.at\
  xattr05.at\
+ xattr06.at\
  acls01.at\
  acls02.at\
  acls03.at\
