@@ -495,7 +495,7 @@ xattrs_xattrs_get (int parentfd, char const *file_name,
 
               if (aret != -1)
                 {
-                  if (!xattrs_masked_out(attr, true))
+                  if (!xattrs_masked_out (attr, true))
                     xheader_xattr_add (st, attr, val, aret);
                 }
               else if (errno != ENOATTR)
