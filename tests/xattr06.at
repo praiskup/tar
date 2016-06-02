@@ -34,16 +34,21 @@ mkdir dir
 mkdir output
 genfile --file dir/file
 
-setfattr -n user.excludedxattr -v value dir/file
+for attr in excluded incla inclb inclc incl_excluded
+do
+  setfattr -n user.${attr} -v value dir/file || AT_SKIP_TEST
+done
 
-# exclude the attribute we just set
-tar --xattrs --xattrs-exclude=user.excludedxattr -cf archive.tar -C dir .
+tar --xattrs-include=user.incl'*' --xattrs-exclude=user.incl_excluded -cf archive.tar -C dir .
+tar -xf archive.tar --xattrs-include=user.incl[[ab]] --xattrs-exclude=user.inclb -C output
 
-tar --xattrs -xf archive.tar -C output
-getfattr -d output/file | grep -v excludedxattr > without
-getfattr -d output/file > with
+getfattr -d output/file | grep -v \
+    -e excluded \
+    -e inclb \
+    -e inclc > filtered
+getfattr -d output/file > full
 # if they differ then the attribute is still present
-diff without with
+diff filtered full
 ],
 [0],
 [])
