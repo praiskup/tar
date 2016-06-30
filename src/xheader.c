@@ -1291,14 +1291,32 @@ path_coder (struct tar_stat_info const *st, char const *keyword,
 }
 
 static void
+raw_path_decoder (struct tar_stat_info *st, char const *arg)
+{
+  decode_string (&st->orig_file_name, arg);
+  decode_string (&st->file_name, arg);
+  st->had_trailing_slash = strip_trailing_slashes (st->file_name);
+}
+
+
+static void
 path_decoder (struct tar_stat_info *st,
 	      char const *keyword __attribute__((unused)),
 	      char const *arg,
 	      size_t size __attribute__((unused)))
 {
-  decode_string (&st->orig_file_name, arg);
-  decode_string (&st->file_name, arg);
-  st->had_trailing_slash = strip_trailing_slashes (st->file_name);
+  if (! st->sparse_name_done)
+    raw_path_decoder (st, arg);
+}
+
+static void
+sparse_path_decoder (struct tar_stat_info *st,
+                     char const *keyword __attribute__((unused)),
+                     char const *arg,
+                     size_t size __attribute__((unused)))
+{
+  st->sparse_name_done = true;
+  raw_path_decoder (st, arg);
 }
 
 static void
@@ -1730,7 +1748,7 @@ struct xhdr_tab const xhdr_tab[] = {
   { "uname",    uname_coder,    uname_decoder,    0, false },
 
   /* Sparse file handling */
-  { "GNU.sparse.name",       path_coder, path_decoder,
+  { "GNU.sparse.name",       path_coder, sparse_path_decoder,
     XHDR_PROTECTED, false },
   { "GNU.sparse.major",      sparse_major_coder, sparse_major_decoder,
     XHDR_PROTECTED, false },
