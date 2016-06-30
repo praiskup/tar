@@ -331,6 +331,10 @@ struct tar_stat_info
   int   real_size_set;      /* True when GNU.sparse.realsize is set in
 			       archived file */
 
+  bool  sparse_name_done;   /* Set to true if 'GNU.sparse.name' header was
+                               processed pax header parsing.  Following 'path'
+                               header (lower priority) will be ignored. */
+
   size_t xattr_map_size;   /* Size of the xattr map */
   struct xattr_array *xattr_map;
 
