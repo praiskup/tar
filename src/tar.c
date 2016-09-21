@@ -2201,8 +2201,9 @@ parse_default_options (void)
     {
       ws.ws_wordv[0] = (char*) program_name;
       more_options (ws.ws_offs + ws.ws_wordc, ws.ws_wordv, &loc);
+      /* Don't free consumed words */
+      ws.ws_wordc = 0;
     }
-
   wordsplit_free (&ws);
 }
 

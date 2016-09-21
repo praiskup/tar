@@ -171,6 +171,7 @@ TESTSUITE_AT = \
  positional03.at\
  options.at\
  options02.at\
+ options03.at\
  owner.at\
  pipe.at\
  recurse.at\

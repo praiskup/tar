@@ -204,6 +204,7 @@ m4_include([pipe.at])
 
 m4_include([options.at])
 m4_include([options02.at])
+m4_include([options03.at])
 
 AT_BANNER([Option compatibility])
 m4_include([opcomp01.at])
