@@ -152,7 +152,7 @@ update_archive (void)
 
 			    for (p = dirp; *p; p += strlen (p) + 1)
 			      addname (namebuf_name (nbuf, p),
-				       0, false, NULL);
+				       name->change_dir, false, NULL);
 
 			    namebuf_free (nbuf);
 			    free (dirp);

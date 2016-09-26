@@ -226,6 +226,7 @@ TESTSUITE_AT = \
  update.at\
  update01.at\
  update02.at\
+ update03.at\
  volsize.at\
  volume.at\
  verbose.at\
