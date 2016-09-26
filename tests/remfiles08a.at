@@ -26,7 +26,7 @@
 #
 
 AT_SETUP([remove-files deleting two subdirs in -c/non-incr. mode])
-AT_KEYWORDS([create remove-files remfiles08 remfiles08a])
+AT_KEYWORDS([create remove-files remfiles08 remfiles08a chdir])
 
 AT_TAR_CHECK([
 mkdir foo

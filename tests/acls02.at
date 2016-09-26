@@ -23,7 +23,7 @@
 # This is basic test for acl support.
 
 AT_SETUP([acls: work with -C])
-AT_KEYWORDS([xattrs acls acls02])
+AT_KEYWORDS([xattrs acls acls02 chdir])
 
 AT_TAR_CHECK([
 AT_XATTRS_UTILS_PREREQ

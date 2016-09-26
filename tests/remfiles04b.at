@@ -31,7 +31,7 @@
 # )
 
 AT_SETUP([remove-files with -C:rel in -c/incr. mode])
-AT_KEYWORDS([create incremental remove-files remfiles04 remfiles04b])
+AT_KEYWORDS([create incremental remove-files remfiles04 remfiles04b chdir])
 
 AT_TAR_CHECK([
 AT_SORT_PREREQ

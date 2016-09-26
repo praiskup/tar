@@ -29,7 +29,7 @@
 # mode; see remfiles09b.at for that specific test case.
 
 AT_SETUP([remove-files deleting two subdirs in -c/incr. mode])
-AT_KEYWORDS([create incremental remove-files remfiles08 remfiles08b])
+AT_KEYWORDS([create incremental remove-files remfiles08 remfiles08b chdir])
 
 AT_TAR_CHECK([
 mkdir foo

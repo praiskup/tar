@@ -25,7 +25,7 @@
 # References: <45475D78.8050708@cs.uu.nl>
 
 AT_SETUP([extracting symlinks to a read-only dir])
-AT_KEYWORDS([extract extract07 read-only symlink])
+AT_KEYWORDS([extract extract07 read-only symlink chdir])
 
 AT_TAR_CHECK([
 AT_UNPRIVILEGED_PREREQ

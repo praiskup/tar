@@ -23,7 +23,7 @@
 # Check diagnostic of 'tar -x a/b/c' when b cannot be created.
 
 AT_SETUP([extract parent mkdir failure])
-AT_KEYWORDS([extract extrac15])
+AT_KEYWORDS([extract extrac15 chdir])
 
 AT_TAR_CHECK([
 AT_UNPRIVILEGED_PREREQ

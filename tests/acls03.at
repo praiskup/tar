@@ -28,7 +28,7 @@
 # http://www.mail-archive.com/bug-tar@gnu.org/msg04355.html
 
 AT_SETUP([acls: default ACLs])
-AT_KEYWORDS([xattrs acls acls03])
+AT_KEYWORDS([xattrs acls acls03 chdir])
 
 m4_define([ACL_LISTDIR], [
     cd $1

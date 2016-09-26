@@ -22,7 +22,7 @@
 # Test multivolume dumps from pipes.
 
 AT_SETUP([multivolume dumps from pipes])
-AT_KEYWORDS([multivolume multiv multiv01])
+AT_KEYWORDS([multivolume multiv multiv01 chdir])
 
 # Fixme: should be configurable
 #  TRUSS=truss -o /tmp/tr

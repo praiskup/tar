@@ -23,7 +23,7 @@
 # Check that 'tar' extracts permissions on the working directory last.
 
 AT_SETUP([extract dot permissions])
-AT_KEYWORDS([extract extrac12])
+AT_KEYWORDS([extract extrac12 chdir])
 
 AT_TAR_CHECK([
 mkdir src dst

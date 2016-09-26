@@ -24,7 +24,7 @@
 # unless --dereference is specified.
 
 AT_SETUP([extract over symlinks])
-AT_KEYWORDS([extract extrac13])
+AT_KEYWORDS([extract extrac13 chdir])
 
 AT_TAR_CHECK([
 mkdir src dst1 dst2 dst3

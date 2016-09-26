@@ -32,7 +32,7 @@
 # (See also 'listed03.at'.)
 
 AT_SETUP([extracting even when . and .. are unreadable])
-AT_KEYWORDS([extract extrac09])
+AT_KEYWORDS([extract extrac09 chdir])
 
 AT_TAR_CHECK([
 AT_UNPRIVILEGED_PREREQ

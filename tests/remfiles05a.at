@@ -32,7 +32,7 @@
 # )
 
 AT_SETUP([remove-files with -C:rel,rel in -c/non-incr. mode])
-AT_KEYWORDS([create remove-files remfiles05 remfiles05a])
+AT_KEYWORDS([create remove-files remfiles05 remfiles05a chdir])
 
 AT_TAR_CHECK([
 AT_SORT_PREREQ

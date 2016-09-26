@@ -24,7 +24,7 @@
 #             http://lists.gnu.org/archive/html/help-tar/2010-06/msg00000.html
 
 AT_SETUP([exclude: long files in pax archives])
-AT_KEYWORDS([exclude exclude06])
+AT_KEYWORDS([exclude exclude06 chdir])
 
 m4_pushdef([test_base_dir],[one/two/three/four/five/six/seven/eight/nine/ten/eleven/twelve/thirteen/fourteen/fifteen/sixteen/seventeen])
 

@@ -19,7 +19,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 AT_SETUP([tar --one-top-level restoring permissions])
-AT_KEYWORDS([extract onetop onetop05])
+AT_KEYWORDS([extract onetop onetop05 chdir])
 
 # When extracting an archive that contains ./ with the --one-top-level option,
 # the mode and ownership of ./ would be incorrectly applied to the current

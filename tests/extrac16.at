@@ -24,7 +24,7 @@
 # Check extraction of empty directory with -C.
 
 AT_SETUP([extract empty directory with -C])
-AT_KEYWORDS([extract extrac16])
+AT_KEYWORDS([extract extrac16 chdir])
 
 AT_TAR_CHECK([
 mkdir src src/a src/a/b dest

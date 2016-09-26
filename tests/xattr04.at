@@ -24,7 +24,7 @@
 # Related commit 4bde4f3.  See the bug: https://bugzilla.redhat.com/717684
 
 AT_SETUP([xattrs: s/open/openat/ regression])
-AT_KEYWORDS([xattrs xattr04])
+AT_KEYWORDS([xattrs xattr04 chdir])
 
 AT_TAR_CHECK([
 AT_XATTRS_PREREQ

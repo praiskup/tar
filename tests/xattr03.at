@@ -23,7 +23,7 @@
 # Setup of the trusted.* domain under privileged user.
 
 AT_SETUP([xattrs: trusted.* attributes])
-AT_KEYWORDS([xattrs xattr03])
+AT_KEYWORDS([xattrs xattr03 chdir])
 
 AT_TAR_CHECK([
 AT_PRIVILEGED_PREREQ

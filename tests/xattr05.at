@@ -26,7 +26,7 @@
 # http://lists.gnu.org/archive/html/bug-tar/2012-10/msg00017.html
 
 AT_SETUP([xattrs: keywords with '=' and '%'])
-AT_KEYWORDS([xattrs xattr05])
+AT_KEYWORDS([xattrs xattr05 chdir])
 
 AT_TAR_CHECK([
 AT_XATTRS_PREREQ

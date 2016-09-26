@@ -23,7 +23,7 @@
 #
 
 AT_SETUP([remove-files with -C:rel,rel in -r mode])
-AT_KEYWORDS([create append remove-files remfiles05 remfiles05c])
+AT_KEYWORDS([create append remove-files remfiles05 remfiles05c chdir])
 
 AT_TAR_CHECK([
 AT_SORT_PREREQ

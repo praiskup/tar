@@ -26,7 +26,7 @@
 #
 
 AT_SETUP([remove-files deleting two subdirs in -r mode])
-AT_KEYWORDS([create append remove-files remfiles08 remfiles08c])
+AT_KEYWORDS([create append remove-files remfiles08 remfiles08c chdir])
 
 AT_TAR_CHECK([
 AT_SORT_PREREQ

@@ -23,7 +23,7 @@
 # Check that 'tar -x -C FOO' follows FOO if FOO is a symbolic link.
 
 AT_SETUP([extract -C symlink])
-AT_KEYWORDS([extract extrac14])
+AT_KEYWORDS([extract extrac14 chdir])
 
 AT_TAR_CHECK([
 mkdir dest

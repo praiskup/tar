@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 AT_SETUP([incremental restores with -C])
-AT_KEYWORDS([incremental extract incr07])
+AT_KEYWORDS([incremental extract incr07 chdir])
 
 # Tar 1.26 had problems extracting from incremental restores when given
 # the -C option.  The code in incremen.c:try_purge_directory and

@@ -23,7 +23,7 @@
 # Check that 'tar' works even in a file-descriptor-limited environment.
 
 AT_SETUP([scarce file descriptors])
-AT_KEYWORDS([extract extrac11])
+AT_KEYWORDS([extract extrac11 chdir])
 
 AT_TAR_CHECK([
 exec </dev/null

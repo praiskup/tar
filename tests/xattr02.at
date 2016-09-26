@@ -23,7 +23,7 @@
 # Cooperation of the '-C' option and storing/restoring extended attributes.
 
 AT_SETUP([xattrs: change directory with -C option])
-AT_KEYWORDS([xattrs xattr02])
+AT_KEYWORDS([xattrs xattr02 chdir])
 
 AT_TAR_CHECK([
 AT_XATTRS_PREREQ

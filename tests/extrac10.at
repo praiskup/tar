@@ -27,7 +27,7 @@
 # effect when the metadata are later set.
 
 AT_SETUP([-C and delayed setting of metadata])
-AT_KEYWORDS([extract extrac10])
+AT_KEYWORDS([extract extrac10 chdir])
 
 AT_TAR_CHECK([
 mkdir d x x/y
