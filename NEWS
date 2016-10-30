@@ -1,8 +1,14 @@
-GNU tar NEWS - User visible changes. 2016-05-27
+GNU tar NEWS - User visible changes. 2016-10-29
 Please send GNU tar bug reports to <bug-tar@gnu.org>
 
 
 version 1.29.90 (Git)
+
+* Member names containing '..' components are now skipped when extracting.
+
+This fixes tar's behavior to match its documentation, and is a bit
+safer when extracting untrusted archives over old files (an unsafe
+practice that the tar manual has long recommended against).
 
 * Report erroneous use of positional options.
 
