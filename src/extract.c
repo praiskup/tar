@@ -795,13 +795,13 @@ maybe_recoverable (char *file_name, bool regular, bool *interdir_made)
    in advance dramatically improves the following  performance of reading and
    writing a file).  If not restoring permissions, invert the INVERT_PERMISSIONS
    bits from the file's current permissions.  TYPEFLAG specifies the type of the
-   file.  FILE_CREATED indicates set_xattr has created the file */
+   file.  Returns non-zero when error occurs (while un-available xattrs is not
+   an error, rather no-op).  Non-zero FILE_CREATED indicates set_xattr has
+   created the file. */
 static int
 set_xattr (char const *file_name, struct tar_stat_info const *st,
            mode_t invert_permissions, char typeflag, int *file_created)
 {
-  int status = 0;
-
 #ifdef HAVE_XATTRS
   bool interdir_made = false;
 
@@ -809,17 +809,32 @@ set_xattr (char const *file_name, struct tar_stat_info const *st,
     {
       mode_t mode = current_stat_info.stat.st_mode & MODE_RWX & ~ current_umask;
 
-      do
-        status = mknodat (chdir_fd, file_name, mode ^ invert_permissions, 0);
-      while (status && maybe_recoverable ((char *)file_name, false,
-                                          &interdir_made));
+      for (;;)
+        {
+          if (!mknodat (chdir_fd, file_name, mode ^ invert_permissions, 0))
+            {
+              /* Successfully created file */
+              xattrs_xattrs_set (st, file_name, typeflag, 0);
+              *file_created = 1;
+              return 0;
+            }
 
-      xattrs_xattrs_set (st, file_name, typeflag, 0);
-      *file_created = 1;
+          switch (maybe_recoverable ((char *)file_name, false, &interdir_made))
+            {
+              case RECOVER_OK:
+                continue;
+              case RECOVER_NO:
+                skip_member ();
+                open_error (file_name);
+                return 1;
+              case RECOVER_SKIP:
+                return 0;
+            }
+        }
     }
 #endif
 
-  return(status);
+  return 0;
 }
 
 /* Fix the statuses of all directories whose statuses need fixing, and
@@ -1136,11 +1151,7 @@ extract_file (char *file_name, int typeflag)
       int file_created = 0;
       if (set_xattr (file_name, &current_stat_info, invert_permissions,
                      typeflag, &file_created))
-        {
-          skip_member ();
-          open_error (file_name);
-          return 1;
-        }
+        return 1;
 
       while ((fd = open_output_file (file_name, typeflag, mode,
                                      file_created, &current_mode,
