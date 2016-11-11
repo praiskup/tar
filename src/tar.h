@@ -328,7 +328,7 @@ struct tar_stat_info
   struct sp_array *sparse_map;
 
   off_t real_size;          /* The real size of sparse file */
-  int   real_size_set;      /* True when GNU.sparse.realsize is set in
+  bool  real_size_set;      /* True when GNU.sparse.realsize is set in
 			       archived file */
 
   bool  sparse_name_done;   /* Set to true if 'GNU.sparse.name' header was

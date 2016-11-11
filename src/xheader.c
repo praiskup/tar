@@ -1389,7 +1389,7 @@ sparse_size_decoder (struct tar_stat_info *st,
   uintmax_t u;
   if (decode_num (&u, arg, TYPE_MAXIMUM (off_t), keyword))
     {
-      st->real_size_set = 1;
+      st->real_size_set = true;
       st->real_size = u;
     }
 }
