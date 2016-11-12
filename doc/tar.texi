@@ -8491,9 +8491,7 @@ quoting}.  The characters in question are:
 The exact way @command{tar} uses to quote these characters depends on
 the @dfn{quoting style}.  The default quoting style, called
 @dfn{escape} (see below), uses backslash notation to represent control
-characters, space and backslash.  Using this quoting style, control
-characters are represented as listed in column @samp{Character} in the
-above table, a space is printed as @samp{\ } and a backslash as @samp{\\}.
+characters and backslash.
 
 @GNUTAR{} offers seven distinct quoting styles, which can be selected
 using @option{--quoting-style} option:
@@ -8624,10 +8622,9 @@ $ @kbd{tar tf arch.tar --quoting-style=c}
 @end smallexample
 
 @item escape
-Control characters are printed using backslash notation, a space is
-printed as @samp{\ } and a backslash as @samp{\\}.  This is the
-default quoting style, unless it was changed when configured the
-package.
+Control characters are printed using backslash notation, and a
+backslash as @samp{\\}.  This is the default quoting style, unless it
+was changed when configured the package.
 
 @smallexample
 @group
