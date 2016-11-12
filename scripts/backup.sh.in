@@ -311,7 +311,9 @@ backup_host() {
         CMD="exec ${TAR_PART1} -f \"${TAPE_FILE}\" $@"
         message 10 "CMD: $CMD"
         sh -c "$CMD"
-        message 10 "RC: $?"
+        RC=$?
+        message 10 "RC: $RC"
+        return $RC
     fi
 }
 
