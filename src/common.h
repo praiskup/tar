@@ -414,9 +414,6 @@ GLOBAL bool show_transformed_names_option;
    timestamps from archives with an unusual member order. It is automatically
    set for incremental archives. */
 GLOBAL bool delay_directory_restore_option;
-
-/* When set, tar will not refuse to create empty archives */
-GLOBAL bool files_from_option;
 
 /* Declarations for each module.  */
 
@@ -738,6 +735,7 @@ void uid_to_uname (uid_t uid, char **uname);
 int uname_to_uid (char const *uname, uid_t *puid);
 
 void name_init (void);
+bool name_more_files (void);
 void name_add_name (const char *name);
 void name_term (void);
 const char *name_next (int change_dirs);

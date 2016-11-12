@@ -42,6 +42,7 @@ $(srcdir)/package.m4: $(top_srcdir)/configure.ac
 ## ------------ ##
 
 TESTSUITE_AT = \
+ testsuite.at\
  T-cd.at\
  T-dir00.at\
  T-dir01.at\
@@ -54,7 +55,7 @@ TESTSUITE_AT = \
  T-nonl.at\
  T-mult.at\
  T-nest.at\
- testsuite.at\
+ add-file.at\
  append.at\
  append01.at\
  append02.at\

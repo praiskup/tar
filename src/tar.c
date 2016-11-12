@@ -813,7 +813,6 @@ struct tar_args        /* Variables used during option parsing */
   bool pax_option;                 /* True if --pax-option was given */
   char const *backup_suffix_string;   /* --suffix option argument */
   char const *version_control_string; /* --backup option argument */
-  bool input_files;                /* True if some input files where given */
   int compress_autodetect;         /* True if compression autodetection should
 				      be attempted when creating archives */
 };
@@ -1322,7 +1321,6 @@ parse_opt (int key, char *arg, struct argp_state *state)
     case ARGP_KEY_ARG:
       /* File name or non-parsed option, because of ARGP_IN_ORDER */
       name_add_name (arg);
-      args->input_files = true;
       break;
 
     case 'A':
@@ -2179,7 +2177,7 @@ more_options (int argc, char **argv, struct option_locus *loc)
   args.loc = loc;
   if (argp_parse (&argp, argc, argv, ARGP_IN_ORDER|ARGP_NO_EXIT, &idx, &args))
     abort (); /* shouldn't happen */
-  if (loc->source == OPTS_ENVIRON && args.input_files)
+  if (loc->source == OPTS_ENVIRON && name_more_files ())
     USAGE_ERROR ((0, 0, _("non-option arguments in %s"), loc->name));
 }
 
@@ -2221,7 +2219,6 @@ decode_options (int argc, char **argv)
   args.pax_option = false;
   args.backup_suffix_string = getenv ("SIMPLE_BACKUP_SUFFIX");
   args.version_control_string = 0;
-  args.input_files = false;
   args.compress_autodetect = false;
 
   subcommand_option = UNKNOWN_SUBCOMMAND;
@@ -2340,10 +2337,7 @@ decode_options (int argc, char **argv)
 
   /* Handle operands after any "--" argument.  */
   for (; idx < argc; idx++)
-    {
-      name_add_name (argv[idx]);
-      args.input_files = true;
-    }
+    name_add_name (argv[idx]);
 
   /* Derive option values and check option consistency.  */
 
@@ -2365,7 +2359,7 @@ decode_options (int argc, char **argv)
 
   if (occurrence_option)
     {
-      if (!args.input_files)
+      if (!name_more_files ())
 	USAGE_ERROR ((0, 0,
 		      _("--occurrence is meaningless without a file list")));
       if (!IS_SUBCOMMAND_CLASS (SUBCL_OCCUR))
@@ -2569,7 +2563,7 @@ decode_options (int argc, char **argv)
     {
       /* --test-label is silent if the user has specified the label name to
 	 compare against. */
-      if (!args.input_files)
+      if (!name_more_files ())
 	verbose_option++;
     }
   else if (utc_option)
@@ -2598,7 +2592,7 @@ decode_options (int argc, char **argv)
   switch (subcommand_option)
     {
     case CREATE_SUBCOMMAND:
-      if (!args.input_files && !files_from_option)
+      if (!name_more_files ())
 	USAGE_ERROR ((0, 0,
 		      _("Cowardly refusing to create an empty archive")));
       if (args.compress_autodetect && archive_names

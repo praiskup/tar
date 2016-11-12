@@ -32,7 +32,8 @@ static void name_add_file (const char *name);
 
 enum
   {
-    EXCLUDE_BACKUPS_OPTION = 256,
+    ADD_FILE_OPTION = 256,
+    EXCLUDE_BACKUPS_OPTION,
     EXCLUDE_CACHES_OPTION,
     EXCLUDE_CACHES_UNDER_OPTION,
     EXCLUDE_CACHES_ALL_OPTION,
@@ -67,7 +68,7 @@ static struct argp_option names_options[] = {
   {NULL, 0, NULL, 0,
    N_("Local file name selection:"), GRID },
 
-  {"add-file", ARGP_KEY_ARG, N_("FILE"), 0,
+  {"add-file", ADD_FILE_OPTION, N_("FILE"), 0,
    N_("add given FILE to the archive (useful if its name starts with a dash)"), GRID+1 },
   {"directory", 'C', N_("DIR"), 0,
    N_("change to directory DIR"), GRID+1 },
@@ -190,10 +191,10 @@ names_parse_opt (int key, char *arg, struct argp_state *state)
 
     case 'T':
       name_add_file (arg);
-      /* Indicate we've been given -T option. This is for backward
-	 compatibility only, so that `tar cfT archive /dev/null will
-	 succeed */
-      files_from_option = true;
+      break;
+
+    case ADD_FILE_OPTION:
+      name_add_name (arg);
       break;
 
     default:
@@ -651,8 +652,8 @@ struct name_elt        /* A name_array element. */
   } v;
 };
 
-static struct name_elt *name_head;  /* store a list of names */
-size_t name_count;	 	    /* how many of the entries are names? */
+static struct name_elt *name_head;/* store a list of names */
+size_t name_count;	 	  /* how many of the entries are file names? */
 
 static struct name_elt *
 name_elt_alloc (void)
@@ -784,6 +785,12 @@ name_list_advance (void)
     }
 }
 
+/* Return true if there are names or options in the list */
+bool
+name_more_files (void)
+{
+  return name_count > 0;
+}
 
 /* Add to name_array the file NAME with fnmatch options MATFLAGS */
 void
@@ -823,6 +830,7 @@ name_add_file (const char *name)
   ep->v.file.name = name;
   ep->v.file.line = 0;
   ep->v.file.fp = NULL;
+  name_count++;
 }
 
 /* Names from external name file.  */
