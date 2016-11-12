@@ -9174,7 +9174,7 @@ create a list of files to be stored in an archive, use it as follows:
 @smallexample
 @group
 $ @kbd{find @var{dir} @var{tests} | \
-  tar -cf @var{archive} -T - --no-recursion}
+  tar -cf @var{archive} --no-recursion -T -}
 @end group
 @end smallexample
 
