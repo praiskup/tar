@@ -1,7 +1,7 @@
 /* GNU dump extensions to tar.
 
    Copyright 1988, 1992-1994, 1996-1997, 1999-2001, 2003-2009,
-   2013-2014, 2016 Free Software Foundation, Inc.
+   2013-2014, 2016-2017 Free Software Foundation, Inc.
 
    This file is part of GNU tar.
 
