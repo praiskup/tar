@@ -306,6 +306,7 @@ m4_include([extrac16.at])
 m4_include([extrac17.at])
 m4_include([extrac18.at])
 m4_include([extrac19.at])
+m4_include([extrac20.at])
 m4_include([backup01.at])
 
 AT_BANNER([Volume label operations])
