@@ -1,4 +1,4 @@
-GNU tar NEWS - User visible changes. 2016-10-29
+GNU tar NEWS - User visible changes. 2017-04-06
 Please send GNU tar bug reports to <bug-tar@gnu.org>
 
 
@@ -20,7 +20,7 @@ invoked as
    tar -cf a.tar . --exclude '*.o'
 
 tar will create the archive, but will exit with status 2, having
-issued the following error message   
+issued the following error message
 
    tar: The following options were used after any non-optional
    arguments in archive create or update mode.  These options are
@@ -28,7 +28,10 @@ issued the following error message
    rearrange them properly.
    tar: --exclude '*.o' has no effect
    tar: Exiting with failure status due to previous errors
-   
+
+* --numeric-owner now affects private headers too.
+This helps the output of 'tar' to be more deterministic.
+
 
 version 1.29 - Sergey Poznyakoff, 2016-05-16
 
@@ -52,7 +55,7 @@ the command line.  Its effect is reverted by the
 
 * --null option reads file names verbatim
 
-The --null option implies --verbatim-files-from.  I.e. each line 
+The --null option implies --verbatim-files-from.  I.e. each line
 read from null-delimited file lists is treated as a file name.
 
 This restores the documented behavior, which was broken in version
@@ -83,7 +86,7 @@ use the time specified if the file mtime is newer than the given time.
 The --clamp-mtime option can only be used together with	--mtime.
 
 Typical use case is to make builds reproducible: to loose less
-information, it's better to keep the original date of an archive, 
+information, it's better to keep the original date of an archive,
 except for files modified during the build process. In that case, using
 reference (and thus reproducible) timestamps for the latter is good
 enough.
@@ -131,7 +134,7 @@ sign and the specifier letter.
 	       deleted, correspondingly.
   %{FMT}t   -  Current local time using FMT as strftime(3) format.
                If {FMT} is omitted, use %c.
-  %{N}*     -  Pad output with spaces to the Nth column, or to the 
+  %{N}*     -  Pad output with spaces to the Nth column, or to the
                current screen width, if {N} is not given.
   %c        -  A shortcut for "%{%Y-%m-%d %H:%M:%S}t: %ds, %{read,wrote}T%*\r"
 
@@ -170,7 +173,7 @@ speed up archivation.
   --exclude-vcs-ignores   Read exclude tags from VCS ignore files,
                           where such files exist.  Supported VCS's
                           are: CVS, Git, Bazaar, Mercurial.
-			  
+
 
 * Tar refuses to read input from and write output to a tty device.
 
@@ -179,7 +182,7 @@ speed up archivation.
 This release includes official tar(1) and rmt(8) manpages.
 Distribution maintainers are kindly asked to use these instead of the
 home-made pages they have been providing so far.
-  
+
 
 version 1.27.1 - Sergey Poznyakoff, 2013-11-17
 
@@ -272,7 +275,7 @@ tar discovers that the corresponding file name already exists and is a
 symbolic link, it first unlinks the entry, and then extracts the directory.
 
 This option disables this behavior and instructs tar to follow
-symlinks to directories when extracting from the archive.  
+symlinks to directories when extracting from the archive.
 
 It is mainly intended to provide compatibility with the Slackware
 installation scripts.
