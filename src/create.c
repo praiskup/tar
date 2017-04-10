@@ -1395,13 +1395,15 @@ create_archive (void)
 					   open_searchdir_flags);
 			  if (fd < 0)
 			    {
-			      open_diag (p->name);
+			      file_removed_diag (p->name, !p->parent,
+						 open_diag);
 			      break;
 			    }
 			  st.fd = fd;
 			  if (fstat (fd, &st.stat) != 0)
 			    {
-			      stat_diag (p->name);
+			      file_removed_diag (p->name, !p->parent,
+						 stat_diag);
 			      break;
 			    }
 			  st.orig_file_name = xstrdup (p->name);

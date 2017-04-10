@@ -339,6 +339,10 @@ AT_BANNER([Files removed while archiving])
 m4_include([filerem01.at])
 m4_include([filerem02.at])
 
+AT_BANNER([Directories removed while archiving])
+m4_include([dirrem01.at])
+m4_include([dirrem02.at])
+
 AT_BANNER([Renames])
 m4_include([rename01.at])
 m4_include([rename02.at])
