@@ -105,13 +105,20 @@ bool write_archive_to_stdout;
 
 /* When creating a multi-volume archive, each 'bufmap' represents
    a member stored (perhaps partly) in the current record buffer.
+   Bufmaps are form a single-linked list in chronological order.
+   
    After flushing the record to the output media, all bufmaps that
-   represent fully written members are removed from the list, then
-   the sizeleft and start numbers in the remaining bufmaps are updated.
+   represent fully written members are removed from the list, the
+   nblocks and sizeleft values in the bufmap_head and start values
+   in all remaining bufmaps are updated.  The information stored
+   in bufmap_head is used to form the volume header.
 
    When reading from a multi-volume archive, the list degrades to a
    single element, which keeps information about the member currently
-   being read.
+   being read.  In that case the sizeleft member is updated explicitly
+   from the extractor code by calling the mv_size_left function.  The
+   information from bufmap_head is compared with the volume header data
+   to ensure that subsequent volumes are fed in the right order.
 */
 
 struct bufmap
@@ -121,6 +128,7 @@ struct bufmap
   char *file_name;              /* Name of the stored file */
   off_t sizetotal;              /* Size of the stored file */
   off_t sizeleft;               /* Size left to read/write */
+  size_t nblocks;               /* Number of blocks written since reset */
 };
 static struct bufmap *bufmap_head, *bufmap_tail;
 
@@ -145,6 +153,7 @@ mv_begin_write (const char *file_name, off_t totsize, off_t sizeleft)
       bp->file_name = xstrdup (file_name);
       bp->sizetotal = totsize;
       bp->sizeleft = sizeleft;
+      bp->nblocks = 0;
     }
 }
 
@@ -155,8 +164,7 @@ bufmap_locate (size_t off)
 
   for (map = bufmap_head; map; map = map->next)
     {
-      if (!map->next
-	  || off < map->next->start * BLOCKSIZE)
+      if (!map->next || off < map->next->start * BLOCKSIZE)
 	break;
     }
   return map;
@@ -185,7 +193,10 @@ bufmap_reset (struct bufmap *map, ssize_t fixup)
   if (map)
     {
       for (; map; map = map->next)
-	map->start += fixup;
+	{
+	  map->start += fixup;
+	  map->nblocks = 0;
+	}
     }
 }
 
@@ -868,12 +879,19 @@ _flush_write (void)
       if (map)
 	{
 	  size_t delta = status - map->start * BLOCKSIZE;
+	  ssize_t diff;
+	  map->nblocks += delta / BLOCKSIZE;
 	  if (delta > map->sizeleft)
 	    delta = map->sizeleft;
 	  map->sizeleft -= delta;
 	  if (map->sizeleft == 0)
-	    map = map->next;
-	  bufmap_reset (map, map ? (- map->start) : 0);
+	    {
+	      diff = map->start + map->nblocks;
+	      map = map->next;
+	    }
+	  else
+	    diff = map->start;
+	  bufmap_reset (map, - diff);
 	}
     }
   return status;
@@ -1105,9 +1123,9 @@ close_archive (void)
 {
   if (time_to_start_writing || access_mode == ACCESS_WRITE)
     {
-      flush_archive ();
-      if (current_block > record_start)
-        flush_archive ();
+      do
+	flush_archive ();
+      while (current_block > record_start);
     }
 
   compute_duration ();
@@ -1711,7 +1729,6 @@ add_chunk_header (struct bufmap *map)
 {
   if (archive_format == POSIX_FORMAT)
     {
-      off_t block_ordinal;
       union block *blk;
       struct tar_stat_info st;
 
@@ -1726,11 +1743,10 @@ add_chunk_header (struct bufmap *map)
       st.file_name = st.orig_file_name;
       st.archive_file_size = st.stat.st_size = map->sizeleft;
 
-      block_ordinal = current_block_ordinal ();
       blk = start_header (&st);
       if (!blk)
         abort (); /* FIXME */
-      finish_header (&st, blk, block_ordinal);
+      simple_finish_header (write_extended (false, &st, blk));
       free (st.orig_file_name);
     }
 }
