@@ -5642,11 +5642,11 @@ from the @samp{user} namespace.
 Any number of these options can be given, thereby creating lists of
 include and exclude patterns.
 
-When both options are used, first @option{--xattrs-inlcude} is applied
+When both options are used, first @option{--xattrs-include} is applied
 to select the set of attribute names to keep, and then
 @option{--xattrs-exclude} is applied to the resulting set.  In other
 words, only those attributes will be stored, whose names match one
-of the regexps in @option{--xattrs-inlcude} and don't match any of
+of the regexps in @option{--xattrs-include} and don't match any of
 the regexps from @option{--xattrs-exclude}.
 
 When listing the archive, if both @option{--xattrs} and
