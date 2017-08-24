@@ -1123,6 +1123,7 @@ tar_help_filter (int key, const char *text, void *input)
 
     case LZOP_OPTION:
       s = xasprintf (_("filter the archive through %s"), LZOP_PROGRAM);
+      break;
 
     case 'J':
       s = xasprintf (_("filter the archive through %s"), XZ_PROGRAM);
