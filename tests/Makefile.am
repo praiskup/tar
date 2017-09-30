@@ -241,6 +241,7 @@ TESTSUITE_AT = \
  xform-h.at\
  xform01.at\
  xform02.at\
+ xform03.at\
  star/gtarfail.at\
  star/gtarfail2.at\
  star/multi-fail.at\

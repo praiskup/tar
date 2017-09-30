@@ -1534,7 +1534,8 @@ file_count_links (struct tar_stat_info *st)
       char *linkname = NULL;
       struct link *lp;
 
-      assign_string (&linkname, st->orig_file_name);
+      assign_string (&linkname, safer_name_suffix (st->orig_file_name, true,
+						   absolute_names_option));
       transform_name (&linkname, XFORM_LINK);
 
       lp = xmalloc (offsetof (struct link, name)
