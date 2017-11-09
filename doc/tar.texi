@@ -8978,7 +8978,7 @@ is used, which excludes symbolic link targets from filename
 transformations.  The result is:
 
 @smallexample
-$ @kbd{tar --transform 's,^,/usr/local/,S', -c -v -f arch.tar \
+$ @kbd{tar --transform 's,^,/usr/local/,S' -c -v -f arch.tar \
        --show-transformed /lib}
 drwxr-xr-x root/root       0 2008-07-08 16:20 /usr/local/lib/
 -rwxr-xr-x root/root 1250840 2008-05-25 07:44 /usr/local/lib/libc-2.3.2.so
