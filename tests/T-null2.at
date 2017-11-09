@@ -25,11 +25,13 @@ AT_TAR_CHECK([
 AT_DATA([file-list],[a
 -b
 --c d
+:\\.jpg
 ])
 
 genfile -f a
 genfile -f -b
 genfile -f '--c d'
+genfile -f ':\\.jpg'
 
 cat file-list | tr '\n' '\0' | tar -c -f archive -v --null -T -
 ],
@@ -37,6 +39,7 @@ cat file-list | tr '\n' '\0' | tar -c -f archive -v --null -T -
 [a
 -b
 --c d
+:\\\\.jpg
 ],
 [],[],[],[ustar]) # Testing one format is enough
 

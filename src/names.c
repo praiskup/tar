@@ -84,7 +84,7 @@ static struct argp_option names_options[] = {
   {"no-unquote", NO_UNQUOTE_OPTION, 0, 0,
    N_("do not unquote input file or member names"), GRID+1 },
   {"verbatim-files-from", VERBATIM_FILES_FROM_OPTION, 0, 0,
-   N_("-T reads file names verbatim (no option handling)"), GRID+1 },
+   N_("-T reads file names verbatim (no escape or option handling)"), GRID+1 },
   {"no-verbatim-files-from", NO_VERBATIM_FILES_FROM_OPTION, 0, 0,
    N_("-T treats file names starting with dash as options (default)"),
       GRID+1 },
@@ -1027,12 +1027,15 @@ read_next_name (struct name_elt *ent, struct name_elt *ret)
 	  ent->v.file.term = 0;
 	  /* fall through */
 	case file_list_success:
-	  if (unquote_option)
-	    unquote_string (name_buffer);
-	  if (!ent->v.file.verbatim && handle_option (name_buffer, ent) == 0)
+	  if (!ent->v.file.verbatim)
 	    {
-	      name_list_adjust ();
-	      return 1;
+	      if (unquote_option)
+		unquote_string (name_buffer);
+	      if (handle_option (name_buffer, ent) == 0)
+		{
+		  name_list_adjust ();
+		  return 1;
+		}
 	    }
 	  ret->type = NELT_NAME;
 	  ret->v.name = name_buffer;
