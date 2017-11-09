@@ -71,6 +71,7 @@ TESTSUITE_AT = \
  delete03.at\
  delete04.at\
  delete05.at\
+ difflink.at\
  exclude.at\
  exclude01.at\
  exclude02.at\

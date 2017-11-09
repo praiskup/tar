@@ -33,6 +33,11 @@ static void namebuf_add_dir (namebuf_t, char const *);
 static char *namebuf_finish (namebuf_t);
 static const char *tar_getcdpath (int);
 
+char const *
+quote_n_colon (int n, char const *arg)
+{
+  return quotearg_n_style_colon (n, get_quoting_style (NULL), arg);
+}
 
 /* Handling strings.  */
 

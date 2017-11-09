@@ -310,6 +310,9 @@ m4_include([extrac19.at])
 m4_include([extrac20.at])
 m4_include([backup01.at])
 
+AT_BANNER([Comparing])
+m4_include([difflink.at])
+
 AT_BANNER([Volume label operations])
 m4_include([label01.at])
 m4_include([label02.at])

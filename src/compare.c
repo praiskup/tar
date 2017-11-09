@@ -51,6 +51,8 @@ diff_init (void)
     read_directory_file ();
 }
 
+enum { QUOTE_ARG, QUOTE_NAME };
+
 /* Sigh about something that differs by writing a MESSAGE to stdlis,
    given MESSAGE is nonzero.  Also set the exit status if not already.  */
 void
@@ -60,7 +62,7 @@ report_difference (struct tar_stat_info *st, const char *fmt, ...)
     {
       va_list ap;
 
-      fprintf (stdlis, "%s: ", quotearg_colon (st->file_name));
+      fprintf (stdlis, "%s: ", quote_n_colon (QUOTE_NAME, st->file_name));
       va_start (ap, fmt);
       vfprintf (stdlis, fmt, ap);
       va_end (ap);
@@ -263,7 +265,8 @@ diff_link (void)
       && !sys_compare_links (&file_data, &link_data))
     report_difference (&current_stat_info,
 		       _("Not linked to %s"),
-		       quote (current_stat_info.link_name));
+		       quote_n_colon (QUOTE_ARG,
+				      current_stat_info.link_name));
 }
 
 #ifdef HAVE_READLINK

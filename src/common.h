@@ -619,6 +619,8 @@ void skip_member (void);
 
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #define max(a, b) ((a) < (b) ? (b) : (a))
+
+char const *quote_n_colon (int n, char const *arg);
 void assign_string (char **dest, const char *src);
 int unquote_string (char *str);
 char *zap_slashes (char *name);
