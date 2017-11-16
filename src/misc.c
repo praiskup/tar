@@ -1044,7 +1044,10 @@ void
 close_diag (char const *name)
 {
   if (ignore_failed_read_option)
-    close_warn (name);
+    {
+      if (WARNING_ENABLED(WARN_FAILED_READ))
+	close_warn (name);
+    }
   else
     close_error (name);
 }
@@ -1053,7 +1056,10 @@ void
 open_diag (char const *name)
 {
   if (ignore_failed_read_option)
-    open_warn (name);
+    {
+      if (WARNING_ENABLED(WARN_FAILED_READ))
+	open_warn (name);
+    }
   else
     open_error (name);
 }
@@ -1062,7 +1068,10 @@ void
 read_diag_details (char const *name, off_t offset, size_t size)
 {
   if (ignore_failed_read_option)
-    read_warn_details (name, offset, size);
+    {
+      if (WARNING_ENABLED(WARN_FAILED_READ))
+	read_warn_details (name, offset, size);
+    }
   else
     read_error_details (name, offset, size);
 }
@@ -1071,7 +1080,10 @@ void
 readlink_diag (char const *name)
 {
   if (ignore_failed_read_option)
-    readlink_warn (name);
+    {
+      if (WARNING_ENABLED(WARN_FAILED_READ))
+	readlink_warn (name);
+    }
   else
     readlink_error (name);
 }
@@ -1080,7 +1092,10 @@ void
 savedir_diag (char const *name)
 {
   if (ignore_failed_read_option)
-    savedir_warn (name);
+    {
+      if (WARNING_ENABLED(WARN_FAILED_READ))
+	savedir_warn (name);
+    }
   else
     savedir_error (name);
 }
@@ -1089,7 +1104,10 @@ void
 seek_diag_details (char const *name, off_t offset)
 {
   if (ignore_failed_read_option)
-    seek_warn_details (name, offset);
+    {
+      if (WARNING_ENABLED(WARN_FAILED_READ))
+	seek_warn_details (name, offset);
+    }
   else
     seek_error_details (name, offset);
 }
@@ -1098,7 +1116,10 @@ void
 stat_diag (char const *name)
 {
   if (ignore_failed_read_option)
-    stat_warn (name);
+    {
+      if (WARNING_ENABLED(WARN_FAILED_READ))
+	stat_warn (name);
+    }
   else
     stat_error (name);
 }

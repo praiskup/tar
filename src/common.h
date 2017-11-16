@@ -927,6 +927,7 @@ void checkpoint_flush_actions (void);
 #define WARN_EXISTING_FILE       0x00100000
 #define WARN_XATTR_WRITE         0x00200000
 #define WARN_RECORD_SIZE         0x00400000
+#define WARN_FAILED_READ         0x00800000
 
 /* These warnings are enabled by default in verbose mode: */
 #define WARN_VERBOSE_WARNINGS    (WARN_RENAME_DIRECTORY|WARN_NEW_DIRECTORY|\
@@ -938,10 +939,12 @@ void set_warning_option (const char *arg);
 
 extern int warning_option;
 
+#define WARNING_ENABLED(opt) (warning_option & (opt))
+
 #define WARNOPT(opt,args)			\
   do						\
     {						\
-      if (warning_option & opt) WARN (args);	\
+      if (WARNING_ENABLED(opt)) WARN (args);	\
     }						\
   while (0)
 

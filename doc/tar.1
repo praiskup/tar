@@ -13,7 +13,7 @@
 .\"
 .\" You should have received a copy of the GNU General Public License
 .\" along with this program.  If not, see <http://www.gnu.org/licenses/>.
-.TH TAR 1 "March 23, 2016" "TAR" "GNU TAR Manual"
+.TH TAR 1 "November 16, 2017" "TAR" "GNU TAR Manual"
 .SH NAME
 tar \- an archiving utility
 .SH SYNOPSIS
@@ -1163,6 +1163,12 @@ Keywords applicable for \fBtar --create\fR:
 .TP
 .B file-changed
 "%s: file changed as we read it"
+.TP
+.B failed-read
+Suppresses warnings about unreadable files or directories. This
+keyword applies only if used together with the
+.B \-\-ignore\-failed\-read
+option.
 .HP
 Keywords applicable for \fBtar --extract\fR:
 .TP

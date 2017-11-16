@@ -37,6 +37,18 @@ This helps the output of 'tar' to be more deterministic.
 In some cases tar would restore the directory permissions too early,
 causing subsequent link extractions in that directory to fail.
 
+* The --warnings=failed-read option
+
+This new warning control option suppresses warning messages about
+unreadable files and directories. It has effect only if used together
+with the --ignore-failed-read option.  
+
+* The --warnings=none option now suppresses all warnings
+
+This includes warnings about unreadable files produced when
+--ignore-failed-read is in effect. To output these, use
+--warnings=none --warnings=no-failed-read.
+
 
 version 1.29 - Sergey Poznyakoff, 2016-05-16
 

@@ -4610,6 +4610,10 @@ Disable all warning messages.
 @cindex @samp{file changed as we read it}, warning message
 @item file-changed
 @samp{%s: file changed as we read it}
+@item failed-read
+Suppresses warnings about unreadable files or directories. This
+keyword applies only if used together with the @option{--ignore-failed-read}
+option. @xref{Ignore Failed Read}.
 @end table
 
 @subheading Keywords applicable for @command{tar --extract}
@@ -5726,13 +5730,20 @@ Disable SELinux context support.
 @end table
 
 @node Ignore Failed Read
-@subsection Ignore Fail Read
+@subsection Ignore Failed Read
 
 @table @option
 @item --ignore-failed-read
 @opindex ignore-failed-read
 Do not exit with nonzero on unreadable files or directories.
 @end table
+
+This option has effect only during creation.  It instructs tar to
+treat as mild conditions any missing or unreadable files (directories).
+Such failures don't affect the program exit code, and the
+corresponding diagnostic messages are marked as warnings, not errors.
+These warnings can be suppressed using the
+@option{--warning=failed-read} option (@pxref{warnings}).
 
 @node extract options
 @section Options Used by @option{--extract}
