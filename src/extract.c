@@ -393,6 +393,24 @@ set_stat (char const *file_name,
   xattrs_selinux_set (st, file_name, typeflag);
 }
 
+/* Find the direct ancestor of FILE_NAME in the delayed_set_stat list.
+ */   
+static struct delayed_set_stat *
+find_direct_ancestor (char const *file_name)
+{
+  struct delayed_set_stat *h = delayed_set_stat_head;
+  while (h)
+    {
+      if (h && ! h->after_links
+	  && strncmp (file_name, h->file_name, h->file_name_len) == 0
+	  && ISSLASH (file_name[h->file_name_len])
+	  && (last_component (file_name) == file_name + h->file_name_len + 1))
+	break;
+      h = h->next;
+    }
+  return h;
+}
+
 /* For each entry H in the leading prefix of entries in HEAD that do
    not have after_links marked, mark H and fill in its dev and ino
    members.  Assume HEAD && ! HEAD->after_links.  */
@@ -1304,11 +1322,7 @@ create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made)
       xheader_xattr_copy (&current_stat_info, &p->xattr_map, &p->xattr_map_size);
       strcpy (p->target, current_stat_info.link_name);
 
-      h = delayed_set_stat_head;
-      if (h && ! h->after_links
-	  && strncmp (file_name, h->file_name, h->file_name_len) == 0
-	  && ISSLASH (file_name[h->file_name_len])
-	  && (last_component (file_name) == file_name + h->file_name_len + 1))
+      if ((h = find_direct_ancestor (file_name)) != NULL)
 	mark_after_links (h);
 
       return 0;

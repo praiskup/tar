@@ -1,4 +1,4 @@
-GNU tar NEWS - User visible changes. 2017-04-06
+GNU tar NEWS - User visible changes. 2017-11-16
 Please send GNU tar bug reports to <bug-tar@gnu.org>
 
 
@@ -31,6 +31,11 @@ issued the following error message
 
 * --numeric-owner now affects private headers too.
 This helps the output of 'tar' to be more deterministic.
+
+* Fixed the --delay-directory-restore option
+
+In some cases tar would restore the directory permissions too early,
+causing subsequent link extractions in that directory to fail.
 
 
 version 1.29 - Sergey Poznyakoff, 2016-05-16
