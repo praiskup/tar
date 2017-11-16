@@ -36,7 +36,7 @@ This manual is for @acronym{GNU} @command{tar} (version
 @value{VERSION}, @value{UPDATED}), which creates and extracts files
 from archives.
 
-Copyright @copyright{} 1992, 1994--1997, 1999--2001, 2003--2016 Free
+Copyright @copyright{} 1992, 1994--1997, 1999--2001, 2003--2017 Free
 Software Foundation, Inc.
 
 @quotation
@@ -111,6 +111,7 @@ document.  The rest of the menu lists all the lower level nodes.
 Appendices
 
 * Changes::
+* Recipes:: Frequently used tar recipes
 * Configuring Help Summary::
 * Fixing Snapshot Files::
 * Tar Internals::
@@ -204,7 +205,6 @@ All @command{tar} Options
 * create options::
 * extract options::
 * backup::
-* Applications::
 * looking ahead::
 
 Advanced @GNUTAR{} Operations
@@ -4777,7 +4777,6 @@ expanded by the shell when invoking @command{tar}.
 * create options::
 * extract options::
 * backup::
-* Applications::
 * looking ahead::
 @end menu
 
@@ -6500,65 +6499,6 @@ environment variable is used.  And if @env{SIMPLE_BACKUP_SUFFIX} is not
 set, the default is @samp{~}, just as in Emacs.
 
 @end table
-
-@node Applications
-@section Notable @command{tar} Usages
-@UNREVISED
-
-@FIXME{Using Unix file linking capability to recreate directory
-structures---linking files into one subdirectory and then
-@command{tar}ring that directory.}
-
-@FIXME{Nice hairy example using absolute-names, newer, etc.}
-
-@findex uuencode
-You can easily use archive files to transport a group of files from
-one system to another: put all relevant files into an archive on one
-computer system, transfer the archive to another system, and extract
-the contents there.  The basic transfer medium might be magnetic tape,
-Internet FTP, or even electronic mail (though you must encode the
-archive with @command{uuencode} in order to transport it properly by
-mail).  Both machines do not have to use the same operating system, as
-long as they both support the @command{tar} program.
-
-For example, here is how you might copy a directory's contents from
-one disk to another, while preserving the dates, modes, owners and
-link-structure of all the files therein.  In this case, the transfer
-medium is a @dfn{pipe}:
-
-@smallexample
-$ @kbd{(cd sourcedir; tar -cf - .) | (cd targetdir; tar -xf -)}
-@end smallexample
-
-@noindent
-You can avoid subshells by using @option{-C} option:
-
-@smallexample
-$ @kbd{tar -C sourcedir -cf - . | tar -C targetdir -xf -}
-@end smallexample
-
-@noindent
-The command also works using long option forms:
-
-@smallexample
-@group
-$ @kbd{(cd sourcedir; tar --create --file=- . ) \
-       | (cd targetdir; tar --extract --file=-)}
-@end group
-@end smallexample
-
-@noindent
-or
-
-@smallexample
-@group
-$ @kbd{tar --directory sourcedir --create --file=- . \
-       | tar --directory targetdir --extract --file=-}
-@end group
-@end smallexample
-
-@noindent
-This is one of the easiest methods to transfer a @command{tar} archive.
 
 @node looking ahead
 @section Looking Ahead: The Rest of this Manual
@@ -12932,8 +12872,8 @@ understand their security implications.
 @appendix Changes
 
 This appendix lists some important user-visible changes between
-version @GNUTAR{} @value{VERSION} and previous versions. An up-to-date
-version of this document is available at
+various versions of @GNUTAR{}. An up-to-date version of this document
+is available at
 @uref{http://www.gnu.org/@/software/@/tar/manual/changes.html,the
 @GNUTAR{} documentation page}.
 
@@ -13018,6 +12958,10 @@ These options are deprecated.  Please use @option{--format=v7} instead.
 
 This option is deprecated.  Please use @option{--format=posix} instead.
 @end table
+
+@node Recipes
+@appendix Recipes
+@include recipes.texi
 
 @node Configuring Help Summary
 @appendix Configuring Help Summary

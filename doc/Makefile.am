@@ -28,6 +28,7 @@ tar_TEXINFOS = \
  header.texi\
  intern.texi\
  parse-datetime.texi\
+ recipes.texi\
  rendition.texi\
  snapshot.texi\
  sparse.texi\
