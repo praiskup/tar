@@ -3703,8 +3703,8 @@ Specify exclude pattern for xattr keys.
 
 @opsummary{xattrs-include}
 @item --xattrs-include=@var{pattern}.
-Specify include pattern for xattr keys.  @var{pattern} is a POSIX
-regular expression, e.g. @samp{--xattrs-exclude='^user\.'} to include
+Specify include pattern for xattr keys.  @var{pattern} is a globbing
+pattern, e.g. @samp{--xattrs-include='user.*'} to include
 only attributes from the user namespace.
 @xref{Extended File Attributes, xattrs-include}.
 
@@ -5629,11 +5629,11 @@ Specify exclude pattern for extended attributes.
 Specify include pattern for extended attributes.
 @end table
 
-Here, the @var{pattern} is POSIX regular expression.  For example, the
+Here, the @var{pattern} is a globbing pattern.  For example, the
 following command:
 
 @example
-$ @kbd{tar --xattrs --xattrs-exclude='^user\.' -c a.tar .}
+$ @kbd{tar --xattrs --xattrs-exclude='user.*' -c a.tar .}
 @end example
 
 will include in the archive @file{a.tar} all attributes, except those
@@ -9585,7 +9585,7 @@ create a @command{gzip} compressed archive, @option{-j}
 @option{--lzip} to create an @asis{lzip} compressed archive,
 @option{-J} (@option{--xz}) to create an @asis{XZ} archive,
 @option{--lzma} to create an @asis{LZMA} compressed
-archive, @option{--lzop} to create an @asis{LSOP} archive, and
+archive, @option{--lzop} to create an @asis{LZOP} archive, and
 @option{-Z} (@option{--compress}) to use @command{compress} program.
 For example:
 
