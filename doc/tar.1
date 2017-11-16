@@ -219,7 +219,10 @@ There is no short option equivalent for this option.
 \fB\-u\fR, \fB\-\-update\fR
 Append files which are newer than the corresponding copy in the
 archive.  Arguments have the same meaning as with \fB\-c\fR and
-\fB\-r\fR options.
+\fB\-r\fR options.  Notice, that newer files don't replace their
+old archive copies, but instead are appended to the end of archive.
+The resulting archive can thus contain several members of the
+same name, corresponding to various versions of the same file.
 .TP
 \fB\-x\fR, \fB\-\-extract\fR, \fB\-\-get\fR
 Extract files from an archive.  Arguments are optional.  When given,

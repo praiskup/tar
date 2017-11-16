@@ -5195,7 +5195,7 @@ the one at the end will be newer and larger, since you added text before
 updating it.
 
 The reason @command{tar} does not overwrite the older file when updating
-it is because writing to the middle of a section of tape is a difficult
+it is that writing to the middle of a section of tape is a difficult
 process.  Tapes are not designed to go backward.  @xref{Media}, for more
 information about tapes.
 
