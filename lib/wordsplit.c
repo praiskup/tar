@@ -1584,6 +1584,7 @@ wordsplit_perror (struct wordsplit *wsp)
 
     case WRDSE_NOSUPP:
       wsp->ws_error (_("command substitution is not yet supported"));
+      break;
 
     case WRDSE_USAGE:
       wsp->ws_error (_("invalid wordsplit usage"));
