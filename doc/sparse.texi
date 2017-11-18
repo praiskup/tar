@@ -143,7 +143,7 @@ format, it will also extract a file containing extension header
 attributes.  This file can be used to expand the file to its original
 state.  However, posix-aware @command{tar}s will usually ignore the
 unknown variables, which makes restoring the file more
-difficult.  @xref{extracting sparse v.0.x, Extraction of sparse
+difficult.  @xref{extracting sparse v0x, Extraction of sparse
 members in v.0.0 format}, for the detailed description of how to
 restore such members using non-GNU @command{tar}s.
 @end enumerate
@@ -175,7 +175,7 @@ The real name of the sparse file is stored in the variable
 @code{GNU.sparse.name}.  Thus, those @command{tar} implementations
 that are not aware of GNU extensions will at least extract the files
 into separate directories, giving the user a possibility to expand it
-afterwards.  @xref{extracting sparse v.0.x, Extraction of sparse
+afterwards.  @xref{extracting sparse v0x, Extraction of sparse
 members in v.0.1 format}, for the detailed description of how to
 restore such members using non-GNU @command{tar}s.
 

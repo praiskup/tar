@@ -1521,7 +1521,7 @@ the error message is produced because there is no member named
 @file{folk}, only one named @file{home/myself/folk}.
 
 If you are not sure of the exact file name, use @dfn{globbing
-patterns}, for example: 
+patterns}, for example:
 
 @smallexample
 $ @kbd{tar --list --file=practice.tar --wildcards '*/folk'}
@@ -3155,7 +3155,7 @@ Disable extended attributes support.  @xref{Extended File Attributes, xattrs}.
 
 When @command{tar} is using the @option{--files-from} option, this option
 instructs @command{tar} to expect file names terminated with
-@acronym{NUL}, and to process file names verbatim.  
+@acronym{NUL}, and to process file names verbatim.
 
 This means that @command{tar} correctly works with file names that
 contain newlines or begin with a dash.
@@ -3896,7 +3896,7 @@ tar: Exiting with failure status due to previous errors
 @end group
 @end example
 
-The following table summarizes all position-sensitive options. 
+The following table summarizes all position-sensitive options.
 
 @table @option
 @item --directory=@var{dir}
@@ -3915,24 +3915,24 @@ The following table summarizes all position-sensitive options.
 @itemx --no-verbatim-files-from
 @xref{verbatim-files-from}.
 
-@item --recursion 
+@item --recursion
 @itemx --no-recursion
 @xref{recurse}.
 
-@item --anchored 
-@itemx --no-anchored 
+@item --anchored
+@itemx --no-anchored
 @xref{anchored patterns}.
 
-@item --ignore-case 
-@itemx --no-ignore-case 
+@item --ignore-case
+@itemx --no-ignore-case
 @xref{case-insensitive matches}.
 
 @item --wildcards
 @itemx --no-wildcards
 @xref{controlling pattern-matching}.
 
-@item --wildcards-match-slash 
-@itemx --no-wildcards-match-slash 
+@item --wildcards-match-slash
+@itemx --no-wildcards-match-slash
 @xref{controlling pattern-matching}.
 
 @item --exclude
@@ -5596,7 +5596,7 @@ map file.
 @subsection Extended File Attributes
 
 Extended file attributes are name-value pairs that can be
-associated with each node in a file system.  Despite the fact that 
+associated with each node in a file system.  Despite the fact that
 POSIX.1e draft which proposed them has been withdrawn, the extended
 file attributes are supported by many file systems.  @GNUTAR{} can
 store extended file attributes along with the files.  This feature is
@@ -5711,7 +5711,7 @@ listing of ACL is printed after each file entry:
 @group
 -rw-r--r--+ smith/users      110 2016-03-16 16:07 file
   a: user::rw-,user:gray:-w-,group::r--,mask::rw-,other::r--
-@end group  
+@end group
 @end example
 
 @dfn{Security-Enhanced Linux} (@dfn{SELinux} for short) is a Linux
@@ -10856,7 +10856,7 @@ Done
 @end group
 @end smallexample
 
-@anchor{extracting sparse v.0.x}
+@anchor{extracting sparse v0x}
 @cindex sparse files v.0.1, extracting with non-GNU tars
 @cindex sparse files v.0.0, extracting with non-GNU tars
 An @dfn{extended header} is a special @command{tar} archive header
