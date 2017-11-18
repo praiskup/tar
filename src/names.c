@@ -146,7 +146,7 @@ static struct argp_option names_options[] = {
   {"no-wildcards-match-slash", NO_WILDCARDS_MATCH_SLASH_OPTION, 0, 0,
    N_("wildcards do not match '/'"), GRID+1 },
 #undef GRID
-  
+
   {NULL}
 };
 
@@ -160,7 +160,7 @@ file_selection_option (int key)
     if (p->key == key)
       return p;
   return NULL;
-}  
+}
 
 static char const *
 file_selection_option_name (int key)
@@ -173,7 +173,7 @@ static bool
 is_file_selection_option (int key)
 {
   return file_selection_option (key) != NULL;
-}  
+}
 
 /* Either NL or NUL, as decided by the --null option.  */
 static char filename_terminator = '\n';
@@ -221,7 +221,7 @@ static int matching_flags = 0;
   /* exclude_fnmatch options */
 static int include_anchored = EXCLUDE_ANCHORED;
   /* Pattern anchoring options used for file inclusion */
-  
+
 #define EXCLUDE_OPTIONS						\
   (((wildcards != disable_wildcards) ? EXCLUDE_WILDCARDS : 0)	\
   | matching_flags						\
@@ -696,7 +696,7 @@ name_list_adjust (void)
 
    For simplicity, only a tail pointer of the list is maintained.
 */
-   
+
 struct name_elt *unconsumed_option_tail;
 
 /* Push an option to the list */
@@ -729,7 +729,7 @@ unconsumed_option_report (void)
   if (unconsumed_option_tail)
     {
       struct name_elt *elt;
-      
+
       ERROR ((0, 0, _("The following options were used after any non-optional arguments in archive create or update mode.  These options are positional and affect only arguments that follow them.  Please, rearrange them properly.")));
 
       elt = unconsumed_option_tail;
@@ -753,13 +753,13 @@ unconsumed_option_report (void)
 		ERROR ((0, 0, _("--%s has no effect"),
 			file_selection_option_name (elt->v.opt.option)));
 	      break;
-	      
+
 	    default:
 	      break;
 	    }
 	  elt = elt->next;
 	}
-      
+
       unconsumed_option_free ();
     }
 }
@@ -967,7 +967,7 @@ handle_option (const char *str, struct name_elt const *ent)
   struct wordsplit ws;
   int i;
   struct option_locus loc;
-  
+
   while (*str && isspace (*str))
     ++str;
   if (*str != '-')
@@ -1025,7 +1025,7 @@ read_next_name (struct name_elt *ent, struct name_elt *ret)
 		   (0, 0, N_("%s: file name read contains nul character"),
 		    quotearg_colon (ent->v.file.name)));
 	  ent->v.file.term = 0;
-	  /* fall through */
+	  FALLTHROUGH;
 	case file_list_success:
 	  if (!ent->v.file.verbatim)
 	    {
@@ -1110,7 +1110,7 @@ name_next_elt (int change_dirs)
 	      name_list_advance ();
 	      break;
 	    }
-	  /* fall through */
+	  FALLTHROUGH;
 	case NELT_NAME:
 	  copy_name (ep);
 	  if (unquote_option)
@@ -1128,7 +1128,7 @@ name_next_elt (int change_dirs)
     }
 
   unconsumed_option_report ();
-  
+
   return NULL;
 }
 

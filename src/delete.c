@@ -187,8 +187,7 @@ delete_archive_members (void)
 	      skip_member ();
 	      break;
 	    }
-
-	  /* Fall through.  */
+	  FALLTHROUGH;
 	case HEADER_SUCCESS_EXTENDED:
 	  logical_status = status;
 	  break;
@@ -199,7 +198,7 @@ delete_archive_members (void)
 	      set_next_block_after (current_header);
 	      break;
 	    }
-	  /* Fall through.  */
+	  FALLTHROUGH;
 	case HEADER_END_OF_FILE:
 	  logical_status = HEADER_END_OF_FILE;
 	  break;
@@ -210,14 +209,12 @@ delete_archive_members (void)
 	    {
 	    case HEADER_STILL_UNREAD:
 	      WARN ((0, 0, _("This does not look like a tar archive")));
-	      /* Fall through.  */
-
+	      FALLTHROUGH;
 	    case HEADER_SUCCESS:
 	    case HEADER_SUCCESS_EXTENDED:
 	    case HEADER_ZERO_BLOCK:
 	      ERROR ((0, 0, _("Skipping to next header")));
-	      /* Fall through.  */
-
+	      FALLTHROUGH;
 	    case HEADER_FAILURE:
 	      break;
 

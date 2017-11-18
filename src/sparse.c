@@ -361,11 +361,12 @@ sparse_scan_file (struct tar_sparse_file *file)
       /* fall back to "raw" for this and all other files */
       hole_detection = HOLE_DETECTION_RAW;
 #endif
+      FALLTHROUGH;
     case HOLE_DETECTION_RAW:
       if (sparse_scan_file_raw (file))
 	return true;
     }
-  
+
   return false;
 }
 

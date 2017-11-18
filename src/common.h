@@ -44,6 +44,12 @@
 # define GLOBAL extern
 #endif
 
+#if 7 <= __GNUC__
+# define FALLTHROUGH __attribute__ ((__fallthrough__))
+#else
+# define FALLTHROUGH ((void) 0)
+#endif
+
 #define TAREXIT_SUCCESS PAXEXIT_SUCCESS
 #define TAREXIT_DIFFERS PAXEXIT_DIFFERS
 #define TAREXIT_FAILURE PAXEXIT_FAILURE

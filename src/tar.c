@@ -1241,7 +1241,7 @@ parse_owner_group (char *arg, uintmax_t field_max, char const **name_option)
 	      u = u1;
 	      break;
 	    }
-	  /* Fall through.  */
+	  FALLTHROUGH;
 	case LONGINT_OVERFLOW:
 	  invalid_num = arg;
 	  break;
@@ -1396,8 +1396,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
       optloc_save (OC_LISTED_INCREMENTAL, args->loc);
       listed_incremental_option = arg;
       after_date_option = true;
-      /* Fall through.  */
-
+      FALLTHROUGH;
     case 'G':
       /* We are making an incremental dump (FIXME: are we?); save
 	 directories at the beginning of the archive, and include in each
@@ -1522,8 +1521,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
 
     case 'N':
       after_date_option = true;
-      /* Fall through.  */
-
+      FALLTHROUGH;
     case NEWER_MTIME_OPTION:
       if (TIME_OPTION_INITIALIZED (newer_mtime_option))
 	USAGE_ERROR ((0, 0, _("More than one threshold date")));
@@ -2066,6 +2064,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
 
       argp_error (state,
 		  _("Options '-[0-7][lmh]' not supported by *this* tar"));
+      exit (EX_USAGE);
 
 #endif /* not DEVICE_PREFIX */
 

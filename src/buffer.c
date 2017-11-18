@@ -106,7 +106,7 @@ bool write_archive_to_stdout;
 /* When creating a multi-volume archive, each 'bufmap' represents
    a member stored (perhaps partly) in the current record buffer.
    Bufmaps are form a single-linked list in chronological order.
-   
+
    After flushing the record to the output media, all bufmaps that
    represent fully written members are removed from the list, the
    nblocks and sizeleft values in the bufmap_head and start values
@@ -1004,7 +1004,7 @@ void
 flush_archive (void)
 {
   size_t buffer_level;
-  
+
   if (access_mode == ACCESS_READ && time_to_start_writing)
     {
       access_mode = ACCESS_WRITE;
@@ -1296,8 +1296,7 @@ change_tape_menu (FILE *read_file)
               sys_spawn_shell ();
               break;
             }
-          /* FALL THROUGH */
-
+	  FALLTHROUGH;
         default:
           fprintf (stderr, _("Invalid input. Type ? for help.\n"));
         }
@@ -1506,8 +1505,7 @@ try_new_volume (void)
       header = find_next_block ();
       if (header->header.typeflag != GNUTYPE_MULTIVOL)
         break;
-      /* FALL THROUGH */
-
+      FALLTHROUGH;
     case GNUTYPE_MULTIVOL:
       if (!read_header0 (&dummy))
         return false;
@@ -1532,7 +1530,7 @@ try_new_volume (void)
 		 quote (bufmap_head->file_name)));
 	  return false;
 	}
-      
+
       if (strcmp (continued_file_name, bufmap_head->file_name))
         {
           if ((archive_format == GNU_FORMAT || archive_format == OLDGNU_FORMAT)

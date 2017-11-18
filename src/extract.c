@@ -394,7 +394,7 @@ set_stat (char const *file_name,
 }
 
 /* Find the direct ancestor of FILE_NAME in the delayed_set_stat list.
- */   
+ */
 static struct delayed_set_stat *
 find_direct_ancestor (char const *file_name)
 {
@@ -758,10 +758,9 @@ maybe_recoverable (char *file_name, bool regular, bool *interdir_made)
 	    break;
 	  stp = &st;
 	}
-
       /* The caller tried to open a symbolic link with O_NOFOLLOW.
 	 Fall through, treating it as an already-existing file.  */
-
+      FALLTHROUGH;
     case EEXIST:
       /* Remove an old file, if the options allow this.  */
 
@@ -778,8 +777,7 @@ maybe_recoverable (char *file_name, bool regular, bool *interdir_made)
 	case KEEP_NEWER_FILES:
 	  if (file_newer_p (file_name, stp, &current_stat_info))
 	    break;
-	  /* FALL THROUGH */
-
+	  FALLTHROUGH;
 	case DEFAULT_OLD_FILES:
 	case NO_OVERWRITE_DIR_OLD_FILES:
 	case OVERWRITE_OLD_FILES:
@@ -939,7 +937,7 @@ is_directory_link (const char *file_name)
   struct stat st;
   int e = errno;
   int res;
-  
+
   res = (fstatat (chdir_fd, file_name, &st, AT_SYMLINK_NOFOLLOW) == 0 &&
 	 S_ISLNK (st.st_mode) &&
 	 fstatat (chdir_fd, file_name, &st, 0) == 0 &&
@@ -1011,7 +1009,7 @@ extract_dir (char *file_name, int typeflag)
 
 	  if (keep_directory_symlink_option && is_directory_link (file_name))
 	    return 0;
-	  
+
 	  if (deref_stat (file_name, &st) == 0)
 	    {
 	      current_mode = st.st_mode;

@@ -120,7 +120,7 @@ enforce_one_top_level (char **pfile_name)
 {
   char *file_name = *pfile_name;
   char *p;
-  
+
   for (p = file_name; *p && (ISSLASH (*p) || *p == '.'); p++)
     ;
 
@@ -132,7 +132,7 @@ enforce_one_top_level (char **pfile_name)
 	  if (ISSLASH (p[pos]) || p[pos] == 0)
 	    return;
 	}
-    
+
       *pfile_name = make_file_name (one_top_level_dir, file_name);
       normalize_filename_x (*pfile_name);
     }
@@ -218,7 +218,7 @@ read_and (void (*do_something) (void))
 		  if (show_omitted_dirs_option)
 		    WARN ((0, 0, _("%s: Omitting"),
 			   quotearg_colon (current_stat_info.file_name)));
-		  /* Fall through.  */
+		  FALLTHROUGH;
 		default:
 		  skip_member ();
 		  continue;
@@ -273,8 +273,7 @@ read_and (void (*do_something) (void))
 	    {
 	    case HEADER_STILL_UNREAD:
 	      ERROR ((0, 0, _("This does not look like a tar archive")));
-	      /* Fall through.  */
-
+	      FALLTHROUGH;
 	    case HEADER_ZERO_BLOCK:
 	    case HEADER_SUCCESS:
 	      if (block_number_option)

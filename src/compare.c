@@ -480,8 +480,7 @@ diff_archive (void)
       ERROR ((0, 0, _("%s: Unknown file type '%c', diffed as normal file"),
 	      quotearg_colon (current_stat_info.file_name),
 	      current_header->header.typeflag));
-      /* Fall through.  */
-
+      FALLTHROUGH;
     case AREGTYPE:
     case REGTYPE:
     case GNUTYPE_SPARSE:
