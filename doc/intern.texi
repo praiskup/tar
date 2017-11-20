@@ -316,7 +316,7 @@ representation instead of an ASCII octal number.  If the leading byte
 is 0xff (255), all the bytes of the field (including the leading byte)
 are concatenated in big-endian order, with the result being a negative
 number expressed in two's complement form.  If the leading byte is
-0x80 (128), the non-leading bytes of the field are concatenating in
+0x80 (128), the non-leading bytes of the field are concatenated in
 big-endian order, with the result being a positive number expressed in
 binary form.  Leading bytes other than 0xff, 0x80 and ASCII octal
 digits are reserved for future use, as are base-256 representations of
