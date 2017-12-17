@@ -1,8 +1,8 @@
-GNU tar NEWS - User visible changes. 2017-11-16
+GNU tar NEWS - User visible changes. 2017-12-17
 Please send GNU tar bug reports to <bug-tar@gnu.org>
 
 
-version 1.29.90 (Git)
+version 1.30 - Sergey Poznyakoff, 2017-12-17
 
 * Member names containing '..' components are now skipped when extracting.
 
@@ -10,7 +10,7 @@ This fixes tar's behavior to match its documentation, and is a bit
 safer when extracting untrusted archives over old files (an unsafe
 practice that the tar manual has long recommended against).
 
-* Report erroneous use of positional options.
+* Report erroneous use of position-sensitive options.
 
 During archive creation or update, tar keeps track of positional
 options (see the manual, subsection 3.4.4 "Position-Sensitive
@@ -22,7 +22,7 @@ invoked as
 tar will create the archive, but will exit with status 2, having
 issued the following error message
 
-   tar: The following options were used after any non-optional
+   tar: The following options were used after non-optional
    arguments in archive create or update mode.  These options are
    positional and affect only arguments that follow them.  Please,
    rearrange them properly.
@@ -30,6 +30,7 @@ issued the following error message
    tar: Exiting with failure status due to previous errors
 
 * --numeric-owner now affects private headers too.
+
 This helps the output of 'tar' to be more deterministic.
 
 * Fixed the --delay-directory-restore option
@@ -48,6 +49,11 @@ with the --ignore-failed-read option.
 This includes warnings about unreadable files produced when
 --ignore-failed-read is in effect. To output these, use
 --warnings=none --warnings=no-failed-read.
+
+* Fix reporting of hardlink mismatches during compare
+
+Tar reported incorrect target file name in the 'Not linked to'
+diagnostic message.
 
 
 version 1.29 - Sergey Poznyakoff, 2016-05-16
