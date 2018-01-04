@@ -47,14 +47,15 @@ gnu)   CPT=3;;
 esac
 
 genfile --run --checkpoint=$CPT --unlink dir/sub/file2 --unlink dir/sub -- \
-       tar --blocking-factor=1 --checkpoint=1 --checkpoint-action='sleep=1' \
-       --checkpoint-action='echo' -c -f archive.tar \
+       tar --blocking-factor=1 --checkpoint=1 --checkpoint-action='echo' \
+       --checkpoint-action='sleep=1' -c -f archive.tar \
        --listed-incremental db -v dir >/dev/null
 ],
 [1],
 [ignore],
 [tar: dir: Directory is new
 tar: dir/sub: Directory is new
+tar: dir/sub: file changed as we read it
 tar: dir/sub: File removed before we read it
 ],[],[],[gnu,posix])
 
