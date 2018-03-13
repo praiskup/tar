@@ -218,12 +218,12 @@ The real name of the sparse file is stored in the variable
 variable @code{GNU.sparse.realsize}.
 
 The sparse map itself is stored in the file data block, preceding the actual
-file data.  It consists of a series of octal numbers of arbitrary length, delimited
+file data.  It consists of a series of decimal numbers delimited
 by newlines. The map is padded with nulls to the nearest block boundary.
 
-The first number gives the number of entries in the map. Following are map entries,
-each one consisting of two numbers giving the offset and size of the
-data block it describes.
+The first number gives the number of entries in the map. Following are
+map entries, each one consisting of two numbers giving the offset and
+size of the data block it describes.
 
 The format is designed in such a way that non-posix aware @command{tar}s and @command{tar}s not
 supporting @code{GNU.sparse.*} keywords will extract each sparse file

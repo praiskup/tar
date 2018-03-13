@@ -5477,7 +5477,7 @@ reproducible archives given a common timestamp for generated files
 while still retaining the original timestamps of untouched files.
 
 @smallexample
-$ @kbd{tar -c -f archive.tar --clamp-mtime --mtime=@atchar{}$SOURCE_DATE_EPOCH .}
+$ @kbd{tar -c -f archive.tar --clamp-mtime --mtime=@@$SOURCE_DATE_EPOCH .}
 @end smallexample
 
 @item --owner=@var{user}
