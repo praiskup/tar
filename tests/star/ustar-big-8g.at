@@ -20,11 +20,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 AT_SETUP([ustar-big-8g])
-AT_KEYWORDS([star ustar-big-8g])
+AT_KEYWORDS([star ustar-big-8g largefile])
 
 unset TAR_OPTIONS
 
 AT_CHECK([
+AT_SKIP_LARGE_FILES
 AT_GZIP_PREREQ([bzip2])
 AT_STAR_PREREQ([ustar-big-8g.tar.bz2],[60ff503fa4b8288bef7ada89e9c91b0f])
 

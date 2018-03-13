@@ -60,6 +60,8 @@ done
 
 m4_define([AT_SKIP_TEST],[exit 77])
 
+m4_define([AT_SKIP_LARGE_FILES],[test "${TARTEST_SKIP_LARGE_FILES:-0}" != 0 && AT_SKIP_TEST])
+
 dnl AT_TARBALL_PREREQ(tarball, md5sum) - Check if test tarball exists
 dnl in $TEST_DATA_DIR. If it does not, try to download it from
 dnl $TEST_DATA_URL. If download fails, or it the file's md5 sum does not
