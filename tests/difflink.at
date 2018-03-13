@@ -21,7 +21,7 @@ mkdir a
 genfile -f a/x
 ln -s x a/y
 ln a/y a/z
-tar cf a.tar a
+tar cf a.tar a/x a/y a/z
 rm a/z
 ln -s x a/z
 tar df a.tar
