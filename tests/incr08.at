@@ -38,24 +38,10 @@
 AT_SETUP([filename normalization])
 AT_KEYWORDS([incremental create incr08 chdir])
 
-AT_TAR_CHECK([
-AT_CHECK_TIMESTAMP
-AT_SORT_PREREQ
-mkdir tartest
-cd tartest
-mkdir foo
-mkdir foo/subdir
-mkdir foo/subdir/dir1
-mkdir subdir
-mkdir subdir/dir2
-decho A
-find .|sort
-
-decho B
-DIR=`pwd`
-tar -cvf ../foo.tar --listed-incremental=../foo.snar -C foo . $DIR 2>../err |\
-  sed "s|$DIR|ABSPATH|"
-sed "s|$DIR|ABSPATH|" ../err >&2
+AT_TAR_WITH_HOOK(
+[AT_CHECK([
+DIR=`pwd`/gnu/tartest
+sed "s|$DIR|ABSPATH|" stdout
 ],
 [0],
 [A
@@ -72,7 +58,12 @@ B
 ABSPATH/
 ABSPATH/subdir/
 ABSPATH/subdir/dir2/
-],
+])
+
+AT_CHECK([
+DIR=`pwd`/gnu/tartest
+sed "/tar: Removing leading \`\/*\/' from/d;s|$DIR|ABSPATH|" stderr],
+[0],
 [A
 B
 tar: .: Directory is new
@@ -81,7 +72,26 @@ tar: ./subdir/dir1: Directory is new
 tar: ABSPATH: Directory is new
 tar: ABSPATH/subdir: Directory is new
 tar: ABSPATH/subdir/dir2: Directory is new
-tar: Removing leading `/' from member names
-],[],[],[gnu])
+])],
+[AT_TAR_CHECK([
+AT_CHECK_TIMESTAMP
+AT_SORT_PREREQ
+mkdir tartest
+cd tartest
+mkdir foo
+mkdir foo/subdir
+mkdir foo/subdir/dir1
+mkdir subdir
+mkdir subdir/dir2
+decho A
+find .|sort
+
+decho B
+DIR=`pwd`
+tar -cvf ../foo.tar --listed-incremental=../foo.snar -C foo . $DIR
+],
+[0],
+[stdout],
+[stderr],[],[],[gnu])])
 
 AT_CLEANUP

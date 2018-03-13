@@ -21,12 +21,14 @@
 AT_SETUP([transforming hard link targets])
 AT_KEYWORDS([transform xform link])
 
-AT_TAR_CHECK([
+AT_TAR_WITH_HOOK(
+[AT_CHECK([sed "/tar: Removing leading \`\/*\/' from/d" stderr])],
+[AT_TAR_CHECK([
 mkdir d
 mkdir d/a
 genfile --file d/a/b
-dir=$(pwd|sed s,^/,,)/d
-tar -cf a.tar --xform="s|^$dir/a|dir/c|" /$dir/a/b /$dir/a/b
+dir=$(pwd|sed s,^//*,,)/d
+tar -cf a.tar --xform="s|^$dir/a|dir/c|" /$dir/a/b /$dir/a/b 2>err
 mkdir t
 tar -C t -xf a.tar
 find t -type f
@@ -34,8 +36,6 @@ find t -type f
 [0],
 [t/dir/c/b
 ],
-[tar: Removing leading `/' from member names
-tar: Removing leading `/' from hard link targets
-])
+[stderr])])
 AT_CLEANUP
 
