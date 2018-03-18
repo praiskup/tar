@@ -281,7 +281,8 @@ enum compress_type {
   ct_lzip,
   ct_lzma,
   ct_lzop,
-  ct_xz
+  ct_xz,
+  ct_zstd
 };
 
 static enum compress_type archive_compression_type = ct_none;
@@ -310,6 +311,7 @@ static struct zip_magic const magic[] = {
   { ct_lzma,     6, "\xFFLZMA" },
   { ct_lzop,     4, "\211LZO" },
   { ct_xz,       6, "\xFD" "7zXZ" },
+  { ct_zstd,     4, "\x28\xB5\x2F\xFD" },
 };
 
 #define NMAGIC (sizeof(magic)/sizeof(magic[0]))
@@ -325,6 +327,7 @@ static struct zip_program zip_program[] = {
   { ct_lzma,     XZ_PROGRAM,       "-J" },
   { ct_lzop,     LZOP_PROGRAM,     "--lzop" },
   { ct_xz,       XZ_PROGRAM,       "-J" },
+  { ct_zstd,     ZSTD_PROGRAM,     "--zstd" },
   { ct_none }
 };
 

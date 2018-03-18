@@ -3713,6 +3713,9 @@ only attributes from the user namespace.
 @itemx -J
 Use @command{xz} for compressing or decompressing the archives.  @xref{gzip}.
 
+@item --zstd
+Use @command{zstd} for compressing or decompressing the archives.  @xref{gzip}.
+
 @end table
 
 @node Short Option Summary
@@ -9520,6 +9523,7 @@ switch to @samp{posix}.
 @cindex lzma
 @cindex lzop
 @cindex compress
+@cindex zstd
 @GNUTAR{} is able to create and read compressed archives.  It supports
 a wide variety of compression programs, namely: @command{gzip},
 @command{bzip2}, @command{lzip}, @command{lzma}, @command{lzop},
@@ -9530,14 +9534,21 @@ compression programs@footnote{It also had patent problems in the past.}.
 
 Creating a compressed archive is simple: you just specify a
 @dfn{compression option} along with the usual archive creation
-commands.  The compression option is @option{-z} (@option{--gzip}) to
-create a @command{gzip} compressed archive, @option{-j}
-(@option{--bzip2}) to create a @command{bzip2} compressed archive,
-@option{--lzip} to create an @asis{lzip} compressed archive,
-@option{-J} (@option{--xz}) to create an @asis{XZ} archive,
-@option{--lzma} to create an @asis{LZMA} compressed
-archive, @option{--lzop} to create an @asis{LZOP} archive, and
-@option{-Z} (@option{--compress}) to use @command{compress} program.
+commands.  Available compression options are summarized in the
+table below:
+
+@multitable @columnfractions 0.4 0.2 0.4
+@headitem Long            @tab Short       @tab Archive format
+@item @option{--gzip}     @tab @option{-z} @tab @command{gzip}
+@item @option{--bzip2}    @tab @option{-j} @tab @command{bzip2}
+@item @option{--xz}       @tab @option{-J} @tab @command{xz}
+@item @option{--lzip}     @tab             @tab @command{lzip}
+@item @option{--lzma}     @tab             @tab @command{lzma}
+@item @option{--lzop}     @tab             @tab @command{lzop}
+@item @option{--zstd}     @tab             @tab @command{zstd}
+@item @option{--compress} @tab @option{-Z} @tab @command{compress}
+@end multitable
+
 For example:
 
 @smallexample
@@ -9730,6 +9741,8 @@ suffix.  The following suffixes are recognized:
 @item @samp{.tlz} @tab @command{lzma}
 @item @samp{.lzo} @tab @command{lzop}
 @item @samp{.xz} @tab @command{xz}
+@item @samp{.zst} @tab @command{zstd}
+@item @samp{.tzst} @tab @command{zstd}
 @end multitable
 
 @anchor{use-compress-program}

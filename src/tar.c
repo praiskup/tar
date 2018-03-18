@@ -348,7 +348,8 @@ enum
   WARNING_OPTION,
   XATTR_OPTION,
   XATTR_EXCLUDE,
-  XATTR_INCLUDE
+  XATTR_INCLUDE,
+  ZSTD_OPTION,
 };
 
 static char const doc[] = N_("\
@@ -682,6 +683,7 @@ static struct argp_option options[] = {
   {"lzma", LZMA_OPTION, 0, 0, NULL, GRID+1 },
   {"lzop", LZOP_OPTION, 0, 0, NULL, GRID+1 },
   {"xz", 'J', 0, 0, NULL, GRID+1 },
+  {"zstd", ZSTD_OPTION, 0, 0, NULL, GRID+1 },
 #undef GRID
 
 #define GRID 100
@@ -1127,6 +1129,10 @@ tar_help_filter (int key, const char *text, void *input)
 
     case 'J':
       s = xasprintf (_("filter the archive through %s"), XZ_PROGRAM);
+      break;
+
+    case ZSTD_OPTION:
+      s = xasprintf (_("filter the archive through %s"), ZSTD_PROGRAM);
       break;
 
     case ARGP_KEY_HELP_EXTRA:
@@ -1648,6 +1654,10 @@ parse_opt (int key, char *arg, struct argp_state *state)
 
     case 'Z':
       set_use_compress_program_option (COMPRESS_PROGRAM, args->loc);
+      break;
+
+    case ZSTD_OPTION:
+      set_use_compress_program_option (ZSTD_PROGRAM, args->loc);
       break;
 
     case ATIME_PRESERVE_OPTION:
