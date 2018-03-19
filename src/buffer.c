@@ -1771,15 +1771,19 @@ gnu_add_multi_volume_header (struct bufmap *map)
 {
   int tmp;
   union block *block = find_next_block ();
+  size_t len = strlen (map->file_name);
 
-  if (strlen (map->file_name) > NAME_FIELD_SIZE)
-    WARN ((0, 0,
-           _("%s: file name too long to be stored in a GNU multivolume header, truncated"),
-           quotearg_colon (map->file_name)));
+  if (len > NAME_FIELD_SIZE)
+    {
+      WARN ((0, 0,
+	     _("%s: file name too long to be stored in a GNU multivolume header, truncated"),
+	     quotearg_colon (map->file_name)));
+      len = NAME_FIELD_SIZE;
+    }
 
   memset (block, 0, BLOCKSIZE);
 
-  strncpy (block->header.name, map->file_name, NAME_FIELD_SIZE);
+  memcpy (block->header.name, map->file_name, len);
   block->header.typeflag = GNUTYPE_MULTIVOL;
 
   OFF_TO_CHARS (map->sizeleft, block->header.size);
