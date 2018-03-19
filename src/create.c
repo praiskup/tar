@@ -518,8 +518,8 @@ start_private_header (const char *name, size_t size, time_t t)
   MODE_TO_CHARS (S_IFREG|S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH, header->header.mode);
   UID_TO_CHARS (0, header->header.uid);
   GID_TO_CHARS (0, header->header.gid);
-  strncpy (header->header.magic, TMAGIC, TMAGLEN);
-  strncpy (header->header.version, TVERSION, TVERSLEN);
+  memcpy (header->header.magic, TMAGIC, TMAGLEN);
+  memcpy (header->header.version, TVERSION, TVERSLEN);
   return header;
 }
 
@@ -917,8 +917,8 @@ start_header (struct tar_stat_info *st)
 
     case POSIX_FORMAT:
     case USTAR_FORMAT:
-      strncpy (header->header.magic, TMAGIC, TMAGLEN);
-      strncpy (header->header.version, TVERSION, TVERSLEN);
+      memcpy (header->header.magic, TMAGIC, TMAGLEN);
+      memcpy (header->header.version, TVERSION, TVERSLEN);
       break;
 
     default:
