@@ -550,7 +550,7 @@ _single_transform_name_to_obstack (struct transform *tf, char *input)
 			default:
 			  break;
 			}
-		      /*FALL THROUGH*/
+		      FALLTHROUGH;
 
 		    case ctl_upcase:
 		    case ctl_locase:
