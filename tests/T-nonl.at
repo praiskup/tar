@@ -29,9 +29,8 @@ AT_KEYWORDS([files-from nonewline nonl T-nonl])
 
 AT_TAR_CHECK([
 genfile --length=0 --file empty
-AS_ECHO_N(c) > 1.nonl
-echo d > 2.nonl
-AS_ECHO_N(e) >> 2.nonl
+printf c > 1.nonl
+printf 'd\ne' > 2.nonl
 touch a b c d e
 AT_DATA([filelist],[a
 b
@@ -59,4 +58,3 @@ c
 [],[],[],[ustar])
 
 AT_CLEANUP
-
