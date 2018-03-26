@@ -216,6 +216,15 @@ m4_include([opcomp04.at])
 m4_include([opcomp05.at])
 m4_include([opcomp06.at])
 
+AT_BANNER([Compression])
+m4_include([compress-gzip.at])
+m4_include([compress-bzip2.at])
+m4_include([compress-xz.at])
+dnl: omit lzma, because it would fail due to magic number mismatch
+m4_include([compress-lzip.at])
+m4_include([compress-lzop.at])
+m4_include([compress-zstd.at])
+
 AT_BANNER([Positional options])
 m4_include([positional01.at])
 m4_include([positional02.at])
@@ -490,4 +499,3 @@ m4_include([star/ustar-big-2g.at])
 m4_include([star/ustar-big-8g.at])
 
 m4_include([star/pax-big-10g.at])
-
