@@ -23,7 +23,7 @@
 #include <system.h>
 #include <inttostr.h>
 #include <quotearg.h>
-
+#include <time.h>
 #include "common.h"
 
 union block *current_header;	/* points to current archive header */
@@ -1049,15 +1049,11 @@ tartime (struct timespec t, bool full_time)
     {
       if (full_time)
 	{
-	  sprintf (buffer, "%04ld-%02d-%02d %02d:%02d:%02d",
-		   tm->tm_year + 1900L, tm->tm_mon + 1, tm->tm_mday,
-		   tm->tm_hour, tm->tm_min, tm->tm_sec);
+	  strftime (buffer, sizeof buffer, "%Y-%m-%d %H:%M:%S", tm);
 	  code_ns_fraction (ns, buffer + strlen (buffer));
 	}
       else
-	sprintf (buffer, "%04ld-%02d-%02d %02d:%02d",
-		 tm->tm_year + 1900L, tm->tm_mon + 1, tm->tm_mday,
-		 tm->tm_hour, tm->tm_min);
+	strftime (buffer, sizeof buffer, "%Y-%m-%d %H:%M", tm);
       return buffer;
     }
 
