@@ -1,6 +1,6 @@
 #! /usr/bin/perl -w
 # Display and edit the 'dev' field in tar's snapshots
-# Copyright 2007, 2011, 2013-2014, 2016-2017 Free Software Foundation,
+# Copyright 2007, 2011, 2013-2014, 2016-2018 Free Software Foundation,
 # Inc.
 
 # This file is part of GNU tar.
@@ -409,7 +409,7 @@ sub check_field_values ($) {
     }
     if ( $msg ne "" ) {
 	$error_found = 1;
-	print "\n    shapshot file header:\n";
+	print "\n    snapshot file header:\n";
 	print $msg;
     }
 

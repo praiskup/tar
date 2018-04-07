@@ -147,7 +147,7 @@ is compiled.  To see the specific ranges allowed for a particular
 @option{--show-snapshot-field-ranges} option:
 
 @smallexample
-$ @kbd{tar --show-shapshot-field-ranges}
+$ @kbd{tar --show-snapshot-field-ranges}
 This tar's snapshot file field ranges are
    (field name      => [ min, max ]):
 
