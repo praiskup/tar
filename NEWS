@@ -1,8 +1,11 @@
-GNU tar NEWS - User visible changes. 2018-03-18
+GNU tar NEWS - User visible changes. 2018-04-07
 Please send GNU tar bug reports to <bug-tar@gnu.org>
 
 
 version 1.30.90 (Git)
+
+* Fix heap-buffer-overrun with --one-top-level.
+Bug introduced with the addition of that option in 1.28.
 
 * Support for zstd compression
 
@@ -53,7 +56,7 @@ causing subsequent link extractions in that directory to fail.
 
 This new warning control option suppresses warning messages about
 unreadable files and directories. It has effect only if used together
-with the --ignore-failed-read option.  
+with the --ignore-failed-read option.
 
 * The --warnings=none option now suppresses all warnings
 
