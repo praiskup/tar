@@ -13,7 +13,7 @@
 .\"
 .\" You should have received a copy of the GNU General Public License
 .\" along with this program.  If not, see <http://www.gnu.org/licenses/>.
-.TH TAR 1 "November 16, 2017" "TAR" "GNU TAR Manual"
+.TH TAR 1 "May 16, 2018" "TAR" "GNU TAR Manual"
 .SH NAME
 tar \- an archiving utility
 .SH SYNOPSIS
@@ -256,7 +256,7 @@ exist when creating an archive, it will be created and all files will
 be added to the resulting archive (the \fBlevel 0\fR dump).  To create
 incremental archives of non-zero level \fBN\fR, create a copy of the
 snapshot file created during the level \fBN-1\fR, and use it as
-\fIFILE\fR. 
+\fIFILE\fR.
 
 When listing or extracting, the actual contents of \fIFILE\fR is not
 inspected, it is needed only due to syntactical requirements.  It is
@@ -287,7 +287,7 @@ effect only if the archive is open for reading (e.g. with
 .B \-\-list
 or
 .B \-\-extract
-options).		    
+options).
 .TP
 \fB\-\-no\-check\-device\fR
 Do not check device numbers when creating incremental archives.
@@ -465,7 +465,7 @@ Format of the archive being processed.  One of:
 .BR v7 .
 .B TAR_SUBCOMMAND
 A short option (with a leading dash) describing the operation \fBtar\fR is
-executing. 
+executing.
 .RE
 .SS Handling of file attributes
 .TP
@@ -694,7 +694,7 @@ executing.
 .B TAR_FD
 File descriptor which can be used to communicate the new volume name
 to
-.BR tar .  
+.BR tar .
 .RE
 .RS
 
@@ -732,7 +732,7 @@ When this option is used in conjunction with
 .BR \-\-multi\-volume ,
 .B tar
 will keep track of which volume of a multi-volume archive it is
-working in \fIFILE\fR. 
+working in \fIFILE\fR.
 .SS Device blocking
 .TP
 \fB\-b\fR, \fB\-\-blocking\-factor\fR=\fIBLOCKS\fR
@@ -740,7 +740,7 @@ Set record size to \fIBLOCKS\fRx\fB512\fR bytes.
 .TP
 \fB\-B\fR, \fB\-\-read\-full\-records\fR
 When listing or extracting, accept incomplete input records after
-end-of-file marker.  
+end-of-file marker.
 .TP
 \fB\-i\fR, \fB\-\-ignore\-zeros\fR
 Ignore zeroed blocks in archive.  Normally two consecutive 512-blocks
@@ -1106,7 +1106,7 @@ Show file or archive names after transformation by \fB\-\-strip\fR and
 Print total bytes after processing the archive.  If \fISIGNAL\fR is
 given, print total bytes when this signal is delivered.  Allowed
 signals are:
-.BR SIGHUP , 
+.BR SIGHUP ,
 .BR SIGQUIT ,
 .BR SIGINT ,
 .BR SIGUSR1 ", and"
@@ -1300,7 +1300,6 @@ failure during backup to a remote device.
 .BR lzop (1),
 .BR rmt (8),
 .BR symlink (7),
-.BR tar (5),
 .BR xz (1).
 .PP
 Complete \fBtar\fR manual: run
@@ -1332,4 +1331,3 @@ There is NO WARRANTY, to the extent permitted by law.
 .\" time-stamp-end: "\""
 .\" time-stamp-line-limit: 20
 .\" end:
-
