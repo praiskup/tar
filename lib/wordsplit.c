@@ -707,7 +707,6 @@ expvar (struct wordsplit *wsp, const char *str, size_t len,
   size_t i = 0;
   const char *defstr = NULL;
   const char *value;
-  const char *vptr;
   struct wordsplit_node *newnode;
   const char *start = str - 1;
 
@@ -770,13 +769,8 @@ expvar (struct wordsplit *wsp, const char *str, size_t len,
      i   - its length
      defstr - default replacement str */
 
-  vptr = wordsplit_find_env (wsp, str, i);
-  if (vptr)
-    {
-      value = strdup (vptr);
-      if (!value)
-	return _wsplt_nomem (wsp);
-    }
+  if ((value = wordsplit_find_env (wsp, str, i)))
+    ; /* returns pointer into wsp->ws_env */
   else if (wsp->ws_flags & WRDSF_GETVAR)
     value = wsp->ws_getvar (str, i, wsp->ws_closure);
   else if (wsp->ws_flags & WRDSF_UNDEF)
