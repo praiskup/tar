@@ -101,7 +101,7 @@ add_segment (struct transform *tf)
 }
 
 static void
-add_literal_segment (struct transform *tf, char *str, char *end)
+add_literal_segment (struct transform *tf, const char *str, const char *end)
 {
   size_t len = end - str;
   if (len)
@@ -403,6 +403,7 @@ parse_transform_expr (const char *expr)
 	cur++;
     }
   add_literal_segment (tf, beg, cur);
+  free(str);
 
   return p;
 }

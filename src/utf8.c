@@ -68,7 +68,6 @@ utf8_convert (bool to_utf, char const *input, char **output)
   char *ob;
   size_t inlen;
   size_t outlen;
-  size_t rc;
   iconv_t cd = utf8_init (to_utf);
 
   if (cd == 0)
@@ -83,9 +82,13 @@ utf8_convert (bool to_utf, char const *input, char **output)
   outlen = inlen * MB_LEN_MAX + 1;
   ob = *output = xmalloc (outlen);
   ib = (char ICONV_CONST *) input;
-  rc = iconv (cd, &ib, &inlen, &ob, &outlen);
+  if (-1 == iconv (cd, &ib, &inlen, &ob, &outlen))
+    {
+      free (*output);
+      return false;
+    }
   *ob = 0;
-  return rc != -1;
+  return true;
 }
 
 
