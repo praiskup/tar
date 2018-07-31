@@ -65,7 +65,7 @@ bool
 utf8_convert (bool to_utf, char const *input, char **output)
 {
   char ICONV_CONST *ib;
-  char *ob;
+  char *ob, *ret;
   size_t inlen;
   size_t outlen;
   iconv_t cd = utf8_init (to_utf);
@@ -80,14 +80,15 @@ utf8_convert (bool to_utf, char const *input, char **output)
 
   inlen = strlen (input) + 1;
   outlen = inlen * MB_LEN_MAX + 1;
-  ob = *output = xmalloc (outlen);
+  ob = ret = xmalloc (outlen);
   ib = (char ICONV_CONST *) input;
   if (iconv (cd, &ib, &inlen, &ob, &outlen) == -1)
     {
-      free (*output);
+      free (ret);
       return false;
     }
   *ob = 0;
+  *output = ret;
   return true;
 }
 
