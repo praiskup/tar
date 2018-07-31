@@ -915,6 +915,7 @@ store_rename (struct directory *dir, struct obstack *stk)
 	    obstack_code_rename (stk, p->orig->name, p->name);
 
 	  obstack_code_rename (stk, "", prev->name);
+	  free (temp_name);
 	}
     }
 }
