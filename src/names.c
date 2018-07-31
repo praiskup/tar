@@ -1767,6 +1767,11 @@ collect_and_sort_names (void)
 		  name->found_count++;
 		  add_hierarchy_to_namelist (&st, name);
 		}
+	      else
+		{
+		  errno = ENOTDIR;
+		  open_diag (name->name);
+		}
 	    }
 	}
 
