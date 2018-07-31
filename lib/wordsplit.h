@@ -46,8 +46,8 @@ struct wordsplit
   size_t ws_offs;           /* [Input] (WRDSF_DOOFFS) Number of initial
 			       elements in ws_wordv to fill with NULLs. */
   size_t ws_wordn;          /* Number of elements ws_wordv can accomodate. */ 
-  int ws_flags;             /* [Input] Flags passed to wordsplit. */
-  int ws_options;           /* [Input] (WRDSF_OPTIONS)
+  unsigned ws_flags;        /* [Input] Flags passed to wordsplit. */
+  unsigned ws_options;      /* [Input] (WRDSF_OPTIONS)
 			       Additional options. */
   size_t ws_maxwords;       /* [Input] (WRDSO_MAXWORDS) Return at most that
 			       many words */
@@ -246,8 +246,8 @@ struct wordsplit
 #define WRDSE_GLOBERR    8
 #define WRDSE_USERERR    9
 
-int wordsplit (const char *s, wordsplit_t *ws, int flags);
-int wordsplit_len (const char *s, size_t len, wordsplit_t *ws, int flags);
+int wordsplit (const char *s, wordsplit_t *ws, unsigned flags);
+int wordsplit_len (const char *s, size_t len, wordsplit_t *ws, unsigned flags);
 void wordsplit_free (wordsplit_t *ws);
 void wordsplit_free_words (wordsplit_t *ws);
 void wordsplit_free_envbuf (wordsplit_t *ws);

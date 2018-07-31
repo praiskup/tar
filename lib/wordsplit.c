@@ -36,6 +36,14 @@
 #define _(msgid) gettext (msgid)
 #define N_(msgid) msgid
 
+#ifndef FALLTHROUGH
+# if __GNUC__ < 7
+#  define FALLTHROUGH ((void) 0)
+# else
+#  define FALLTHROUGH __attribute__ ((__fallthrough__))
+# endif
+#endif
+
 #include <wordsplit.h>
 
 #define ISWS(c) ((c)==' '||(c)=='\t'||(c)=='\n')
@@ -105,17 +113,17 @@ _wsplt_nomem (struct wordsplit *wsp)
 
 static int wordsplit_run (const char *command, size_t length,
 			  struct wordsplit *wsp,
-			  int flags, int lvl);
+			  unsigned flags, int lvl);
 
 static int wordsplit_init (struct wordsplit *wsp, const char *input, size_t len,
-			   int flags);
+			   unsigned flags);
 static int wordsplit_process_list (struct wordsplit *wsp, size_t start);
 static int wordsplit_finish (struct wordsplit *wsp);
 
 static int
 _wsplt_subsplit (struct wordsplit *wsp, struct wordsplit *wss,
 		 char const *str, int len,
-		 int flags, int finalize)
+		 unsigned flags, int finalize)
 {
   int rc;
   
@@ -204,7 +212,7 @@ char wordsplit_c_escape_tab[] = "\\\\\"\"a\ab\bf\fn\nr\rt\tv\v";
   
 static int
 wordsplit_init (struct wordsplit *wsp, const char *input, size_t len,
-		int flags)
+		unsigned flags)
 {
   wsp->ws_flags = flags;
 
@@ -346,7 +354,7 @@ struct wordsplit_node
 {
   struct wordsplit_node *prev;	/* Previous element */
   struct wordsplit_node *next;	/* Next element */
-  int flags;			/* Node flags */
+  unsigned flags;		/* Node flags */
   union
   {
     struct
@@ -359,7 +367,7 @@ struct wordsplit_node
 };
 
 static const char *
-wsnode_flagstr (int flags)
+wsnode_flagstr (unsigned flags)
 {
   static char retbuf[7];
   char *p = retbuf;
@@ -1130,7 +1138,7 @@ wsplt_assign_var (struct wordsplit *wsp, const char *name, size_t namelen,
 
 static int
 expvar (struct wordsplit *wsp, const char *str, size_t len,
-	struct wordsplit_node **ptail, const char **pend, int flg)
+	struct wordsplit_node **ptail, const char **pend, unsigned flg)
 {
   size_t i = 0;
   const char *defstr = NULL;
@@ -1338,7 +1346,7 @@ expvar (struct wordsplit *wsp, const char *str, size_t len,
       if (wsp->ws_errno == WRDSE_USERERR)
 	free (wsp->ws_usererr);
       wsp->ws_usererr = value;
-      /* fall through */
+      FALLTHROUGH;
     default:
       _wsplt_seterr (wsp, rc);
       return 1;
@@ -1427,7 +1435,7 @@ node_expand (struct wordsplit *wsp, struct wordsplit_node *node,
 			       const char *str, size_t len,
 			       struct wordsplit_node **ptail,
 			       const char **pend,
-			       int flg))
+			       unsigned flg))
 {
   const char *str = wsnode_ptr (wsp, node);
   size_t slen = wsnode_len (node);
@@ -1521,7 +1529,7 @@ begin_cmd_p (int c)
 
 static int
 expcmd (struct wordsplit *wsp, const char *str, size_t len,
-	struct wordsplit_node **ptail, const char **pend, int flg)
+	struct wordsplit_node **ptail, const char **pend, unsigned flg)
 {
   int rc;
   size_t j;
@@ -1940,7 +1948,7 @@ scan_qstring (struct wordsplit *wsp, size_t start, size_t *end)
       j++;
   if (j < len && command[j] == q)
     {
-      int flags = _WSNF_QUOTE | _WSNF_EMPTYOK;
+      unsigned flags = _WSNF_QUOTE | _WSNF_EMPTYOK;
       if (q == '\'')
 	flags |= _WSNF_NOEXPAND;
       if (wordsplit_add_segm (wsp, start + 1, j, flags))
@@ -1963,7 +1971,7 @@ scan_word (struct wordsplit *wsp, size_t start, int consume_all)
   const char *command = wsp->ws_input;
   const char *comment = wsp->ws_comment;
   int join = 0;
-  int flags = 0;
+  unsigned flags = 0;
   struct wordsplit_node *np = wsp->ws_tail;
   
   size_t i = start;
@@ -2392,7 +2400,7 @@ wordsplit_process_list (struct wordsplit *wsp, size_t start)
 
 static int
 wordsplit_run (const char *command, size_t length, struct wordsplit *wsp,
-               int flags, int lvl)
+               unsigned flags, int lvl)
 {
   int rc;
   size_t start;
@@ -2429,13 +2437,13 @@ wordsplit_run (const char *command, size_t length, struct wordsplit *wsp,
 
 int
 wordsplit_len (const char *command, size_t length, struct wordsplit *wsp, 
-               int flags)
+               unsigned flags)
 {
   return wordsplit_run (command, length, wsp, flags, 0);
 }
 
 int
-wordsplit (const char *command, struct wordsplit *ws, int flags)
+wordsplit (const char *command, struct wordsplit *ws, unsigned flags)
 {
   return wordsplit_len (command, command ? strlen (command) : 0, ws, flags);
 }
