@@ -1070,6 +1070,7 @@ wsplt_assign_var (struct wordsplit *wsp, const char *name, size_t namelen,
 		      for (; j > 1; j--)
 			free (newenv[j-1]);
 		      free (newenv[j-1]);
+		      free (newenv);
 		      return _wsplt_nomem (wsp);
 		    }
 		}
@@ -1357,7 +1358,10 @@ expvar (struct wordsplit *wsp, const char *str, size_t len,
       if (flg & _WSNF_QUOTE)
 	{
 	  if (wsnode_new (wsp, &newnode))
-	    return 1;
+	    {
+	      free (value);
+	      return 1;
+	    }
 	  wsnode_insert (wsp, newnode, *ptail, 0);
 	  *ptail = newnode;
 	  newnode->flags = _WSNF_WORD | _WSNF_NOEXPAND | flg;
@@ -1777,8 +1781,6 @@ static int
 wordsplit_pathexpand (struct wordsplit *wsp)
 {
   struct wordsplit_node *p, *next;
-  char *pattern = NULL;
-  size_t patsize = 0;
   size_t slen;
   int flags = 0;
 
@@ -1804,21 +1806,18 @@ wordsplit_pathexpand (struct wordsplit *wsp)
 	  int i;
 	  glob_t g;
 	  struct wordsplit_node *prev;
+	  char *pattern;
 	  
-	  if (slen + 1 > patsize)
-	    {
-	      char *p = realloc (pattern, slen + 1);
-	      if (!p)
-		return _wsplt_nomem (wsp);
-	      pattern = p;
-	      patsize = slen + 1;
-	    }
+	  pattern = malloc (slen + 1);
+	  if (!pattern)
+	    return _wsplt_nomem (wsp);
 	  memcpy (pattern, str, slen);
 	  pattern[slen] = 0;
       
 	  switch (glob (pattern, flags, NULL, &g))
 	    {
 	    case 0:
+	      free (pattern);
 	      break;
 	      
 	    case GLOB_NOSPACE:
@@ -1845,6 +1844,7 @@ wordsplit_pathexpand (struct wordsplit *wsp)
 		  else
 		    return _wsplt_seterr (wsp, WRDSE_USERERR);
 		}
+	      free (pattern);
 	      continue;
 	      
 	    default:
@@ -1862,7 +1862,10 @@ wordsplit_pathexpand (struct wordsplit *wsp)
 		return 1;
 	      newstr = strdup (g.gl_pathv[i]);
 	      if (!newstr)
-		return _wsplt_nomem (wsp);
+		{
+		  wsnode_free (newnode);
+		  return _wsplt_nomem (wsp);
+		}
 	      newnode->v.word = newstr;
 	      newnode->flags |= _WSNF_WORD|_WSNF_QUOTE;
 	      wsnode_insert (wsp, newnode, prev, 0);
@@ -1874,7 +1877,6 @@ wordsplit_pathexpand (struct wordsplit *wsp)
 	  wsnode_free (p);
 	}
     }
-  free (pattern);
   return 0;
 }
 
