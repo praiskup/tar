@@ -24,7 +24,7 @@ version=${tarball%%.tar.xz}
 version=${version##tar-}
 
 # spec file synced with Fedora
-cat tar/.travis/tar.spec \
+cat .travis/tar.spec \
     | sed "s/^Version: .*/Version: $version/" \
     | sed "s/^Release: .*/Release: $(date +"%Y%m%d_%H%M%S")/" \
     > "$resultdir"/tar.spec
