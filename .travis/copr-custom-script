@@ -1,0 +1,32 @@
+#! /bin/sh -x
+
+set -e
+resultdir=$PWD
+git clone https://github.com/praiskup/tar.git --depth 1
+cd tar
+
+# optional part; drop if building against 'master' is enough
+if test -z "$REVISION"; then
+    if test -f "$resultdir"/hook_payload; then
+        git clone https://github.com/praiskup/copr-ci-tooling \
+            "$resultdir/cct" --depth 1
+        export PATH="$resultdir/cct:$PATH"
+        # use 'github-checkout' script if you use webhook trigger!
+        copr-travis-checkout "$resultdir"/hook_payload
+    fi
+else
+    git checkout "$REVISION"
+fi
+
+./bootstrap && ./configure && make dist-xz
+tarball=$(echo tar-*.tar.xz)
+version=${tarball%%.tar.xz}
+version=${version##tar-}
+
+# spec file synced with Fedora
+cat tar/.travis/tar.spec \
+    | sed "s/^Version: .*/Version: $version/" \
+    | sed "s/^Release: .*/Release: $(date +"%Y%m%d_%H%M%S")/" \
+    > "$resultdir"/tar.spec
+
+mv "$tarball" "$resultdir"
