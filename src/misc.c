@@ -727,7 +727,7 @@ maybe_backup_file (const char *file_name, bool this_is_the_archive)
       && (S_ISBLK (file_stat.st_mode) || S_ISCHR (file_stat.st_mode)))
     return true;
 
-  after_backup_name = find_backup_file_name (AT_FDCWD, file_name, backup_type);
+  after_backup_name = find_backup_file_name (chdir_fd, file_name, backup_type);
   if (! after_backup_name)
     xalloc_die ();
 
