@@ -1157,7 +1157,7 @@ tar_help_filter (int key, const char *text, void *input)
   return s;
 }
 
-static char *
+static char * _GL_ATTRIBUTE_MALLOC
 expand_pax_option (struct tar_args *targs, const char *arg)
 {
   struct obstack stk;
