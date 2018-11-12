@@ -336,6 +336,7 @@ acls_one_line (const char *prefix, char delim,
       obstack_grow (&stk, prefix, pref_len);
       obstack_grow (&stk, aclstring, move);
 
+      pos += move + 1;
       aclstring += move + 1;
     }
 
@@ -740,6 +741,8 @@ xattrs_print (struct tar_stat_info const *st)
     {
       fprintf (stdlis, "  a: ");
       acls_one_line ("", ',', st->acls_a_ptr, st->acls_a_len);
+      if (st->acls_a_len && st->acls_d_len)
+	fprintf (stdlis, ",");
       acls_one_line ("default:", ',', st->acls_d_ptr, st->acls_d_len);
       fprintf (stdlis, "\n");
     }
