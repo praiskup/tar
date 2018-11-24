@@ -85,6 +85,7 @@ stdint
 stpcpy
 strdup-posix
 strerror
+strnlen
 strtoimax
 strtol
 strtoul

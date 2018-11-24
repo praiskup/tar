@@ -50,6 +50,20 @@ assign_string (char **string, const char *value)
   *string = value ? xstrdup (value) : 0;
 }
 
+void
+assign_string_n (char **string, const char *value, size_t n)
+{
+  free (*string);
+  if (value)
+    {
+      size_t l = strnlen (value, n);
+      char *p = xmalloc (l + 1);
+      memcpy (p, value, l);
+      p[l] = 0;
+      *string = p;
+    }
+}
+
 #if 0
 /* This function is currently unused; perhaps it should be removed?  */
 
