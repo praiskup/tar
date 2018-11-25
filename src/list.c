@@ -631,10 +631,12 @@ decode_header (union block *header, struct tar_stat_info *stat_info,
   stat_info->stat.st_mode = mode;
   stat_info->mtime.tv_sec = TIME_FROM_HEADER (header->header.mtime);
   stat_info->mtime.tv_nsec = 0;
-  assign_string (&stat_info->uname,
-		 header->header.uname[0] ? header->header.uname : NULL);
-  assign_string (&stat_info->gname,
-		 header->header.gname[0] ? header->header.gname : NULL);
+  assign_string_n (&stat_info->uname,
+		   header->header.uname[0] ? header->header.uname : NULL,
+		   sizeof (header->header.uname));
+  assign_string_n (&stat_info->gname,
+		   header->header.gname[0] ? header->header.gname : NULL,
+		   sizeof (header->header.gname));
 
   xheader_xattr_init (stat_info);
 
@@ -1439,7 +1441,7 @@ test_archive_label (void)
       decode_header (current_header,
 		     &current_stat_info, &current_format, 0);
       if (current_header->header.typeflag == GNUTYPE_VOLHDR)
-	assign_string (&volume_label, current_header->header.name);
+	ASSIGN_STRING_N (&volume_label, current_header->header.name);
 
       if (volume_label)
 	{

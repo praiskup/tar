@@ -1503,7 +1503,7 @@ try_new_volume (void)
       if (!read_header0 (&dummy))
         return false;
       tar_stat_destroy (&dummy);
-      assign_string (&volume_label, current_header->header.name);
+      ASSIGN_STRING_N (&volume_label, current_header->header.name);
       set_next_block_after (header);
       header = find_next_block ();
       if (header->header.typeflag != GNUTYPE_MULTIVOL)
@@ -1513,7 +1513,7 @@ try_new_volume (void)
       if (!read_header0 (&dummy))
         return false;
       tar_stat_destroy (&dummy);
-      assign_string (&continued_file_name, current_header->header.name);
+      ASSIGN_STRING_N (&continued_file_name, current_header->header.name);
       continued_file_size =
         UINTMAX_FROM_HEADER (current_header->header.size);
       continued_file_offset =
@@ -1656,15 +1656,7 @@ match_volume_label (void)
 		      quote (volume_label_option)));
       if (label->header.typeflag == GNUTYPE_VOLHDR)
 	{
-	  if (memchr (label->header.name, '\0', sizeof label->header.name))
-	    assign_string (&volume_label, label->header.name);
-	  else
-	    {
-	      volume_label = xmalloc (sizeof (label->header.name) + 1);
-	      memcpy (volume_label, label->header.name,
-		      sizeof (label->header.name));
-	      volume_label[sizeof (label->header.name)] = 0;
-	    }
+	  ASSIGN_STRING_N (&volume_label, label->header.name);
 	}
       else if (label->header.typeflag == XGLTYPE)
 	{
@@ -1700,8 +1692,7 @@ _write_volume_label (const char *str)
       memset (label, 0, BLOCKSIZE);
 
       strcpy (label->header.name, str);
-      assign_string (&current_stat_info.file_name,
-                     label->header.name);
+      assign_string (&current_stat_info.file_name, label->header.name);
       current_stat_info.had_trailing_slash =
         strip_trailing_slashes (current_stat_info.file_name);
 

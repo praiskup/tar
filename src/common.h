@@ -628,6 +628,8 @@ void skip_member (void);
 
 char const *quote_n_colon (int n, char const *arg);
 void assign_string (char **dest, const char *src);
+void assign_string_n (char **string, const char *value, size_t n);
+#define ASSIGN_STRING_N(s,v) assign_string_n (s, v, sizeof (v))
 int unquote_string (char *str);
 char *zap_slashes (char *name);
 char *normalize_filename (int cdidx, const char *name);

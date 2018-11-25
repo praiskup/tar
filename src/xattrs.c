@@ -246,13 +246,36 @@ xattrs__acls_set (struct tar_stat_info const *st,
   acl_free (acl);
 }
 
+/* Cleanup textual representation of the ACL in VAL by eliminating tab
+   characters and comments */
+static void
+xattrs_acls_cleanup (char *val, size_t *plen)
+{
+  char *p, *q;
+
+  p = q = val + strcspn (val, "#\t");
+  while (*q)
+    {
+      if (*q == '\t')
+	q++;
+      else if (*q == '#')
+	{
+	  while (*q != '\n')
+	    q++;
+	}
+      else
+	*p++ = *q++;
+    }
+  *plen = p - val;
+  *p++ = 0;
+}
+
 static void
 xattrs__acls_get_a (int parentfd, const char *file_name,
                     struct tar_stat_info *st,
                     char **ret_ptr, size_t * ret_len)
 {
   char *val = NULL;
-  ssize_t len;
   acl_t acl;
 
   if (!(acl = acl_get_file_at (parentfd, file_name, ACL_TYPE_ACCESS)))
@@ -262,7 +285,7 @@ xattrs__acls_get_a (int parentfd, const char *file_name,
       return;
     }
 
-  val = acl_to_text (acl, &len);
+  val = acl_to_text (acl, NULL);
   acl_free (acl);
 
   if (!val)
@@ -272,8 +295,7 @@ xattrs__acls_get_a (int parentfd, const char *file_name,
     }
 
   *ret_ptr = xstrdup (val);
-  *ret_len = len;
-
+  xattrs_acls_cleanup (*ret_ptr, ret_len);
   acl_free (val);
 }
 
@@ -284,7 +306,6 @@ xattrs__acls_get_d (int parentfd, char const *file_name,
                     char **ret_ptr, size_t * ret_len)
 {
   char *val = NULL;
-  ssize_t len;
   acl_t acl;
 
   if (!(acl = acl_get_file_at (parentfd, file_name, ACL_TYPE_DEFAULT)))
@@ -294,7 +315,7 @@ xattrs__acls_get_d (int parentfd, char const *file_name,
       return;
     }
 
-  val = acl_to_text (acl, &len);
+  val = acl_to_text (acl, NULL);
   acl_free (acl);
 
   if (!val)
@@ -304,8 +325,7 @@ xattrs__acls_get_d (int parentfd, char const *file_name,
     }
 
   *ret_ptr = xstrdup (val);
-  *ret_len = len;
-
+  xattrs_acls_cleanup (*ret_ptr, ret_len);
   acl_free (val);
 }
 #endif /* HAVE_POSIX_ACLS */
