@@ -255,7 +255,7 @@ char *
 xheader_format_name (struct tar_stat_info *st, const char *fmt, size_t n)
 {
   char *buf;
-  size_t len = strlen (fmt);
+  size_t len;
   char *q;
   const char *p;
   char *dirp = NULL;
@@ -266,43 +266,51 @@ xheader_format_name (struct tar_stat_info *st, const char *fmt, size_t n)
   char nbuf[UINTMAX_STRSIZE_BOUND];
   char const *nptr = NULL;
 
-  for (p = fmt; *p && (p = strchr (p, '%')); )
+  len = 0;
+  for (p = fmt; *p; p++)
     {
-      switch (p[1])
+      if (*p == '%' && p[1])
 	{
-	case '%':
-	  len--;
-	  break;
-
-	case 'd':
-	  if (st)
+	  switch (*++p)
 	    {
-	      if (!dirp)
-		dirp = dir_name (st->orig_file_name);
-	      dir = safer_name_suffix (dirp, false, absolute_names_option);
-	      len += strlen (dir) - 2;
+	    case '%':
+	      len++;
+	      break;
+
+	    case 'd':
+	      if (st)
+		{
+		  if (!dirp)
+		    dirp = dir_name (st->orig_file_name);
+		  dir = safer_name_suffix (dirp, false, absolute_names_option);
+		  len += strlen (dir);
+		}
+	      break;
+
+	    case 'f':
+	      if (st)
+		{
+		  base = last_component (st->orig_file_name);
+		  len += strlen (base);
+		}
+	      break;
+
+	    case 'p':
+	      pptr = umaxtostr (getpid (), pidbuf);
+	      len += pidbuf + sizeof pidbuf - 1 - pptr;
+	      break;
+
+	    case 'n':
+	      nptr = umaxtostr (n, nbuf);
+	      len += nbuf + sizeof nbuf - 1 - nptr;
+	      break;
+	      
+	    default:
+	      len += 2;
 	    }
-	  break;
-
-	case 'f':
-	  if (st)
-	    {
-	      base = last_component (st->orig_file_name);
-	      len += strlen (base) - 2;
-	    }
-	  break;
-
-	case 'p':
-	  pptr = umaxtostr (getpid (), pidbuf);
-	  len += pidbuf + sizeof pidbuf - 1 - pptr - 2;
-	  break;
-
-	case 'n':
-	  nptr = umaxtostr (n, nbuf);
-	  len += nbuf + sizeof nbuf - 1 - nptr - 2;
-	  break;
 	}
-      p++;
+      else
+	len++;
     }
 
   buf = xmalloc (len + 1);
