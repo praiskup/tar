@@ -469,6 +469,14 @@ xheader_write_global (struct xheader *xhdr)
     }
 }
 
+/* Forbid modifications of the global extended header */
+void
+xheader_forbid_global (void)
+{
+  if (keyword_global_override_list)
+    USAGE_ERROR ((0, 0, _("can't update global extended header record")));
+}
+
 void
 xheader_xattr_init (struct tar_stat_info *st)
 {

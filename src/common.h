@@ -836,6 +836,7 @@ void xheader_store (char const *keyword, struct tar_stat_info *st,
 void xheader_read (struct xheader *xhdr, union block *header, off_t size);
 void xheader_write (char type, char *name, time_t t, struct xheader *xhdr);
 void xheader_write_global (struct xheader *xhdr);
+void xheader_forbid_global (void);
 void xheader_finish (struct xheader *hdr);
 void xheader_destroy (struct xheader *hdr);
 char *xheader_xhdr_name (struct tar_stat_info *st);
