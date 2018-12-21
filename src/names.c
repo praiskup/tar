@@ -1857,7 +1857,7 @@ collect_and_sort_names (void)
 
   if (listed_incremental_option)
     {
-      for (name = namelist; name && name->name[0] == 0; name++)
+      for (name = namelist; name && name->name[0] == 0; name = name->next)
 	;
       if (name)
 	append_incremental_renames (name->directory);
