@@ -185,6 +185,9 @@ xheader_set_keyword_equal (char *kw, char *eq)
   bool global = true;
   char *p = eq;
 
+  if (eq == kw)
+    USAGE_ERROR ((0, 0, _("Malformed pax option: %s"), quote (kw)));
+    
   if (eq[-1] == ':')
     {
       p--;
