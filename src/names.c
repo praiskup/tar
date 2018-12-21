@@ -1227,6 +1227,34 @@ addname (char const *string, int change_dir, bool cmdline, struct name *parent)
   return name;
 }
 
+void
+add_starting_file (char const *file_name)
+{
+  struct name *name = make_name (file_name);
+
+  if (starting_file_option)
+    {
+      struct name *head = namelist;
+      remname (head);
+      free_name (head);
+    }
+  
+  name->prev = NULL;
+  name->next = namelist;
+  namelist = name;
+  if (!nametail)
+    nametail = namelist;
+  
+  name->found_count = 0;
+  name->matching_flags = INCLUDE_OPTIONS;
+  name->change_dir = 0;
+  name->directory = NULL;
+  name->parent = NULL;
+  name->cmdline = true;
+
+  starting_file_option = true;
+}
+
 /* Find a match for FILE_NAME (whose string length is LENGTH) in the name
    list.  */
 static struct name *
@@ -1283,19 +1311,22 @@ name_match (const char *file_name)
 	}
 
       cursor = namelist_match (file_name, length);
+      if (starting_file_option)
+	{
+	  /* If starting_file_option is set, the head of the list is the name
+	     of the member to start extraction from. Skip the match unless it
+	     is head. */
+	  if (cursor == namelist)
+	    starting_file_option = false;
+	  else
+	    cursor = NULL;
+	}
       if (cursor)
 	{
 	  if (!(ISSLASH (file_name[cursor->length]) && recursion_option)
 	      || cursor->found_count == 0)
 	    cursor->found_count++; /* remember it matched */
-	  if (starting_file_option)
-	    {
-	      free (namelist);
-	      namelist = NULL;
-	      nametail = NULL;
-	    }
 	  chdir_do (cursor->change_dir);
-
 	  /* We got a match.  */
 	  return ISFOUND (cursor);
 	}

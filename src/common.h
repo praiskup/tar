@@ -302,6 +302,10 @@ enum hole_detection_method
 
 GLOBAL enum hole_detection_method hole_detection;
 
+/* The first entry in names.c:namelist specifies the member name to
+   start extracting from. Set by add_starting_file() upon seeing the
+   -K option.
+*/
 GLOBAL bool starting_file_option;
 
 /* Specified maximum byte length of each tape volume (multiple of 1024).  */
@@ -752,6 +756,7 @@ const char *name_next (int change_dirs);
 void name_gather (void);
 struct name *addname (char const *string, int change_dir,
 		      bool cmdline, struct name *parent);
+void add_starting_file (char const *file_name);
 void remname (struct name *name);
 bool name_match (const char *name);
 void names_notfound (void);

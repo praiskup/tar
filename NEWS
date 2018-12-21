@@ -1,4 +1,4 @@
-GNU tar NEWS - User visible changes. 2018-04-07
+GNU tar NEWS - User visible changes. 2018-12-21
 Please send GNU tar bug reports to <bug-tar@gnu.org>
 
 
@@ -14,6 +14,16 @@ When listing, extractng and comparing, zstd compressed archives are
 recognized automatically.
 When '-a' option is in effect, zstd compression is selected if the
 destination archive name ends in '.zst' or '.tzst'.
+
+* The -K option interacts properly with member names given in the command line
+
+Names of members to extract can be specified along with the "-K NAME"
+option. In this case, tar will extract NAME and those of named members
+that appear in the archive after it, which is consistent with the
+semantics of the option.
+
+Previous versions of tar extracted NAME, those of named members that
+appeared before it, and everything after it.
 
 
 version 1.30 - Sergey Poznyakoff, 2017-12-17
