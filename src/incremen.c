@@ -998,10 +998,10 @@ read_incr_db_01 (int version, const char *initbuf)
   newer_mtime_option = decode_timespec (buf, &ebuf, false);
 
   if (! valid_timespec (newer_mtime_option))
-    ERROR ((0, errno, "%s:%ld: %s",
-	    quotearg_colon (listed_incremental_option),
-	    lineno,
-	    _("Invalid time stamp")));
+    FATAL_ERROR ((0, errno, "%s:%ld: %s",
+		  quotearg_colon (listed_incremental_option),
+		  lineno,
+		  _("Invalid time stamp")));
   else
     {
       if (version == 1 && *ebuf)
@@ -1043,9 +1043,9 @@ read_incr_db_01 (int version, const char *initbuf)
 	  mtime = decode_timespec (strp, &ebuf, false);
 	  strp = ebuf;
 	  if (!valid_timespec (mtime) || *strp != ' ')
-	    ERROR ((0, errno, "%s:%ld: %s",
-		    quotearg_colon (listed_incremental_option), lineno,
-		    _("Invalid modification time")));
+	    FATAL_ERROR ((0, errno, "%s:%ld: %s",
+			  quotearg_colon (listed_incremental_option), lineno,
+			  _("Invalid modification time")));
 
 	  errno = 0;
 	  u = strtoumax (strp, &ebuf, 10);
@@ -1053,9 +1053,9 @@ read_incr_db_01 (int version, const char *initbuf)
 	    errno = ERANGE;
 	  if (errno || strp == ebuf || *ebuf != ' ')
 	    {
-	      ERROR ((0, errno, "%s:%ld: %s",
-		      quotearg_colon (listed_incremental_option), lineno,
-		      _("Invalid modification time (nanoseconds)")));
+	      FATAL_ERROR ((0, errno, "%s:%ld: %s",
+			    quotearg_colon (listed_incremental_option), lineno,
+			    _("Invalid modification time (nanoseconds)")));
 	      mtime.tv_nsec = -1;
 	    }
 	  else
@@ -1069,17 +1069,17 @@ read_incr_db_01 (int version, const char *initbuf)
 			 TYPE_MINIMUM (dev_t), TYPE_MAXIMUM (dev_t));
       strp = ebuf;
       if (errno || *strp != ' ')
-	ERROR ((0, errno, "%s:%ld: %s",
+	FATAL_ERROR ((0, errno, "%s:%ld: %s",
 		quotearg_colon (listed_incremental_option), lineno,
-		_("Invalid device number")));
+		      _("Invalid device number")));
 
       ino = strtosysint (strp, &ebuf,
 			 TYPE_MINIMUM (ino_t), TYPE_MAXIMUM (ino_t));
       strp = ebuf;
       if (errno || *strp != ' ')
-	ERROR ((0, errno, "%s:%ld: %s",
-		quotearg_colon (listed_incremental_option), lineno,
-		_("Invalid inode number")));
+	FATAL_ERROR ((0, errno, "%s:%ld: %s",
+		      quotearg_colon (listed_incremental_option), lineno,
+		      _("Invalid inode number")));
 
       strp++;
       unquote_string (strp);
