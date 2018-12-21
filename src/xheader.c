@@ -185,6 +185,9 @@ xheader_set_keyword_equal (char *kw, char *eq)
   bool global = true;
   char *p = eq;
 
+  if (eq == kw)
+    USAGE_ERROR ((0, 0, _("Malformed pax option: %s"), quote (kw)));
+    
   if (eq[-1] == ':')
     {
       p--;
@@ -255,7 +258,7 @@ char *
 xheader_format_name (struct tar_stat_info *st, const char *fmt, size_t n)
 {
   char *buf;
-  size_t len = strlen (fmt);
+  size_t len;
   char *q;
   const char *p;
   char *dirp = NULL;
@@ -266,43 +269,51 @@ xheader_format_name (struct tar_stat_info *st, const char *fmt, size_t n)
   char nbuf[UINTMAX_STRSIZE_BOUND];
   char const *nptr = NULL;
 
-  for (p = fmt; *p && (p = strchr (p, '%')); )
+  len = 0;
+  for (p = fmt; *p; p++)
     {
-      switch (p[1])
+      if (*p == '%' && p[1])
 	{
-	case '%':
-	  len--;
-	  break;
-
-	case 'd':
-	  if (st)
+	  switch (*++p)
 	    {
-	      if (!dirp)
-		dirp = dir_name (st->orig_file_name);
-	      dir = safer_name_suffix (dirp, false, absolute_names_option);
-	      len += strlen (dir) - 2;
+	    case '%':
+	      len++;
+	      break;
+
+	    case 'd':
+	      if (st)
+		{
+		  if (!dirp)
+		    dirp = dir_name (st->orig_file_name);
+		  dir = safer_name_suffix (dirp, false, absolute_names_option);
+		  len += strlen (dir);
+		}
+	      break;
+
+	    case 'f':
+	      if (st)
+		{
+		  base = last_component (st->orig_file_name);
+		  len += strlen (base);
+		}
+	      break;
+
+	    case 'p':
+	      pptr = umaxtostr (getpid (), pidbuf);
+	      len += pidbuf + sizeof pidbuf - 1 - pptr;
+	      break;
+
+	    case 'n':
+	      nptr = umaxtostr (n, nbuf);
+	      len += nbuf + sizeof nbuf - 1 - nptr;
+	      break;
+	      
+	    default:
+	      len += 2;
 	    }
-	  break;
-
-	case 'f':
-	  if (st)
-	    {
-	      base = last_component (st->orig_file_name);
-	      len += strlen (base) - 2;
-	    }
-	  break;
-
-	case 'p':
-	  pptr = umaxtostr (getpid (), pidbuf);
-	  len += pidbuf + sizeof pidbuf - 1 - pptr - 2;
-	  break;
-
-	case 'n':
-	  nptr = umaxtostr (n, nbuf);
-	  len += nbuf + sizeof nbuf - 1 - nptr - 2;
-	  break;
 	}
-      p++;
+      else
+	len++;
     }
 
   buf = xmalloc (len + 1);
@@ -456,6 +467,14 @@ xheader_write_global (struct xheader *xhdr)
       xheader_write (XGLTYPE, name, start_time.tv_sec, xhdr);
       free (name);
     }
+}
+
+/* Forbid modifications of the global extended header */
+void
+xheader_forbid_global (void)
+{
+  if (keyword_global_override_list)
+    USAGE_ERROR ((0, 0, _("can't update global extended header record")));
 }
 
 void

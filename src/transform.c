@@ -273,7 +273,7 @@ parse_transform_expr (const char *expr)
       USAGE_ERROR ((0, 0, _("Invalid transform expression: %s"), errbuf));
     }
 
-  if (str[0] == '^' || str[strlen (str) - 1] == '$')
+  if (str[0] == '^' || (i > 2 && str[i - 3] == '$'))
     tf->transform_type = transform_first;
 
   free (str);

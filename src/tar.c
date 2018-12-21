@@ -1443,8 +1443,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
 
     case 'K':
       optloc_save (OC_STARTING_FILE, args->loc);
-      starting_file_option = true;
-      addname (arg, 0, true, NULL);
+      add_starting_file (arg);
       break;
 
     case ONE_FILE_SYSTEM_OPTION:
