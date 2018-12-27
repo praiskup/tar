@@ -1,6 +1,6 @@
 # Makefile for GNU tar regression tests.
 
-# Copyright 1996-1997, 1999-2001, 2003-2007, 2009, 2012-2015 Free Software
+# Copyright 1996-1997, 1999-2001, 2003-2007, 2009, 2012-2018 Free Software
 
 # This file is part of GNU tar.
 
@@ -238,6 +238,9 @@ TESTSUITE_AT = \
  spmvp00.at\
  spmvp01.at\
  spmvp10.at\
+ sptrcreat.at\
+ sptrdiff00.at\
+ sptrdiff01.at\
  time01.at\
  time02.at\
  truncate.at\
