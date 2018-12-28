@@ -2553,6 +2553,12 @@ Wait for @var{time} seconds.
 
 @item ttyout=@var{string}
 Output @var{string} on the current console (@file{/dev/tty}).
+
+@item totals
+Print statistics (see @pxref{totals}).
+
+@item wait=@var{signo}
+Wait for signal @var{signo}.
 @end table
 
 Several @option{--checkpoint-action} options can be specified.  The
@@ -4451,6 +4457,25 @@ checkpoint:
 @smallexample
 $ @kbd{tar -c --checkpoint=1000 --checkpoint-action=sleep=30}
 @end smallexample
+
+@anchor{checkpoint wait}
+@cindex @code{wait}, checkpoint action
+The @code{wait=@var{signo}} action stops further execution until the
+signal @var{signo} is delivered.  Valid values for @var{signo} are:
+@code{SIGHUP}, @code{SIGQUIT}, @code{SIGINT}, @code{SIGUSR1} and
+@code{SIGUSR2}.  The @samp{SIG} prefix is optional.  For example:
+
+@example
+$ @kbd{tar -c -f arc --checkpoint=1000 --checkpoint-action wait=USR1 .}
+@end example
+
+In this example, @GNUTAR{} will stop archivation at each 1000th
+checkpoint. wait until the @samp{SIGUSR1} signal is delivered,
+and resume processing.
+
+This action is used by the @command{genfile} utility to perform
+modifications on the input files upon hitting certain checkpoints
+(@pxref{Exec Mode, genfile}).
 
 @anchor{checkpoint exec}
 @cindex @code{exec}, checkpoint action

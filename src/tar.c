@@ -976,34 +976,35 @@ stat_on_signal (int signo)
 #endif
 }
 
-static void
-set_stat_signal (const char *name)
+int
+decode_signal (const char *name)
 {
   static struct sigtab
   {
     char const *name;
     int signo;
   } const sigtab[] = {
-    { "SIGUSR1", SIGUSR1 },
     { "USR1", SIGUSR1 },
-    { "SIGUSR2", SIGUSR2 },
     { "USR2", SIGUSR2 },
-    { "SIGHUP", SIGHUP },
     { "HUP", SIGHUP },
-    { "SIGINT", SIGINT },
     { "INT", SIGINT },
-    { "SIGQUIT", SIGQUIT },
     { "QUIT", SIGQUIT }
   };
   struct sigtab const *p;
+  char const *s = name;
 
+  if (strncmp (s, "SIG", 3) == 0)
+    s += 3;
   for (p = sigtab; p < sigtab + sizeof (sigtab) / sizeof (sigtab[0]); p++)
-    if (strcmp (p->name, name) == 0)
-      {
-	stat_on_signal (p->signo);
-	return;
-      }
+    if (strcmp (p->name, s) == 0)
+      return p->signo;
   FATAL_ERROR ((0, 0, _("Unknown signal name: %s"), name));
+}
+
+static void
+set_stat_signal (const char *name)
+{
+  stat_on_signal (decode_signal (name));
 }
 
 

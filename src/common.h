@@ -798,6 +798,8 @@ void set_exit_status (int val);
 
 void request_stdin (const char *option);
 
+int decode_signal (const char *);
+
 /* Where an option comes from: */
 enum option_source
   {

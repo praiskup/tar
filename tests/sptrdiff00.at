@@ -35,10 +35,7 @@ echo creating
 tar --sparse -vcf bar foo baz
 echo comparing
 genfile --run --checkpoint 3 --length 200m --truncate foo -- \
- tar --checkpoint=1 \
-     --checkpoint-action=echo='Write checkpoint %u' \
-     --checkpoint-action=sleep=1 \
-     --sparse -vdf bar 
+ tar --sparse -vdf bar 
 ],
 [1],
 [creating

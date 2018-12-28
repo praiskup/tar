@@ -1,7 +1,7 @@
 # Process this file with autom4te to create testsuite. -*- Autotest -*-
 
 # Test suite for GNU tar.
-# Copyright 2006-2007, 2013-2014, 2016-2017 Free Software Foundation,
+# Copyright 2006-2007, 2013-2014, 2016-2018 Free Software Foundation,
 # Inc.
 
 # This file is part of GNU tar.
@@ -28,7 +28,7 @@ AT_KEYWORDS([grow filechange])
 AT_TAR_CHECK([
 genfile --file foo --length 50000k
 genfile --file baz
-genfile --run --checkpoint 10 --length 1024 --append foo -- tar --checkpoint -vcf bar foo baz
+genfile --run=10 --checkpoint 10 --length 1024 --append foo -- tar -vcf bar foo baz
 ],
 [1],
 [foo
