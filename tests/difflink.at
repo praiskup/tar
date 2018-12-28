@@ -20,14 +20,14 @@ AT_TAR_CHECK([
 mkdir a
 genfile -f a/x
 ln -s x a/y
-ln a/y a/z
+ln a/x a/z
 tar cf a.tar a/x a/y a/z
 rm a/z
 ln -s x a/z
 tar df a.tar
 ],
 [1],
-[a/z: Not linked to a/y
+[a/z: Not linked to a/x
 ],
 [],
 [],[],[ustar]) # Testing one format is enough
