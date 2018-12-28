@@ -102,6 +102,18 @@ gt_TYPE_SSIZE_T
 
 # gnulib modules
 gl_INIT
+
+if test $ac_cv_lib_error_at_line = no; then
+  # This means that the error() function is not present in libc, so
+  # the one from gnulib will be used instead. This function precedes
+  # error messages it prints with the program name as returned by getprogname()
+  # call, instead of using the name set by set_program_name.
+  # Install workaround.
+  AC_DEFINE([ENABLE_ERROR_PRINT_PROGNAME],[1],
+            [Enable the use of error_print_progname to print program name with error messages.
+	     See comment to function tar_print_progname in src/tar.c])
+fi  
+
 # paxutils modules
 tar_PAXUTILS
 
