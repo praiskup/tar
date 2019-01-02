@@ -1,6 +1,6 @@
 # Makefile for GNU tar regression tests.
 
-# Copyright 1996-1997, 1999-2001, 2003-2007, 2009, 2012-2018 Free Software
+# Copyright 1996-2019 Free Software Foundation, Inc.
 
 # This file is part of GNU tar.
 

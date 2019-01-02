@@ -3977,7 +3977,7 @@ successfully.  For example, @w{@samp{tar --version}} might print:
 
 @smallexample
 tar (GNU tar) @value{VERSION}
-Copyright (C) 2013-2017 Free Software Foundation, Inc.
+Copyright (C) 2013-2019 Free Software Foundation, Inc.
 License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>.
 This is free software: you are free to change and redistribute it.
 There is NO WARRANTY, to the extent permitted by law.
@@ -9552,8 +9552,8 @@ switch to @samp{posix}.
 @GNUTAR{} is able to create and read compressed archives.  It supports
 a wide variety of compression programs, namely: @command{gzip},
 @command{bzip2}, @command{lzip}, @command{lzma}, @command{lzop},
-@command{xz} and traditional @command{compress}. The latter is
-supported mostly for backward compatibility, and we recommend
+@command{zstd}, @command{xz} and traditional @command{compress}. The
+latter is supported mostly for backward compatibility, and we recommend
 against using it, because it is by far less effective than the other
 compression programs@footnote{It also had patent problems in the past.}.
 
@@ -9693,6 +9693,10 @@ Filter the archive through @command{lzma}.
 @opindex lzop
 @item --lzop
 Filter the archive through @command{lzop}.
+
+@opindex zstd
+@item --zstd
+Filter the archive through @command{zstd}.
 
 @opindex compress
 @opindex uncompress

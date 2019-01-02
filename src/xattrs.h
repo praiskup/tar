@@ -1,6 +1,6 @@
 /* Support for extended attributes.
 
-   Copyright (C) 2006-2014, 2016-2017 Free Software Foundation, Inc.
+   Copyright (C) 2006-2019 Free Software Foundation, Inc.
 
    This file is part of GNU tar.
 
