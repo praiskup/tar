@@ -1,6 +1,6 @@
 # This file is part of GNU tar test suite  -*- Autotest -*-
 #
-# Copyright 2017 Free Software Foundation, Inc.
+# Copyright 2017-2019 Free Software Foundation, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,14 +20,14 @@ AT_TAR_CHECK([
 mkdir a
 genfile -f a/x
 ln -s x a/y
-ln a/y a/z
+ln a/x a/z
 tar cf a.tar a/x a/y a/z
 rm a/z
 ln -s x a/z
 tar df a.tar
 ],
 [1],
-[a/z: Not linked to a/y
+[a/z: Not linked to a/x
 ],
 [],
 [],[],[ustar]) # Testing one format is enough

@@ -1,6 +1,6 @@
 /* Per-directory exclusion files for tar.
 
-   Copyright 2014, 2016-2017 Free Software Foundation, Inc.
+   Copyright 2014-2019 Free Software Foundation, Inc.
 
    This file is part of GNU tar.
 

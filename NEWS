@@ -1,8 +1,8 @@
-GNU tar NEWS - User visible changes. 2018-12-21
+GNU tar NEWS - User visible changes. 2019-01-02
 Please send GNU tar bug reports to <bug-tar@gnu.org>
 
 
-version 1.30.90 (Git)
+version 1.31 - Sergey Poznyakoff, 2019-01-02
 
 * Fix heap-buffer-overrun with --one-top-level.
 Bug introduced with the addition of that option in 1.28.
@@ -24,6 +24,12 @@ semantics of the option.
 
 Previous versions of tar extracted NAME, those of named members that
 appeared before it, and everything after it.
+
+* Fix CVE-2018-20482
+
+When creating archives with the --sparse option, previous versions of
+tar would loop endlessly if a sparse file had been truncated while
+being archived.
 
 
 version 1.30 - Sergey Poznyakoff, 2017-12-17
@@ -1665,7 +1671,7 @@ Versions 1.07 back to 1.00 by Jay Fenlason.
 
 
 
-Copyright 1994-2001, 2003-2010, 2013-2017 Free Software Foundation, Inc.
+Copyright 1994-2019 Free Software Foundation, Inc.
 
 This file is part of GNU tar.
 

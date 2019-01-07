@@ -1,7 +1,7 @@
 # Process this file with autom4te to create testsuite. -*- Autotest -*-
 
 # Test suite for GNU tar.
-# Copyright 2009, 2013-2014, 2016-2017 Free Software Foundation, Inc.
+# Copyright 2009-2019 Free Software Foundation, Inc.
 
 # This file is part of GNU tar.
 
@@ -33,7 +33,7 @@
 #             http://lists.gnu.org/archive/html/bug-tar/2009-03/msg00000.html
 #
 
-AT_SETUP([file removed as we read it (ca. 22 seconds)])
+AT_SETUP([file removed as we read it])
 AT_KEYWORDS([create incremental listed filechange filerem filerem01])
 
 AT_TAR_CHECK([
@@ -43,8 +43,7 @@ genfile --file dir/file1
 genfile --file dir/sub/file2
 
 genfile --run --checkpoint=3 --unlink dir/file1 -- \
-       tar --blocking-factor=1 --checkpoint=1 --checkpoint-action='sleep=1' \
-       --checkpoint-action='echo' -c -f archive.tar \
+       tar --blocking-factor=1 -c -f archive.tar \
        --listed-incremental db -v dir >/dev/null
 ],
 [1],

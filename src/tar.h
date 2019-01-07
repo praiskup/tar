@@ -1,7 +1,6 @@
 /* GNU tar Archive Format description.
 
-   Copyright 1988-1989, 1991-1997, 2000-2001, 2003-2007, 2012-2014,
-   2016-2017 Free Software Foundation, Inc.
+   Copyright 1988-2019 Free Software Foundation, Inc.
 
    This file is part of GNU tar.
 

@@ -1,6 +1,6 @@
 # Configure template for GNU tar.  -*- autoconf -*-
 
-# Copyright 1991, 1994-2010, 2013-2017 Free Software Foundation, Inc.
+# Copyright 1991, 1994-2010, 2013-2019 Free Software Foundation, Inc.
 
 # This file is part of GNU tar.
 
@@ -17,7 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-AC_INIT([GNU tar], [1.30.90], [bug-tar@gnu.org])
+AC_INIT([GNU tar], [1.31], [bug-tar@gnu.org])
 AC_CONFIG_SRCDIR([src/tar.c])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_HEADERS([config.h])
@@ -102,6 +102,18 @@ gt_TYPE_SSIZE_T
 
 # gnulib modules
 gl_INIT
+
+if test $ac_cv_lib_error_at_line = no; then
+  # This means that the error() function is not present in libc, so
+  # the one from gnulib will be used instead. This function precedes
+  # error messages it prints with the program name as returned by getprogname()
+  # call, instead of using the name set by set_program_name.
+  # Install workaround.
+  AC_DEFINE([ENABLE_ERROR_PRINT_PROGNAME],[1],
+            [Enable the use of error_print_progname to print program name with error messages.
+	     See comment to function tar_print_progname in src/tar.c])
+fi  
+
 # paxutils modules
 tar_PAXUTILS
 

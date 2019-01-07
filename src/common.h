@@ -1,7 +1,6 @@
 /* Common declarations for the tar program.
 
-   Copyright 1988, 1992-1994, 1996-1997, 1999-2010, 2012-2017 Free
-   Software Foundation, Inc.
+   Copyright 1988-2019 Free Software Foundation, Inc.
 
    This file is part of GNU tar.
 
@@ -797,6 +796,8 @@ const char *subcommand_string (enum subcommand c);
 void set_exit_status (int val);
 
 void request_stdin (const char *option);
+
+int decode_signal (const char *);
 
 /* Where an option comes from: */
 enum option_source

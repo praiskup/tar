@@ -1,6 +1,6 @@
 /* Checkpoint management for tar.
 
-   Copyright 2007, 2013-2014, 2016-2017 Free Software Foundation, Inc.
+   Copyright 2007-2019 Free Software Foundation, Inc.
 
    This file is part of GNU tar.
 
@@ -23,6 +23,7 @@
 #include <sys/ioctl.h>
 #include <termios.h>
 #include "fprintftime.h"
+#include <signal.h>
 
 enum checkpoint_opcode
   {
@@ -32,7 +33,8 @@ enum checkpoint_opcode
     cop_ttyout,
     cop_sleep,
     cop_exec,
-    cop_totals
+    cop_totals,
+    cop_wait
   };
 
 struct checkpoint_action
@@ -43,6 +45,7 @@ struct checkpoint_action
   {
     time_t time;
     char *command;
+    int signal;
   } v;
 };
 
@@ -51,6 +54,16 @@ static unsigned checkpoint;
 
 /* List of checkpoint actions */
 static struct checkpoint_action *checkpoint_action, *checkpoint_action_tail;
+
+/* State of the checkpoint system */
+enum {
+  CHKP_INIT,       /* Needs initialization */
+  CHKP_COMPILE,    /* Actions are being compiled */
+  CHKP_RUN         /* Actions are being run */
+};
+static int checkpoint_state;
+/* Blocked signals */
+static sigset_t sigs;
 
 static struct checkpoint_action *
 alloc_action (enum checkpoint_opcode opcode)
@@ -85,6 +98,12 @@ checkpoint_compile_action (const char *str)
 {
   struct checkpoint_action *act;
 
+  if (checkpoint_state == CHKP_INIT)
+    {
+      sigemptyset (&sigs);
+      checkpoint_state = CHKP_COMPILE;
+    }
+  
   if (strcmp (str, ".") == 0 || strcmp (str, "dot") == 0)
     alloc_action (cop_dot);
   else if (strcmp (str, "bell") == 0)
@@ -117,6 +136,12 @@ checkpoint_compile_action (const char *str)
     }
   else if (strcmp (str, "totals") == 0)
     alloc_action (cop_totals);
+  else if (strncmp (str, "wait=", 5) == 0)
+    {
+      act = alloc_action (cop_wait);
+      act->v.signal = decode_signal (str + 5);
+      sigaddset (&sigs, act->v.signal);
+    }
   else
     FATAL_ERROR ((0, 0, _("%s: unknown checkpoint action"), str));
 }
@@ -124,15 +149,22 @@ checkpoint_compile_action (const char *str)
 void
 checkpoint_finish_compile (void)
 {
-  if (checkpoint_option)
+  if (checkpoint_state == CHKP_COMPILE)
     {
-      if (!checkpoint_action)
-	/* Provide a historical default */
-	checkpoint_compile_action ("echo");
+      sigprocmask (SIG_BLOCK, &sigs, NULL);
+
+      if (checkpoint_option)
+	{
+	  if (!checkpoint_action)
+	    /* Provide a historical default */
+	    checkpoint_compile_action ("echo");
+	}
+      else if (checkpoint_action)
+	/* Otherwise, set default checkpoint rate */
+	checkpoint_option = DEFAULT_CHECKPOINT;
+
+      checkpoint_state = CHKP_RUN;
     }
-  else if (checkpoint_action)
-    /* Otherwise, set default checkpoint rate */
-    checkpoint_option = DEFAULT_CHECKPOINT;
 }
 
 static const char *checkpoint_total_format[] = {
@@ -390,6 +422,13 @@ run_checkpoint_actions (bool do_write)
 	case cop_totals:
 	  compute_duration ();
 	  print_total_stats ();
+	  break;
+
+	case cop_wait:
+	  {
+	    int n;
+	    sigwait (&sigs, &n);
+	  }
 	}
     }
 }

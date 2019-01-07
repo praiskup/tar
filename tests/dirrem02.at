@@ -1,7 +1,7 @@
 # Process this file with autom4te to create testsuite. -*- Autotest -*-
 
 # Test suite for GNU tar.
-# Copyright 2017 Free Software Foundation, Inc.
+# Copyright 2017-2019 Free Software Foundation, Inc.
 
 # This file is part of GNU tar.
 
@@ -44,8 +44,7 @@ gnu)   CPT=3;;
 esac
 
 genfile --run --checkpoint=$CPT --unlink dir/sub/file2 --unlink dir/sub -- \
-       tar --blocking-factor=1 --checkpoint=1 --checkpoint-action='echo' \
-       --checkpoint-action='sleep=1' -c -f archive.tar \
+       tar --blocking-factor=1 -c -f archive.tar \
        --listed-incremental db -v dir dir/sub >/dev/null
 ],
 [2],

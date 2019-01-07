@@ -1,6 +1,6 @@
 /* Exit from GNU tar.
 
-   Copyright 2009, 2013-2014, 2016-2017 Free Software Foundation, Inc.
+   Copyright 2009-2019 Free Software Foundation, Inc.
 
    This file is part of GNU tar.
 

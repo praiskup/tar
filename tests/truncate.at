@@ -1,8 +1,7 @@
 # Process this file with autom4te to create testsuite. -*- Autotest -*-
 
 # Test suite for GNU tar.
-# Copyright 2005, 2007, 2013-2014, 2016-2017 Free Software Foundation,
-# Inc.
+# Copyright 2005-2019 Free Software Foundation, Inc.
 
 # This file is part of GNU tar.
 
@@ -33,18 +32,18 @@ AT_KEYWORDS([truncate filechange])
 AT_TAR_CHECK([
 genfile --file foo --length 200k
 genfile --file baz
-genfile --run --checkpoint 10 --length 195k --truncate foo -- tar --checkpoint --checkpoint-action=echo --checkpoint-action=sleep=1 -vcf bar foo baz
+genfile --run --checkpoint 10 --length 195k --truncate foo -- \
+  tar -vcf bar foo baz
 echo Exit status: $?
 echo separator
 genfile --file foo --seek 195k --length 5k --pattern=zeros
-tar dvf bar],
-[1],
+tar dvf bar|sed '/foo: Mod time differs/d'],
+[0],
 [foo
 baz
 Exit status: 1
 separator
 foo
-foo: Mod time differs
 baz
 ],
 [tar: foo: File shrank by 5120 bytes; padding with zeros

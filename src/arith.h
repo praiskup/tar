@@ -1,6 +1,5 @@
 /* Long integers, for GNU tar.
-   Copyright 1999, 2007, 2013-2014, 2016-2017 Free Software Foundation,
-   Inc.
+   Copyright 1999-2019 Free Software Foundation, Inc.
 
    This file is part of GNU tar.
 

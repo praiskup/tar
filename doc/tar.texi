@@ -2553,6 +2553,12 @@ Wait for @var{time} seconds.
 
 @item ttyout=@var{string}
 Output @var{string} on the current console (@file{/dev/tty}).
+
+@item totals
+Print statistics (see @pxref{totals}).
+
+@item wait=@var{signo}
+Wait for signal @var{signo}.
 @end table
 
 Several @option{--checkpoint-action} options can be specified.  The
@@ -3971,7 +3977,7 @@ successfully.  For example, @w{@samp{tar --version}} might print:
 
 @smallexample
 tar (GNU tar) @value{VERSION}
-Copyright (C) 2013-2017 Free Software Foundation, Inc.
+Copyright (C) 2013-2019 Free Software Foundation, Inc.
 License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>.
 This is free software: you are free to change and redistribute it.
 There is NO WARRANTY, to the extent permitted by law.
@@ -4451,6 +4457,25 @@ checkpoint:
 @smallexample
 $ @kbd{tar -c --checkpoint=1000 --checkpoint-action=sleep=30}
 @end smallexample
+
+@anchor{checkpoint wait}
+@cindex @code{wait}, checkpoint action
+The @code{wait=@var{signo}} action stops further execution until the
+signal @var{signo} is delivered.  Valid values for @var{signo} are:
+@code{SIGHUP}, @code{SIGQUIT}, @code{SIGINT}, @code{SIGUSR1} and
+@code{SIGUSR2}.  The @samp{SIG} prefix is optional.  For example:
+
+@example
+$ @kbd{tar -c -f arc --checkpoint=1000 --checkpoint-action wait=USR1 .}
+@end example
+
+In this example, @GNUTAR{} will stop archivation at each 1000th
+checkpoint. wait until the @samp{SIGUSR1} signal is delivered,
+and resume processing.
+
+This action is used by the @command{genfile} utility to perform
+modifications on the input files upon hitting certain checkpoints
+(@pxref{Exec Mode, genfile}).
 
 @anchor{checkpoint exec}
 @cindex @code{exec}, checkpoint action
@@ -9527,8 +9552,8 @@ switch to @samp{posix}.
 @GNUTAR{} is able to create and read compressed archives.  It supports
 a wide variety of compression programs, namely: @command{gzip},
 @command{bzip2}, @command{lzip}, @command{lzma}, @command{lzop},
-@command{xz} and traditional @command{compress}. The latter is
-supported mostly for backward compatibility, and we recommend
+@command{zstd}, @command{xz} and traditional @command{compress}. The
+latter is supported mostly for backward compatibility, and we recommend
 against using it, because it is by far less effective than the other
 compression programs@footnote{It also had patent problems in the past.}.
 
@@ -9668,6 +9693,10 @@ Filter the archive through @command{lzma}.
 @opindex lzop
 @item --lzop
 Filter the archive through @command{lzop}.
+
+@opindex zstd
+@item --zstd
+Filter the archive through @command{zstd}.
 
 @opindex compress
 @opindex uncompress
