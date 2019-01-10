@@ -787,7 +787,7 @@ maybe_recoverable (char *file_name, bool regular, bool *interdir_made)
 	case UNLINK_FIRST_OLD_FILES:
 	  break;
 	}
-      abort (); /* notreached */
+      FALLTHROUGH;
 
     case ENOENT:
       /* Attempt creating missing intermediate directories.  */
