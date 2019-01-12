@@ -76,6 +76,11 @@ TESTSUITE_AT = \
  compress-gzip.at\
  compress-lzip.at\
  compress-lzop.at\
+ checkpoint/defaults.at\
+ checkpoint/interval.at\
+ checkpoint/dot.at\
+ checkpoint/dot-compat.at\
+ checkpoint/dot-int.at\
  delete01.at\
  delete02.at\
  delete03.at\
