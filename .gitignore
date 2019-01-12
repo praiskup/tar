@@ -8,6 +8,7 @@
 .deps
 .emacs*
 .libs
+.gdbinit
 ABOUT-NLS
 ChangeLog
 INSTALL
@@ -28,3 +29,4 @@ libtool
 m4
 rmt
 stamp-h1
+TAGS

@@ -149,18 +149,20 @@ checkpoint_compile_action (const char *str)
 void
 checkpoint_finish_compile (void)
 {
+  if (checkpoint_state == CHKP_INIT
+      && checkpoint_option
+      && !checkpoint_action)
+    {
+      /* Provide a historical default */
+      checkpoint_compile_action ("echo");
+    }
+
   if (checkpoint_state == CHKP_COMPILE)
     {
       sigprocmask (SIG_BLOCK, &sigs, NULL);
 
-      if (checkpoint_option)
-	{
-	  if (!checkpoint_action)
-	    /* Provide a historical default */
-	    checkpoint_compile_action ("echo");
-	}
-      else if (checkpoint_action)
-	/* Otherwise, set default checkpoint rate */
+      if (!checkpoint_option)
+	/* set default checkpoint rate */
 	checkpoint_option = DEFAULT_CHECKPOINT;
 
       checkpoint_state = CHKP_RUN;
