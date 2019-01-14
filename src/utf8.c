@@ -81,7 +81,18 @@ utf8_convert (bool to_utf, char const *input, char **output)
   outlen = inlen * MB_LEN_MAX + 1;
   ob = ret = xmalloc (outlen);
   ib = (char ICONV_CONST *) input;
-  if (iconv (cd, &ib, &inlen, &ob, &outlen) == -1)
+  /* According to POSIX, "if iconv() encounters a character in the input
+     buffer that is valid, but for which an identical character does not
+     exist in the target codeset, iconv() shall perform an
+     implementation-defined conversion on this character." It will "update
+     the variables pointed to by the arguments to reflect the extent of the
+     conversion and return the number of non-identical conversions performed".
+     On error, it returns -1. 
+     In other words, non-zero return always indicates failure, either because
+     the input was not fully converted, or because it was converted in a
+     non-reversible way.
+   */
+  if (iconv (cd, &ib, &inlen, &ob, &outlen) != 0)
     {
       free (ret);
       return false;
