@@ -35,10 +35,13 @@
 # define iconv_open(tocode, fromcode) ((iconv_t) -1)
 
 # undef iconv
-# define iconv(cd, inbuf, inbytesleft, outbuf, outbytesleft) ((size_t) 0)
+# define iconv(cd, inbuf, inbytesleft, outbuf, outbytesleft) (errno = ENOSYS, (size_t) -1)
 
 # undef iconv_close
 # define iconv_close(cd) 0
+
+# undef iconv_t
+# define iconv_t int
 
 #endif
 
