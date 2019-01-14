@@ -45,13 +45,14 @@ esac
 
 genfile --run --checkpoint=$CPT --unlink dir/sub/file2 --unlink dir/sub -- \
        tar --blocking-factor=1 -c -f archive.tar \
-       --listed-incremental db -v dir dir/sub >/dev/null
+       --listed-incremental db \
+       --warning=no-file-changed \
+       -v dir dir/sub >/dev/null
 ],
 [2],
 [ignore],
 [tar: dir: Directory is new
 tar: dir/sub: Directory is new
-tar: dir/sub: file changed as we read it
 tar: dir/sub: Cannot open: No such file or directory
 tar: Exiting with failure status due to previous errors
 ],[],[],[gnu,posix])

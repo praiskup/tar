@@ -27,9 +27,13 @@
 # it prints a warning and exits with TAREXIT_DIFFERS.
 #
 # This test checks whether this behaviour is mimicked for directories, too.
-
-# Remark: This file is based on 'filerem01.at', which is the test-case for
-# a vanishing file.
+#
+# Notes:
+#   1. This file is based on 'filerem01.at', which is the test-case for
+#   a vanishing file.
+#   2. Depending on the stat.st_ctime resolution, the "file changed as we
+#   read it" warning might be issued for dir/sub. The test takes care to
+#   suppress it.
 
 AT_SETUP([directory removed before reading])
 AT_KEYWORDS([create incremental listed dirchange dirrem dirrem01])
@@ -48,13 +52,14 @@ esac
 
 genfile --run --checkpoint=$CPT --unlink dir/sub/file2 --unlink dir/sub -- \
        tar --blocking-factor=1 -c -f archive.tar \
-       --listed-incremental db -v dir >/dev/null
+       --listed-incremental db \
+       --warning=no-file-changed \
+       -v dir >/dev/null
 ],
 [1],
 [ignore],
 [tar: dir: Directory is new
 tar: dir/sub: Directory is new
-tar: dir/sub: file changed as we read it
 tar: dir/sub: File removed before we read it
 ],[],[],[gnu,posix])
 
