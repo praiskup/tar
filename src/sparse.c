@@ -1267,6 +1267,8 @@ pax_decode_header (struct tar_sparse_file *file)
 	 {                                                         \
 	   set_next_block_after (b);                               \
            b = find_next_block ();                                 \
+           if (!b)                                                 \
+             FATAL_ERROR ((0, 0, _("Unexpected EOF in archive"))); \
            src = b->buffer;                                        \
 	   endp = b->buffer + BLOCKSIZE;                           \
 	 }                                                         \
@@ -1279,6 +1281,8 @@ pax_decode_header (struct tar_sparse_file *file)
       start = current_block_ordinal ();
       set_next_block_after (current_header);
       blk = find_next_block ();
+      if (!blk)
+        FATAL_ERROR ((0, 0, _("Unexpected EOF in archive")));
       p = blk->buffer;
       COPY_BUF (blk,nbuf,p);
       if (!decode_num (&u, nbuf, TYPE_MAXIMUM (size_t)))
