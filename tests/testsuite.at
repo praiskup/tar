@@ -226,6 +226,8 @@ for i in 0 1 2 3 4 5 6 7 8 9
 do
   genfile --length 10240 --file $i
 done
+TAR_OPTIONS=-Hgnu
+export TAR_OPTIONS
 $1
 ],m4_shift($@))])
 m4_include([checkpoint/defaults.at])
