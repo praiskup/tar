@@ -19,7 +19,7 @@
 
 EXTRA_DIST = $(TESTSUITE_AT) \
   testsuite package.m4 star/README star/quicktest.sh \
-  compress.at.in
+  compress.m4
 
 DISTCLEANFILES       = atconfig $(check_SCRIPTS)
 MAINTAINERCLEANFILES = Makefile.in $(TESTSUITE)
@@ -47,6 +47,7 @@ $(srcdir)/package.m4: $(top_srcdir)/configure.ac
 
 TESTSUITE_AT = \
  testsuite.at\
+ compress.m4\
  T-cd.at\
  T-dir00.at\
  T-dir01.at\
@@ -70,12 +71,6 @@ TESTSUITE_AT = \
  chtype.at\
  comprec.at\
  comperr.at\
- compress-zstd.at\
- compress-xz.at\
- compress-bzip2.at\
- compress-gzip.at\
- compress-lzip.at\
- compress-lzop.at\
  checkpoint/defaults.at\
  checkpoint/interval.at\
  checkpoint/dot.at\
@@ -281,42 +276,6 @@ TESTSUITE_AT = \
  selnx01.at\
  selacl01.at\
  capabs_raw01.at
-
-CLEANFILES += compress-zstd.at
-compress-zstd.at: compress.at.in
-	$(AM_V_GEN)rm -rf $@ $@-t
-	$(AM_V_at)sed 's/@tool@/zstd/g;s/@suff@/zst/g;s/@suff2@/tzst/g;' \
-	  $(srcdir)/compress.at.in > $@-t && chmod a-w $@-t && mv $@-t $@
-
-CLEANFILES += compress-gzip.at
-compress-gzip.at: compress.at.in
-	$(AM_V_GEN)rm -rf $@ $@-t
-	$(AM_V_at)sed 's/@tool@/gzip/g;s/@suff@/gz/g;s/@suff2@/tgz/g;' \
-	  $(srcdir)/compress.at.in > $@-t && chmod a-w $@-t && mv $@-t $@
-
-CLEANFILES += compress-xz.at
-compress-xz.at: compress.at.in
-	$(AM_V_GEN)rm -rf $@ $@-t
-	$(AM_V_at)sed 's/@tool@/xz/g;s/@suff@/xz/g;s/@suff2@/txz/g;' \
-	  $(srcdir)/compress.at.in > $@-t && chmod a-w $@-t && mv $@-t $@
-
-CLEANFILES += compress-bzip2.at
-compress-bzip2.at: compress.at.in
-	$(AM_V_GEN)rm -rf $@ $@-t
-	$(AM_V_at)sed 's/@tool@/bzip2/g;s/@suff@/bz2/g;s/@suff2@/tbz2/g;' \
-	  $(srcdir)/compress.at.in > $@-t && chmod a-w $@-t && mv $@-t $@
-
-CLEANFILES += compress-lzip.at
-compress-lzip.at: compress.at.in
-	$(AM_V_GEN)rm -rf $@ $@-t
-	$(AM_V_at)sed 's/@tool@/lzip/g;s/@suff@/lz/g;s/@suff2@//g;' \
-	  $(srcdir)/compress.at.in > $@-t && chmod a-w $@-t && mv $@-t $@
-
-CLEANFILES += compress-lzop.at
-compress-lzop.at: compress.at.in
-	$(AM_V_GEN)rm -rf $@ $@-t
-	$(AM_V_at)sed 's/@tool@/lzop/g;s/@suff@/lzo/g;s/@suff2@//g;' \
-	  $(srcdir)/compress.at.in > $@-t && chmod a-w $@-t && mv $@-t $@
 
 distclean-local:
 	-rm -rf download
