@@ -1,5 +1,21 @@
-GNU tar NEWS - User visible changes. 2019-01-02
+GNU tar NEWS - User visible changes. 2019-01-15
 Please send GNU tar bug reports to <bug-tar@gnu.org>
+
+
+version 1.31.90 (git)
+
+* Fix the use of --checkpoint without explicit --checkpoint-action
+
+* Fix extraction with the -U option
+
+See http://lists.gnu.org/archive/html/bug-tar/2019-01/msg00015.html,
+for details
+
+* Fix iconv usage on BSD-based systems
+
+* Fix possible NULL dereference (savannah bug #55369)
+
+* Improve the testsuite
 
 
 version 1.31 - Sergey Poznyakoff, 2019-01-02
