@@ -13,7 +13,7 @@
 .\"
 .\" You should have received a copy of the GNU General Public License
 .\" along with this program.  If not, see <http://www.gnu.org/licenses/>.
-.TH TAR 1 "January 14, 2019" "TAR" "GNU TAR Manual"
+.TH TAR 1 "February 4, 2019" "TAR" "GNU TAR Manual"
 .SH NAME
 tar \- an archiving utility
 .SH SYNOPSIS
@@ -561,9 +561,6 @@ stored in archive with owner name \fINEWUSR\fR and UID \fINEWUID\fR.
 .TP
 \fB\-p\fR, \fB\-\-preserve\-permissions\fR, \fB\-\-same\-permissions\fR
 extract information about file permissions (default for superuser)
-.TP
-\fB\-\-preserve\fR
-Same as both \fB\-p\fR and \fB\-s\fR.
 .TP
 \fB\-\-same\-owner\fR
 Try extracting files with the same ownership as exists in the archive
@@ -1117,7 +1114,11 @@ The \fBSIG\fR prefix can be omitted.
 Print file modification times in UTC.
 .TP
 \fB\-v\fR, \fB\-\-verbose\fR
-Verbosely list files processed.
+Verbosely list files processed.  Each instance of this option on the
+command line increases the verbosity level by one.  The maximum
+verbosity level is 3.  For a detailed discussion of how various
+verbosity levels affect tar's output, please refer to \fBGNU Tar
+Manual\fR, subsection 2.5.1 "\fBThe \-\-verbose Option\fR".
 .TP
 \fB\-\-warning\fR=\fIKEYWORD\fR
 Enable or disable warning messages identified by \fIKEYWORD\fR.  The

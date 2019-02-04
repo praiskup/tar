@@ -3795,8 +3795,8 @@ them with the equivalent long option.
 
 @item -m @tab @ref{--touch}.
 
-@item -o @tab When creating, @ref{--no-same-owner}, when extracting ---
-@ref{--portability}.
+@item -o @tab When extracting, same as @ref{--no-same-owner}. When creating,
+-- @ref{--old-archive}.
 
 The latter usage is deprecated.  It is retained for compatibility with
 the earlier versions of @GNUTAR{}.  In future releases
