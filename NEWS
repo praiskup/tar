@@ -1,8 +1,8 @@
-GNU tar NEWS - User visible changes. 2019-01-15
+GNU tar NEWS - User visible changes. 2019-02-23
 Please send GNU tar bug reports to <bug-tar@gnu.org>
 
 
-version 1.31.90 (git)
+version 1.32 - Sergey Poznyakoff, 2019-02-23
 
 * Fix the use of --checkpoint without explicit --checkpoint-action
 
