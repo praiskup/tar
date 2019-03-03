@@ -314,8 +314,6 @@ normalize_filename (int cdidx, const char *name)
       size_t copylen;
       bool need_separator;
 
-      if (!cdpath)
-	call_arg_fatal ("getcwd", ".");
       copylen = strlen (cdpath);
       need_separator = ! (DOUBLE_SLASH_IS_DISTINCT_ROOT
 			  && copylen == 2 && ISSLASH (cdpath[1]));
@@ -922,6 +920,8 @@ chdir_arg (char const *dir)
 	{
 	  wd[wd_count].name = ".";
 	  wd[wd_count].abspath = xgetcwd ();
+	  if (!wd[wd_count].abspath)
+	    call_arg_fatal ("getcwd", ".");
 	  wd[wd_count].fd = AT_FDCWD;
 	  wd_count++;
 	}
@@ -1047,7 +1047,11 @@ tar_getcdpath (int idx)
     {
       static char *cwd;
       if (!cwd)
-	cwd = xgetcwd ();
+	{
+	  cwd = xgetcwd ();
+	  if (!cwd)
+	    call_arg_fatal ("getcwd", ".");
+	}
       return cwd;
     }
   return wd[idx].abspath;
