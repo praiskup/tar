@@ -369,15 +369,31 @@ xheader_format_name (struct tar_stat_info *st, const char *fmt, size_t n)
   return buf;
 }
 
+/* Table of templates for the names of POSIX extended headers.
+   Indexed by the the type of the header (per-file or global)
+   and POSIX compliance mode (0 or q depending on whether
+   POSIXLY_CORRECT environment variable is set. */
+static const char *header_template[][2] = {
+  /* Individual header templates: */
+  { "%d/PaxHeaders/%f", "%d/PaxHeaders.%p/%f" },
+  /* Global header templates: */
+  { "/GlobalHead.%n", "/GlobalHead.%p.%n" }
+};
+/* Indices to the above table */
+enum {
+  pax_file_header,
+  pax_global_header
+};
+/* Return the name for the POSIX extended header T */
+#define HEADER_TEMPLATE(t) header_template[t][posixly_correct]
+
 char *
 xheader_xhdr_name (struct tar_stat_info *st)
 {
   if (!exthdr_name)
-    assign_string (&exthdr_name, "%d/PaxHeaders.%p/%f");
+    assign_string (&exthdr_name, HEADER_TEMPLATE (pax_file_header));
   return xheader_format_name (st, exthdr_name, 0);
 }
-
-#define GLOBAL_HEADER_TEMPLATE "/GlobalHead.%p.%n"
 
 char *
 xheader_ghdr_name (void)
@@ -385,13 +401,14 @@ xheader_ghdr_name (void)
   if (!globexthdr_name)
     {
       size_t len;
+      const char *global_header_template = HEADER_TEMPLATE (pax_global_header);
       const char *tmp = getenv ("TMPDIR");
       if (!tmp)
 	tmp = "/tmp";
-      len = strlen (tmp) + sizeof (GLOBAL_HEADER_TEMPLATE); /* Includes nul */
+      len = strlen (tmp) + strlen (global_header_template) + 1;
       globexthdr_name = xmalloc (len);
       strcpy(globexthdr_name, tmp);
-      strcat(globexthdr_name, GLOBAL_HEADER_TEMPLATE);
+      strcat(globexthdr_name, global_header_template);
     }
 
   return xheader_format_name (NULL, globexthdr_name, global_header_count + 1);

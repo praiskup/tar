@@ -10458,8 +10458,15 @@ If no option @samp{exthdr.name=string} is specified, @command{tar}
 will use the following default value:
 
 @smallexample
-%d/PaxHeaders.%p/%f
+%d/PaxHeaders/%f
 @end smallexample
+
+This default is selected to ensure the reproducibility of the
+archive. @acronym{POSIX} standard recommends to use
+@samp{%d/PaxHeaders.%p/%f} instead, which means the two archives
+created with the same set of options and containing the same set
+of files will be byte-to-byte different. This default will be used
+if the environment variable @env{POSIXLY_CORRECT} is set.
 
 @item exthdr.mtime=@var{value}
 
@@ -10490,11 +10497,17 @@ If no option @samp{globexthdr.name=string} is specified, @command{tar}
 will use the following default value:
 
 @smallexample
+$TMPDIR/GlobalHead.%n
+@end smallexample
+
+If the environment variable @env{POSIXLY_CORRECT} is set, the
+following value is used instead:
+
+@smallexample
 $TMPDIR/GlobalHead.%p.%n
 @end smallexample
 
-@noindent
-where @samp{$TMPDIR} represents the value of the @var{TMPDIR}
+In both cases, @samp{$TMPDIR} stands for the value of the @var{TMPDIR}
 environment variable.  If @var{TMPDIR} is not set, @command{tar}
 uses @samp{/tmp}.
 
@@ -10557,7 +10570,7 @@ archives created using it, will be binary equivalent if they have the
 same contents:
 
 @smallexample
---pax-option=exthdr.name=%d/PaxHeaders/%f,atime:=0
+--pax-option=atime:=0
 @end smallexample
 
 @noindent
@@ -10566,14 +10579,27 @@ from them, you will also need to eliminate changes due to ctime, as
 shown in examples below:
 
 @smallexample
---pax-option=exthdr.name=%d/PaxHeaders/%f,atime:=0,ctime:=0
+--pax-option=atime:=0,ctime:=0
 @end smallexample
 
 @noindent
 or
 
 @smallexample
---pax-option=exthdr.name=%d/PaxHeaders/%f,atime:=0,delete=ctime
+--pax-option=atime:=0,delete=ctime
+@end smallexample
+
+Notice, that if you create an archive in POSIX format (@pxref{posix})
+and the environment variable @env{POSIXLY_CORRECT} is set, then the
+two archives created using the same options on the same set of files
+will not be byte-to-byte equivalent even with the above option.  This
+is because the posix default for extended header names includes the
+PID of the tar process, which is different at each run. To produce
+byte-to-byte equivalent archives in this case, either unset
+@env{POSIXLY_CORRECT}, or use the following option:
+
+@smallexample
+---pax-option=exthdr.name=%d/PaxHeaders/%f,atime:=0,ctime:=0
 @end smallexample
 
 @node Checksumming
@@ -10699,7 +10725,7 @@ GNU extensions.  More specifically, the very first part retains its
 original name, and all subsequent parts are named using the pattern:
 
 @smallexample
-%d/GNUFileParts.%p/%f.%n
+%d/GNUFileParts/%f.%n
 @end smallexample
 
 @noindent
@@ -10718,13 +10744,12 @@ created the archive.
 @end multitable
 
 For example, if the file @file{var/longfile} was split during archive
-creation between three volumes, and the creator @command{tar} process
-had process @acronym{ID} @samp{27962}, then the member names will be:
+creation between three volumes, then the member names will be:
 
 @smallexample
 var/longfile
-var/GNUFileParts.27962/longfile.1
-var/GNUFileParts.27962/longfile.2
+var/GNUFileParts/longfile.1
+var/GNUFileParts/longfile.2
 @end smallexample
 
 When you extract your archive using a third-party @command{tar}, these
@@ -10735,9 +10760,9 @@ the proper order, for example:
 @smallexample
 @group
 $ @kbd{cd var}
-$ @kbd{cat GNUFileParts.27962/longfile.1 \
-  GNUFileParts.27962/longfile.2 >> longfile}
-$ rm -f GNUFileParts.27962
+$ @kbd{cat GNUFileParts/longfile.1 \
+  GNUFileParts/longfile.2 >> longfile}
+$ rm -f GNUFileParts
 @end group
 @end smallexample
 
@@ -10763,12 +10788,12 @@ more warnings and more files generated on your disk, e.g.:
 @smallexample
 @group
 $ @kbd{tar xf vol-1.tar}
-var/PaxHeaders.27962/longfile: Unknown file type 'x', extracted as
+var/PaxHeaders/longfile: Unknown file type 'x', extracted as
 normal file
 Unexpected EOF in archive
 $ @kbd{tar xf vol-2.tar}
-tmp/GlobalHead.27962.1: Unknown file type 'g', extracted as normal file
-GNUFileParts.27962/PaxHeaders.27962/sparsefile.1: Unknown file type
+tmp/GlobalHead.1: Unknown file type 'g', extracted as normal file
+GNUFileParts/PaxHeaders/sparsefile.1: Unknown file type
 'x', extracted as normal file
 @end group
 @end smallexample
@@ -10884,8 +10909,8 @@ use.  Continuing our example:
 
 @smallexample
 @group
-$ @kbd{xsparse -v -x /home/gray/PaxHeaders.6058/sparsefile \
-  /home/gray/GNUSparseFile.6058/sparsefile}
+$ @kbd{xsparse -v -x /home/gray/PaxHeaders/sparsefile \
+  /home/gray/GNUSparseFile/sparsefile}
 Reading extended header file
 Found variable GNU.sparse.major = 1
 Found variable GNU.sparse.minor = 0
@@ -10915,8 +10940,7 @@ If you use a @command{tar} implementation that does not support PAX
 format, extended headers for each member will be extracted as a
 separate file.  If we represent the member name as
 @file{@var{dir}/@var{name}}, then the extended header file will be
-named @file{@var{dir}/@/PaxHeaders.@var{n}/@/@var{name}}, where
-@var{n} is an integer number.
+named @file{@var{dir}/@/PaxHeaders/@/@var{name}}.
 
 Things become more difficult if your @command{tar} implementation
 does support PAX headers, because in this case you will have to

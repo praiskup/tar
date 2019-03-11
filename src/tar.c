@@ -2230,6 +2230,8 @@ decode_options (int argc, char **argv)
   args.version_control_string = 0;
   args.compress_autodetect = false;
 
+  posixly_correct = getenv ("POSIXLY_CORRECT") != NULL;
+
   subcommand_option = UNKNOWN_SUBCOMMAND;
   archive_format = DEFAULT_FORMAT;
   blocking_factor = DEFAULT_BLOCKING;
