@@ -145,31 +145,12 @@ perms2acl (int perms)
   return acl_from_text (val);
 }
 
-static char *
-skip_to_ext_fields (char *ptr)
-{
-  /* skip tag name (user/group/default/mask) */
-  ptr += strcspn (ptr, ":,\n");
-
-  if (*ptr != ':')
-    return ptr;
-  ++ptr;
-
-  ptr += strcspn (ptr, ":,\n"); /* skip user/group name */
-
-  if (*ptr != ':')
-    return ptr;
-  ++ptr;
-
-  ptr += strcspn (ptr, ":,\n"); /* skip perms */
-
-  return ptr;
-}
-
-/* The POSIX draft allows extra fields after the three main ones. Star
-   uses this to add a fourth field for user/group which is the numeric ID.
-   This function removes such extra fields by overwriting them with the
-   characters that follow. */
+/* The POSIX draft allows extra fields after the three main ones.
+   Archivers use this to add a fourth field to store user/group numeric ID,
+   e.g. 'user:jdoe:rw-:666'.  Depending on whether the username/group name
+   exists on the system or whether --numeric-owner option is used, replace the
+   2nd field with the 4th one.  If there are more fields (5th and more), such
+   fields are just removed and ignored. */
 static char *
 fixup_extra_acl_fields (char *ptr)
 {
@@ -178,21 +159,81 @@ fixup_extra_acl_fields (char *ptr)
 
   while (*src)
     {
-      const char *old = src;
-      size_t len = 0;
+      char backup_mod[3];
+      size_t len;
+      char *tag, *name;
 
-      src = skip_to_ext_fields (src);
-      len = src - old;
-      if (old != dst)
-        memmove (dst, old, len);
+      /* relocate tag (user/group/mask) */
+      len = strcspn (src, ":,\n");
+      if (*(src+len) != ':')
+          return NULL;
+      len = len + 1; /* move with colon */
+      memmove (dst, src, len);
+      tag = dst;
+      src += len;
       dst += len;
+      name = dst;
+
+      /* relocate name/id */
+      len = strcspn (src, ":,\n");
+      if (*(src+len) != ':')
+          return NULL;
+      memmove (dst, src, len);
+      dst[len] = 0; /* for now terminate, so {u,g}name_to_{u,g}id is easier */
+      src += len + 1;
+      dst += len;
+
+      /* remember mode (rwx) */
+      len = strcspn (src, ":,\n");
+      if (len > 3)
+          return NULL;
+      memcpy(backup_mod, src, 3);
+      src += len;
+
+      if (*src == ':')
+        { /* an extension, 'user:name:rwx:112' */
+          bool replace_name = false;
+          src ++;
+          len = strcspn (src, ":,\n");
+
+          if (tag[0] == 'u')
+            {
+              uid_t id;
+              if (numeric_owner_option || !uname_to_uid (name, &id))
+                replace_name = true;
+            }
+          else if (tag[0] == 'g')
+            {
+              gid_t id;
+              if (numeric_owner_option || !gname_to_gid (name, &id))
+                replace_name = true;
+            }
+
+          if (replace_name)
+            {
+              memmove (name, src, len);
+              dst = name + len;
+            }
+            src += len;
+        }
+
+      *dst++ = ':';
+
+      /* finally store the mode  on its place */
+      memcpy (dst, backup_mod, 3);
+      dst += 3;
 
       if (*src == ':')          /* We have extra fields, skip them all */
         src += strcspn (src, "\n,");
 
       if ((*src == '\n') || (*src == ','))
-        *dst++ = *src++;        /* also done when dst == src, but that's ok */
+        {
+          *dst = ',';           /* enforce one-line version */
+          dst++;
+          src++;
+        }
     }
+
   if (src != dst)
     *dst = 0;
 
@@ -210,8 +251,11 @@ xattrs__acls_set (struct tar_stat_info const *st,
 
   if (ptr)
     {
-      /* assert (strlen (ptr) == len); */
-      ptr = fixup_extra_acl_fields (ptr);
+      if (!fixup_extra_acl_fields (ptr))
+        {
+          WARN ((0, 0, _("Invalid ACL format")));
+          return;
+        }
       acl = acl_from_text (ptr);
     }
   else if (def)
@@ -337,11 +381,29 @@ acls_one_line (const char *prefix, char delim,
   /* support both long and short text representation of posix acls */
   struct obstack stk;
   int pref_len = strlen (prefix);
-  const char *oldstring = aclstring;
+  const char *oldstring;
   int pos = 0;
+  char *numerized = NULL;
 
   if (!aclstring || !len)
     return;
+
+  if (numeric_owner_option)
+    {
+      /* we don't want to modify external *aclstring */
+      numerized = malloc (len + 1);
+      memcpy (numerized, aclstring, len);
+      numerized[len] = 0;
+      if (!fixup_extra_acl_fields (numerized))
+        {
+          WARN ((0, 0, _("Invalid ACL format")));
+          return;
+        }
+      aclstring = numerized;
+      len = strlen (numerized);
+    }
+
+  oldstring = aclstring;
 
   obstack_init (&stk);
   while (pos <= len)
@@ -364,6 +426,7 @@ acls_one_line (const char *prefix, char delim,
 
   fprintf (stdlis, "%s", (char *) obstack_finish (&stk));
 
+  free (numerized);
   obstack_free (&stk, NULL);
 }
 
