@@ -340,6 +340,9 @@ GLOBAL const char *volume_label_option;
 
 /* Other global variables.  */
 
+/* Force POSIX-compliance */
+GLOBAL bool posixly_correct;
+
 /* File descriptor for archive file.  */
 GLOBAL int archive;
 
