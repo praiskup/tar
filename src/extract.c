@@ -400,7 +400,7 @@ find_direct_ancestor (char const *file_name)
   struct delayed_set_stat *h = delayed_set_stat_head;
   while (h)
     {
-      if (h && ! h->after_links
+      if (! h->after_links
 	  && strncmp (file_name, h->file_name, h->file_name_len) == 0
 	  && ISSLASH (file_name[h->file_name_len])
 	  && (last_component (file_name) == file_name + h->file_name_len + 1))
@@ -458,25 +458,56 @@ delay_set_stat (char const *file_name, struct tar_stat_info const *st,
 		mode_t mode, int atflag)
 {
   size_t file_name_len = strlen (file_name);
-  struct delayed_set_stat *data = xmalloc (sizeof (*data));
-  data->next = delayed_set_stat_head;
+  struct delayed_set_stat *data;
+
+  for (data = delayed_set_stat_head; data; data = data->next)
+    if (strcmp (data->file_name, file_name) == 0)
+      break;
+
+  if (data)
+    {
+      if (data->interdir)
+	{
+	  struct stat real_st;
+	  if (fstatat (chdir_fd, data->file_name,
+		       &real_st, data->atflag) != 0)
+	    {
+	      stat_error (data->file_name);
+	    }
+	  else
+	    {
+	      data->dev = real_st.st_dev;
+	      data->ino = real_st.st_ino;
+	    }
+	}
+    }
+  else
+    {
+      data = xmalloc (sizeof (*data));
+      data->next = delayed_set_stat_head;
+      delayed_set_stat_head = data;
+      data->file_name_len = file_name_len;
+      data->file_name = xstrdup (file_name);
+      data->after_links = false;
+      if (st)
+	{
+	  data->dev = st->stat.st_dev;
+	  data->ino = st->stat.st_ino;
+	}
+    }
+
   data->mode = mode;
   if (st)
     {
-      data->dev = st->stat.st_dev;
-      data->ino = st->stat.st_ino;
       data->uid = st->stat.st_uid;
       data->gid = st->stat.st_gid;
       data->atime = st->atime;
       data->mtime = st->mtime;
     }
-  data->file_name_len = file_name_len;
-  data->file_name = xstrdup (file_name);
   data->current_mode = current_mode;
   data->current_mode_mask = current_mode_mask;
   data->interdir = ! st;
   data->atflag = atflag;
-  data->after_links = 0;
   data->change_dir = chdir_current;
   data->cntx_name = NULL;
   if (st)
@@ -508,8 +539,6 @@ delay_set_stat (char const *file_name, struct tar_stat_info const *st,
       data->xattr_map = NULL;
       data->xattr_map_size = 0;
     }
-  strcpy (data->file_name, file_name);
-  delayed_set_stat_head = data;
   if (must_be_dot_or_slash (file_name))
     mark_after_links (data);
 }
@@ -523,7 +552,7 @@ repair_delayed_set_stat (char const *dir,
 			 struct stat const *dir_stat_info)
 {
   struct delayed_set_stat *data;
-  for (data = delayed_set_stat_head;  data;  data = data->next)
+  for (data = delayed_set_stat_head; data; data = data->next)
     {
       struct stat st;
       if (fstatat (chdir_fd, data->file_name, &st, data->atflag) != 0)
