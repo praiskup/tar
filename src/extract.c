@@ -1283,10 +1283,15 @@ extract_file (char *file_name, int typeflag)
    replaced after other extraction is done by a symbolic link if
    IS_SYMLINK is true, and by a hard link otherwise.  Set
    *INTERDIR_MADE if an intermediate directory is made in the
-   process.  */
+   process.
+   Install the created struct delayed_link after PREV, unless the
+   latter is NULL, in which case insert it at the head of the delayed
+   link list.
+*/
 
 static int
-create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made)
+create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made,
+			 struct delayed_link *prev)
 {
   int fd;
   struct stat st;
@@ -1321,8 +1326,16 @@ create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made)
 	xmalloc (offsetof (struct delayed_link, target)
 		 + strlen (current_stat_info.link_name)
 		 + 1);
-      p->next = delayed_link_head;
-      delayed_link_head = p;
+      if (prev)
+	{
+	  p->next = prev->next;
+	  prev->next = p;
+	}
+      else
+	{
+	  p->next = delayed_link_head;
+	  delayed_link_head = p;
+	}
       p->dev = st.st_dev;
       p->ino = st.st_ino;
       p->birthtime = get_stat_birthtime (&st);
@@ -1337,7 +1350,7 @@ create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made)
 	}
       p->change_dir = chdir_current;
       p->sources = xmalloc (offsetof (struct string_list, string)
-			    + strlen (file_name) + 1);
+			     + strlen (file_name) + 1);
       p->sources->next = 0;
       strcpy (p->sources->string, file_name);
       p->cntx_name = NULL;
@@ -1346,7 +1359,8 @@ create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made)
       p->acls_a_len = 0;
       p->acls_d_ptr = NULL;
       p->acls_d_len = 0;
-      xheader_xattr_copy (&current_stat_info, &p->xattr_map, &p->xattr_map_size);
+      xheader_xattr_copy (&current_stat_info, &p->xattr_map,
+			  &p->xattr_map_size);
       strcpy (p->target, current_stat_info.link_name);
 
       if ((h = find_direct_ancestor (file_name)) != NULL)
@@ -1358,18 +1372,57 @@ create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made)
   return -1;
 }
 
+/* Find a delayed_link structure corresponding to the source NAME.
+   Such a structure exists in the delayed link list only if the link
+   placeholder file has been created. Therefore, try to stat the NAME
+   first. If it doesn't exist, there is no matching entry in the list.
+   Otherwise, look for the entry in list which has the matching dev
+   and ino numbers.
+   
+   This approach avoids scanning the singly-linked list in obvious cases
+   and does not rely on comparing file names, which may differ for
+   various reasons (e.g. relative vs. absolute file names).
+ */
+static struct delayed_link *
+find_delayed_link_source (char const *name)
+{
+  struct delayed_link *dl;
+  struct stat st;
+
+  if (!delayed_link_head)
+    return NULL;
+  
+  if (fstatat (chdir_fd, name, &st, AT_SYMLINK_NOFOLLOW))
+    {
+      if (errno != ENOENT)
+	stat_error (name);
+      return NULL;
+    }
+  
+  for (dl = delayed_link_head; dl; dl = dl->next)
+    {
+      if (dl->dev == st.st_dev && dl->ino == st.st_ino)
+	break;
+    }
+  return dl;
+}
+  
 static int
 extract_link (char *file_name, int typeflag)
 {
   bool interdir_made = false;
   char const *link_name;
   int rc;
-
+  struct delayed_link *dl;
+  
   link_name = current_stat_info.link_name;
 
   if (! absolute_names_option && contains_dot_dot (link_name))
-    return create_placeholder_file (file_name, false, &interdir_made);
-
+    return create_placeholder_file (file_name, false, &interdir_made, NULL);
+  dl = find_delayed_link_source (link_name);
+  if (dl)
+    return create_placeholder_file (file_name, false, &interdir_made, dl);
+  
   do
     {
       struct stat st1, st2;
@@ -1431,7 +1484,7 @@ extract_symlink (char *file_name, int typeflag)
   if (! absolute_names_option
       && (IS_ABSOLUTE_FILE_NAME (current_stat_info.link_name)
 	  || contains_dot_dot (current_stat_info.link_name)))
-    return create_placeholder_file (file_name, true, &interdir_made);
+    return create_placeholder_file (file_name, true, &interdir_made, NULL);
 
   while (symlinkat (current_stat_info.link_name, chdir_fd, file_name) != 0)
     switch (maybe_recoverable (file_name, false, &interdir_made))
@@ -1814,8 +1867,8 @@ apply_delayed_links (void)
 	  sources = next;
 	}
 
-   xheader_xattr_free (ds->xattr_map, ds->xattr_map_size);
-   free (ds->cntx_name);
+      xheader_xattr_free (ds->xattr_map, ds->xattr_map_size);
+      free (ds->cntx_name);
 
       {
 	struct delayed_link *next = ds->next;
