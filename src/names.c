@@ -1058,19 +1058,8 @@ copy_name (struct name_elt *ep)
 
   source = ep->v.name;
   source_len = strlen (source);
-  if (name_buffer_length < source_len)
-    {
-      do
-	{
-	  name_buffer_length *= 2;
-	  if (! name_buffer_length)
-	    xalloc_die ();
-	}
-      while (name_buffer_length < source_len);
-
-      free (name_buffer);
-      name_buffer = xmalloc(name_buffer_length + 2);
-    }
+  while (name_buffer_length <= source_len)
+    name_buffer = x2realloc(name_buffer, &name_buffer_length);
   strcpy (name_buffer, source);
   chopslash (name_buffer);
 }
@@ -1591,9 +1580,8 @@ add_hierarchy_to_namelist (struct tar_stat_info *st, struct name *name)
       size_t name_length = name->length;
       size_t allocated_length = (name_length >= NAME_FIELD_SIZE
 				 ? name_length + NAME_FIELD_SIZE
-				 : NAME_FIELD_SIZE);
-      char *namebuf = xmalloc (allocated_length + 1);
-				/* FIXME: + 2 above?  */
+				 : NAME_FIELD_SIZE) + 2;
+      char *namebuf = xmalloc (allocated_length);
       const char *string;
       size_t string_length;
       int change_dir = name->change_dir;
@@ -1614,18 +1602,10 @@ add_hierarchy_to_namelist (struct tar_stat_info *st, struct name *name)
 	      struct tar_stat_info subdir;
 	      int subfd;
 
-	      if (allocated_length <= name_length + string_length)
-		{
-		  do
-		    {
-		      allocated_length *= 2;
-		      if (! allocated_length)
-			xalloc_die ();
-		    }
-		  while (allocated_length <= name_length + string_length);
-
-		  namebuf = xrealloc (namebuf, allocated_length + 1);
-		}
+	      /* need to have at least string_length bytes above the
+		 name_length, this includes the trailing null character */
+	      while (allocated_length < name_length + string_length)
+		namebuf = x2realloc (namebuf, &allocated_length);
 	      strcpy (namebuf + name_length, string + 1);
 	      np = addname (namebuf, change_dir, false, name);
 	      if (!child_head)
