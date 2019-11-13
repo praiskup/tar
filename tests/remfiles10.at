@@ -37,10 +37,16 @@ exit $tar_status
 B
 foo
 ],
+[stderr],[],[],[gnu])
+
+# Check standard error produced by the above command.  Exact errno reported
+# when trying to remove CWD may differ, so it is stripped off.
+AT_CHECK([sed '2s/:[[^:]]*$//' stderr],
+[0],
 [A
-tar: .: Cannot rmdir: Invalid argument
+tar: .: Cannot rmdir
 tar: Exiting with failure status due to previous errors
 B
-],[],[],[gnu])
+])
 
 AT_CLEANUP
