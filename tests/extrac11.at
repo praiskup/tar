@@ -72,6 +72,9 @@ done
 ) >/dev/null 2>&1 &&
    AT_SKIP_TEST
 
+# Test if it is possible to limit the number of file descriptors to 10.
+( ulimit -n 10 ) >/dev/null 2>&1 || AT_SKIP_TEST
+   
 # Tar should work when there are few, but enough, file descriptors.
 ( (exec 3<&- 4<&- 5<&- 6<&- 7<&- 8<&- 9<&- &&
    ulimit -n 10 &&
