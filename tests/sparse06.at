@@ -23,7 +23,7 @@ AT_KEYWORDS([sparse sparse06 chdir])
 
 m4_define([check_pattern],[
 rm -rf out archive.tar smallsparse && mkdir out
-genfile --sparse --quiet --file smallsparse $1
+genfile --sparse --quiet --file smallsparse $1 || AT_SKIP_TEST
 tar -cSf archive.tar smallsparse
 tar -xf archive.tar -C out
 cmp smallsparse out/smallsparse
@@ -33,7 +33,7 @@ AT_TAR_CHECK([
 AT_SEEKHOLE_PREREQ
 
 TAR_OPTIONS="$TAR_OPTIONS --hole-detection=seek"
-genfile --sparse --file bigsparse 0 ABC 8G DEF
+genfile --sparse --file bigsparse 0 ABC 8G DEF || AT_SKIP_TEST
 tar -cSf a bigsparse
 test $? -eq 0 || exit 1
 

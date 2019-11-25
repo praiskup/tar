@@ -29,7 +29,7 @@ AT_KEYWORDS([truncate filechange sparse sptr sptrdiff diff])
 # This triggers short read in check_sparse_region.
 AT_TAR_CHECK([
 genfile --sparse --block-size=1024 --file foo \
-  0 ABCDEFGHIJ 1M ABCDEFGHIJ 10M ABCDEFGHIJ 200M ABCDEFGHIJ
+  0 ABCDEFGHIJ 1M ABCDEFGHIJ 10M ABCDEFGHIJ 200M ABCDEFGHIJ || AT_SKIP_TEST
 genfile --file baz
 echo creating
 tar --sparse -vcf bar foo baz
