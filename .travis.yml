@@ -11,4 +11,3 @@ script:
   test -n "$COPR_PUSH_WEBHOOK"
   curl -o copr-build https://raw.githubusercontent.com/praiskup/copr-ci-tooling/master/copr-travis-submit
   exec bash copr-build
-
