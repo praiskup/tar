@@ -121,6 +121,7 @@ TESTSUITE_AT = \
  extrac20.at\
  extrac21.at\
  extrac22.at\
+ extrac23.at\
  filerem01.at\
  filerem02.at\
  dirrem01.at\

@@ -194,7 +194,7 @@ extr_init (void)
 
 /* Use fchmod if possible, fchmodat otherwise.  */
 static int
-fd_chmod (int fd, char const *file, mode_t mode, int atflag)
+fd_i_chmod (int fd, char const *file, mode_t mode, int atflag)
 {
   if (0 <= fd)
     {
@@ -203,6 +203,42 @@ fd_chmod (int fd, char const *file, mode_t mode, int atflag)
 	return result;
     }
   return fchmodat (chdir_fd, file, mode, atflag);
+}
+
+/* A version of fd_i_chmod which gracefully handles several common error
+   conditions.  Additional argument TYPEFLAG is the type of file in tar
+   notation.
+ */
+static int
+fd_chmod(int fd, char const *file_name, int mode, int atflag, int typeflag)
+{
+  int chmod_errno = fd_i_chmod (fd, file_name, mode, atflag) == 0 ? 0 : errno;
+
+  /* On Solaris, chmod may fail if we don't have PRIV_ALL, because
+     setuid-root files would otherwise be a backdoor.  See
+     http://opensolaris.org/jive/thread.jspa?threadID=95826
+     (2009-09-03).  */
+  if (chmod_errno == EPERM && (mode & S_ISUID)
+      && priv_set_restore_linkdir () == 0)
+    {
+      chmod_errno = fd_i_chmod (fd, file_name, mode, atflag) == 0 ? 0 : errno;
+      priv_set_remove_linkdir ();
+    }
+
+  /* Linux fchmodat does not support AT_SYMLINK_NOFOLLOW, and
+     returns ENOTSUP even when operating on non-symlinks, try
+     again with the flag disabled if it does not appear to be
+     supported and if the file is not a symlink.  This
+     introduces a race, alas.  */
+  if (atflag && typeflag != SYMTYPE && ! implemented (chmod_errno))
+    chmod_errno = fd_i_chmod (fd, file_name, mode, 0) == 0 ? 0 : errno;
+
+  if (chmod_errno && (typeflag != SYMTYPE || implemented (chmod_errno)))
+    {
+      errno = chmod_errno;
+      return -1;
+    }
+  return 0;
 }
 
 /* Use fchown if possible, fchownat otherwise.  */
@@ -259,35 +295,8 @@ set_mode (char const *file_name,
 
       if (current_mode != mode)
 	{
-	  int chmod_errno =
-	    fd_chmod (fd, file_name, mode, atflag) == 0 ? 0 : errno;
-
-	  /* On Solaris, chmod may fail if we don't have PRIV_ALL, because
-	     setuid-root files would otherwise be a backdoor.  See
-	     http://opensolaris.org/jive/thread.jspa?threadID=95826
-	     (2009-09-03).  */
-	  if (chmod_errno == EPERM && (mode & S_ISUID)
-	      && priv_set_restore_linkdir () == 0)
-	    {
-	      chmod_errno =
-		fd_chmod (fd, file_name, mode, atflag) == 0 ? 0 : errno;
-	      priv_set_remove_linkdir ();
-	    }
-
-	  /* Linux fchmodat does not support AT_SYMLINK_NOFOLLOW, and
-	     returns ENOTSUP even when operating on non-symlinks, try
-	     again with the flag disabled if it does not appear to be
-	     supported and if the file is not a symlink.  This
-	     introduces a race, alas.  */
-	  if (atflag && typeflag != SYMTYPE && ! implemented (chmod_errno))
-	    chmod_errno = fd_chmod (fd, file_name, mode, 0) == 0 ? 0 : errno;
-
-	  if (chmod_errno
-	      && (typeflag != SYMTYPE || implemented (chmod_errno)))
-	    {
-	      errno = chmod_errno;
-	      chmod_error_details (file_name, mode);
-	    }
+	  if (fd_chmod (fd, file_name, mode, atflag, typeflag))
+	    chmod_error_details (file_name, mode);
 	}
     }
 }
@@ -975,6 +984,26 @@ is_directory_link (const char *file_name)
   return res;
 }
 
+/* Given struct stat of a directory (or directory member) whose ownership
+   or permissions of will be restored later, return the temporary permissions
+   for that directory, sufficiently restrictive so that in the meantime
+   processes owned by other users do not inadvertently create files under this
+   directory that inherit the wrong owner, group, or permissions from the
+   directory.
+
+   If not root, though, make the directory writeable and searchable at first,
+   so that files can be created under it.
+*/
+static inline int
+safe_dir_mode (struct stat const *st)
+{
+  return ((st->st_mode
+	   & (0 < same_owner_option || 0 < same_permissions_option
+	      ? S_IRWXU
+	      : MODE_RWX))
+	  | (we_are_root ? 0 : MODE_WXUSR));
+}
+
 /* Extractor functions for various member types */
 
 static int
@@ -1004,18 +1033,7 @@ extract_dir (char *file_name, int typeflag)
   else if (typeflag == GNUTYPE_DUMPDIR)
     skip_member ();
 
-  /* If ownership or permissions will be restored later, create the
-     directory with restrictive permissions at first, so that in the
-     meantime processes owned by other users do not inadvertently
-     create files under this directory that inherit the wrong owner,
-     group, or permissions from the directory.  If not root, though,
-     make the directory writeable and searchable at first, so that
-     files can be created under it.  */
-  mode = ((current_stat_info.stat.st_mode
-	   & (0 < same_owner_option || 0 < same_permissions_option
-	      ? S_IRWXU
-	      : MODE_RWX))
-	  | (we_are_root ? 0 : MODE_WXUSR));
+  mode = safe_dir_mode (&current_stat_info.stat);
 
   for (;;)
     {
@@ -1031,6 +1049,7 @@ extract_dir (char *file_name, int typeflag)
       if (errno == EEXIST
 	  && (interdir_made
 	      || keep_directory_symlink_option
+	      || old_files_option == NO_OVERWRITE_DIR_OLD_FILES
 	      || old_files_option == DEFAULT_OLD_FILES
 	      || old_files_option == OVERWRITE_OLD_FILES))
 	{
@@ -1050,6 +1069,31 @@ extract_dir (char *file_name, int typeflag)
 		    {
 		      repair_delayed_set_stat (file_name, &st);
 		      return 0;
+		    }
+		  else if (old_files_option == NO_OVERWRITE_DIR_OLD_FILES)
+		    {
+		      /* Temporarily change the directory mode to a safe
+			 value, to be able to create files in it, should
+			 the need be.
+		      */
+		      mode = safe_dir_mode (&st);
+		      status = fd_chmod(-1, file_name, mode,
+					AT_SYMLINK_NOFOLLOW, DIRTYPE);
+		      if (status == 0)
+			{
+			  /* Store the actual directory mode, to be restored
+			     later.
+			  */
+			  current_stat_info.stat = st;
+			  current_mode = mode & ~ current_umask;
+			  current_mode_mask = MODE_RWX;
+			  atflag = AT_SYMLINK_NOFOLLOW;
+			  break;
+			}
+		      else
+			{
+			  chmod_error_details (file_name, mode);
+			}
 		    }
 		  break;
 		}
