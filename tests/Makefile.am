@@ -200,6 +200,7 @@ TESTSUITE_AT = \
  rename03.at\
  rename04.at\
  rename05.at\
+ rename06.at\
  remfiles01.at\
  remfiles02.at\
  remfiles03.at\

@@ -38,7 +38,15 @@ enum children
 #define DIRF_FOUND    0x0004    /* directory is found on fs */
 #define DIRF_NEW      0x0008    /* directory is new (not found
 				   in the previous dump) */
-#define DIRF_RENAMED  0x0010    /* directory is renamed */
+#define DIRF_RENAMED  0x0010    /* Last target in a chain of renames */
+/* A directory which is renamed from another one is recognized by its
+   orig member, which is not-NULL.  This directory may eventually be
+   the source for another rename, in which case it will be pointed to by
+   the orig member of another directory structure.  The last directory
+   in such a chain of renames (the one which is not pointed to by any
+   other orig) is marked with the DIRF_RENAMED flag.  This marks a starting
+   point from which append_incremental_renames starts encoding renames for
+   this chain. */
 
 #define DIR_IS_INITED(d) ((d)->flags & DIRF_INIT)
 #define DIR_IS_NFS(d) ((d)->flags & DIRF_NFS)
@@ -495,6 +503,7 @@ procdir (const char *name_buffer, struct tar_stat_info *st,
 			    quote_n (1, d->name)));
 		  directory->orig = d;
 		  DIR_SET_FLAG (directory, DIRF_RENAMED);
+		  DIR_CLEAR_FLAG (d, DIRF_RENAMED);
 		  dirlist_replace_prefix (d->name, name_buffer);
 		}
 	      directory->children = CHANGED_CHILDREN;
@@ -537,6 +546,7 @@ procdir (const char *name_buffer, struct tar_stat_info *st,
 			quote_n (1, d->name)));
 	      directory->orig = d;
 	      DIR_SET_FLAG (directory, DIRF_RENAMED);
+	      DIR_CLEAR_FLAG (d, DIRF_RENAMED);
 	      dirlist_replace_prefix (d->name, name_buffer);
 	    }
 	  directory->children = CHANGED_CHILDREN;
@@ -649,7 +659,7 @@ makedumpdir (struct directory *directory, const char *dir)
 
   if (directory->children == ALL_CHILDREN)
     dump = NULL;
-  else if (DIR_IS_RENAMED (directory))
+  else if (directory->orig)
     dump = directory->orig->idump ?
            directory->orig->idump : directory->orig->dump;
   else
@@ -878,44 +888,36 @@ obstack_code_rename (struct obstack *stk, char const *from, char const *to)
 static void
 store_rename (struct directory *dir, struct obstack *stk)
 {
-  if (DIR_IS_RENAMED (dir))
+  struct directory *prev, *p;
+
+  /* Detect eventual cycles. If the chain forms a cycle, prev points to
+     the entry DIR is renamed from.*/
+  for (prev = dir; prev && prev->orig != dir; prev = prev->orig)
+    ;
+
+  if (prev == NULL)
     {
-      struct directory *prev, *p;
-
-      /* Detect eventual cycles and clear DIRF_RENAMED flag, so these entries
-	 are ignored when hit by this function next time.
-	 If the chain forms a cycle, prev points to the entry DIR is renamed
-	 from. In this case it still retains DIRF_RENAMED flag, which will be
-	 cleared in the 'else' branch below */
-      for (prev = dir; prev && prev->orig != dir; prev = prev->orig)
-	DIR_CLEAR_FLAG (prev, DIRF_RENAMED);
-
-      if (prev == NULL)
-	{
-	  for (p = dir; p && p->orig; p = p->orig)
-	    obstack_code_rename (stk, p->orig->name, p->name);
-	}
-      else
-	{
-	  char *temp_name;
-
-	  DIR_CLEAR_FLAG (prev, DIRF_RENAMED);
-
-	  /* Break the cycle by using a temporary name for one of its
-	     elements.
-	     First, create a temp name stub entry. */
-	  temp_name = dir_name (dir->name);
-	  obstack_1grow (stk, 'X');
-	  obstack_grow (stk, temp_name, strlen (temp_name) + 1);
-
-	  obstack_code_rename (stk, dir->name, "");
-
-	  for (p = dir; p != prev; p = p->orig)
-	    obstack_code_rename (stk, p->orig->name, p->name);
-
-	  obstack_code_rename (stk, "", prev->name);
-	  free (temp_name);
-	}
+      for (p = dir; p && p->orig; p = p->orig)
+	obstack_code_rename (stk, p->orig->name, p->name);
+    }
+  else
+    {
+      char *temp_name;
+      
+      /* Break the cycle by using a temporary name for one of its
+	 elements.
+	 First, create a temp name stub entry. */
+      temp_name = dir_name (dir->name);
+      obstack_1grow (stk, 'X');
+      obstack_grow (stk, temp_name, strlen (temp_name) + 1);
+      
+      obstack_code_rename (stk, dir->name, "");
+      
+      for (p = dir; p != prev; p = p->orig)
+	obstack_code_rename (stk, p->orig->name, p->name);
+      
+      obstack_code_rename (stk, "", prev->name);
+      free (temp_name);
     }
 }
 
@@ -941,7 +943,8 @@ append_incremental_renames (struct directory *dir)
     size = 0;
 
   for (dp = dirhead; dp; dp = dp->next)
-    store_rename (dp, &stk);
+    if (DIR_IS_RENAMED (dp))
+      store_rename (dp, &stk);
 
   /* FIXME: Is this the right thing to do when DIR is null?  */
   if (dir && obstack_object_size (&stk) != size)
