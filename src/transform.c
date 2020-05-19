@@ -208,6 +208,8 @@ parse_transform_expr (const char *expr)
     }
 
   delim = expr[1];
+  if (!delim)
+    USAGE_ERROR ((0, 0, _("Invalid transform expression")));
 
   /* Scan regular expression */
   for (i = 2; expr[i] && expr[i] != delim; i++)
