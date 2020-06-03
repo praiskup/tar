@@ -702,7 +702,7 @@ sparse_diff_file (int fd, struct tar_stat_info *st)
   off_t offset = 0;
 
   if (!tar_sparse_init (&file))
-    return dump_status_not_implemented;
+    return false;
 
   file.stat_info = st;
   file.fd = fd;
