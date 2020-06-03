@@ -5726,7 +5726,7 @@ Disable POSIX ACLs support.  This is the default.
 
 When listing the archive, if both @option{--acls} and
 @option{--verbose} options are given, files that have ACLs are marked
-with a plus sing following their permission mask.  For example:
+with a plus sign following their permission mask.  For example:
 
 @example
 -rw-r--r--+ smith/users      110 2016-03-16 16:07 file
