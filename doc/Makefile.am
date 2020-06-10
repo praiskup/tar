@@ -22,7 +22,6 @@ tar_TEXINFOS = \
  dumpdir.texi\
  tar-snapshot-edit.texi\
  fdl.texi\
- freemanuals.texi\
  genfile.texi\
  header.texi\
  intern.texi\

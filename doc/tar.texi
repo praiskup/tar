@@ -116,7 +116,6 @@ Appendices
 * Fixing Snapshot Files::
 * Tar Internals::
 * Genfile::
-* Free Software Needs Free Documentation::
 * GNU Free Documentation License::
 * Index of Command Line Options::
 * Index::
@@ -13253,10 +13252,6 @@ Right margin of the text output. Used for wrapping.
 @node Genfile
 @appendix Genfile
 @include genfile.texi
-
-@node Free Software Needs Free Documentation
-@appendix Free Software Needs Free Documentation
-@include freemanuals.texi
 
 @node GNU Free Documentation License
 @appendix GNU Free Documentation License
