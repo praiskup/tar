@@ -742,7 +742,21 @@ int set_file_atime (int fd, int parentfd, char const *file,
 
 /* Module names.c.  */
 
-extern size_t name_count;
+enum files_count
+  {
+    FILES_NONE,
+    FILES_ONE,
+    FILES_MANY
+  };
+extern enum files_count filename_args;
+
+/* Return true if there are file names in the list */
+static inline bool
+name_more_files (void)
+{
+  return filename_args != FILES_NONE;
+}
+
 extern struct name *gnu_list_name;
 
 void gid_to_gname (gid_t gid, char **gname);

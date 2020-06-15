@@ -651,8 +651,10 @@ struct name_elt        /* A name_array element. */
   } v;
 };
 
-static struct name_elt *name_head;/* store a list of names */
-size_t name_count;	 	  /* how many of the entries are file names? */
+static struct name_elt *name_head; /* store a list of names */
+
+/* how many of the entries are file names? */
+enum files_count filename_args = FILES_NONE;
 
 static struct name_elt *
 name_elt_alloc (void)
@@ -784,13 +786,6 @@ name_list_advance (void)
     }
 }
 
-/* Return true if there are names or options in the list */
-bool
-name_more_files (void)
-{
-  return name_count > 0;
-}
-
 /* Add to name_array the file NAME with fnmatch options MATFLAGS */
 void
 name_add_name (const char *name)
@@ -799,7 +794,20 @@ name_add_name (const char *name)
 
   ep->type = NELT_NAME;
   ep->v.name = name;
-  name_count++;
+
+  switch (filename_args)
+    {
+    case FILES_NONE:
+      filename_args = FILES_ONE;
+      break;
+
+    case FILES_ONE:
+      filename_args = FILES_MANY;
+      break;
+
+    default:
+      break;
+    }
 }
 
 static void
@@ -829,7 +837,10 @@ name_add_file (const char *name)
   ep->v.file.name = name;
   ep->v.file.line = 0;
   ep->v.file.fp = NULL;
-  name_count++;
+
+  /* We don't know beforehand how many files are listed.
+     Assume more than one. */
+  filename_args = FILES_MANY;
 }
 
 /* Names from external name file.  */

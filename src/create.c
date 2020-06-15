@@ -1348,7 +1348,7 @@ create_archive (void)
 {
   struct name const *p;
 
-  trivial_link_count = name_count <= 1 && ! dereference_option;
+  trivial_link_count = filename_args != FILES_MANY && ! dereference_option;
 
   open_archive (ACCESS_WRITE);
   buffer_write_global_xheader ();
