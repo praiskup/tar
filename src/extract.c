@@ -1621,47 +1621,23 @@ extract_fifo (char *file_name, int typeflag)
 }
 #endif
 
-static int
-extract_volhdr (char *file_name, int typeflag)
-{
-  skip_member ();
-  return 0;
-}
-
-static int
-extract_failure (char *file_name, int typeflag)
-{
-  return 1;
-}
-
-static int
-extract_skip (char *file_name, int typeflag)
-{
-  skip_member ();
-  return 0;
-}
-
 typedef int (*tar_extractor_t) (char *file_name, int typeflag);
 
 
-
 /* Prepare to extract a file. Find extractor function.
-   Return zero if extraction should not proceed.  */
+   Return true to proceed with the extraction, false to skip the current
+   member.  */
 
-static int
+static bool
 prepare_to_extract (char const *file_name, int typeflag, tar_extractor_t *fun)
 {
-  int rc = 1;
-
-  if (EXTRACT_OVER_PIPE)
-    rc = 0;
+  tar_extractor_t extractor = NULL;
 
   /* Select the extractor */
   switch (typeflag)
     {
     case GNUTYPE_SPARSE:
-      *fun = extract_file;
-      rc = 1;
+      extractor = extract_file;
       break;
 
     case AREGTYPE:
@@ -1670,106 +1646,101 @@ prepare_to_extract (char const *file_name, int typeflag, tar_extractor_t *fun)
       /* Appears to be a file.  But BSD tar uses the convention that a slash
 	 suffix means a directory.  */
       if (current_stat_info.had_trailing_slash)
-	*fun = extract_dir;
+	extractor = extract_dir;
       else
-	{
-	  *fun = extract_file;
-	  rc = 1;
-	}
+	extractor = extract_file;
       break;
 
     case SYMTYPE:
-      *fun = extract_symlink;
+      extractor = extract_symlink;
       break;
 
     case LNKTYPE:
-      *fun = extract_link;
+      extractor = extract_link;
       break;
 
 #if S_IFCHR
     case CHRTYPE:
       current_stat_info.stat.st_mode |= S_IFCHR;
-      *fun = extract_node;
+      extractor = extract_node;
       break;
 #endif
 
 #if S_IFBLK
     case BLKTYPE:
       current_stat_info.stat.st_mode |= S_IFBLK;
-      *fun = extract_node;
+      extractor = extract_node;
       break;
 #endif
 
 #if HAVE_MKFIFO || defined mkfifo
     case FIFOTYPE:
-      *fun = extract_fifo;
+      extractor = extract_fifo;
       break;
 #endif
 
     case DIRTYPE:
     case GNUTYPE_DUMPDIR:
-      *fun = extract_dir;
+      extractor = extract_dir;
       if (current_stat_info.is_dumpdir)
 	delay_directory_restore_option = true;
       break;
 
     case GNUTYPE_VOLHDR:
-      *fun = extract_volhdr;
-      break;
-
+      return false;
+      
     case GNUTYPE_MULTIVOL:
       ERROR ((0, 0,
 	      _("%s: Cannot extract -- file is continued from another volume"),
 	      quotearg_colon (current_stat_info.file_name)));
-      *fun = extract_skip;
-      break;
+      return false;
 
     case GNUTYPE_LONGNAME:
     case GNUTYPE_LONGLINK:
       ERROR ((0, 0, _("Unexpected long name header")));
-      *fun = extract_failure;
-      break;
+      return false;
 
     default:
       WARNOPT (WARN_UNKNOWN_CAST,
 	       (0, 0,
 		_("%s: Unknown file type '%c', extracted as normal file"),
 		quotearg_colon (file_name), typeflag));
-      *fun = extract_file;
+      extractor = extract_file;
     }
 
-  /* Determine whether the extraction should proceed */
-  if (rc == 0)
-    return 0;
-
-  switch (old_files_option)
+  if (!EXTRACT_OVER_PIPE)
     {
-    case UNLINK_FIRST_OLD_FILES:
-      if (!remove_any_file (file_name,
-                            recursive_unlink_option ? RECURSIVE_REMOVE_OPTION
-                                                      : ORDINARY_REMOVE_OPTION)
-	  && errno && errno != ENOENT)
+      switch (old_files_option)
 	{
-	  unlink_error (file_name);
-	  return 0;
-	}
-      break;
+	case UNLINK_FIRST_OLD_FILES:
+	  if (!remove_any_file (file_name,
+				recursive_unlink_option
+				  ? RECURSIVE_REMOVE_OPTION
+				  : ORDINARY_REMOVE_OPTION)
+	      && errno && errno != ENOENT)
+	    {
+	      unlink_error (file_name);
+	      return false;
+	    }
+	  break;
 
-    case KEEP_NEWER_FILES:
-      if (file_newer_p (file_name, 0, &current_stat_info))
-	{
-	  WARNOPT (WARN_IGNORE_NEWER,
-		   (0, 0, _("Current %s is newer or same age"),
-		    quote (file_name)));
-	  return 0;
-	}
-      break;
+	case KEEP_NEWER_FILES:
+	  if (file_newer_p (file_name, 0, &current_stat_info))
+	    {
+	      WARNOPT (WARN_IGNORE_NEWER,
+		       (0, 0, _("Current %s is newer or same age"),
+			quote (file_name)));
+	      return false;
+	    }
+	  break;
 
-    default:
-      break;
+	default:
+	  break;
+	}
     }
-
-  return 1;
+  *fun = extractor;
+  
+  return true;
 }
 
 /* Extract a file from the archive.  */
@@ -1832,13 +1803,14 @@ extract_archive (void)
 
   if (prepare_to_extract (current_stat_info.file_name, typeflag, &fun))
     {
-      if (fun && (*fun) (current_stat_info.file_name, typeflag)
-	  && backup_option)
-	undo_last_backup ();
+      if (fun (current_stat_info.file_name, typeflag) == 0)
+	return;
     }
   else
     skip_member ();
 
+  if (backup_option)
+    undo_last_backup ();
 }
 
 /* Extract the links whose final extraction were delayed.  */
