@@ -834,6 +834,24 @@ struct option_locus
 				 class */
 };
 
+struct tar_args        /* Variables used during option parsing */
+{
+  struct option_locus *loc;
+
+  struct textual_date *textual_date; /* Keeps the arguments to --newer-mtime
+					and/or --date option if they are
+					textual dates */
+  bool o_option;                   /* True if -o option was given */
+  bool pax_option;                 /* True if --pax-option was given */
+  bool compress_autodetect;        /* True if compression autodetection should
+				      be attempted when creating archives */
+  char const *backup_suffix_string;   /* --suffix option argument */
+  char const *version_control_string; /* --backup option argument */
+};
+
+#define TAR_ARGS_INITIALIZER(loc)              \
+  { loc, NULL, false, false, false, NULL, NULL }
+
 void more_options (int argc, char **argv, struct option_locus *loc);
 
 /* Module update.c.  */

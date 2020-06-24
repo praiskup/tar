@@ -7730,9 +7730,12 @@ any leading and trailing whitespace.  If the resulting string begins
 with @samp{-} character, it is considered a @command{tar} option and is
 processed accordingly@footnote{Versions of @GNUTAR{} up to 1.15.1
 recognized only @option{-C} option in file lists, and only if the
-option and its argument occupied two consecutive lines.}. For example,
-the common use of this feature is to change to another directory by
-specifying @option{-C} option:
+option and its argument occupied two consecutive lines.}.  Only a
+subset of @GNUTAR{} options is allowed for use in file lists.  For
+a list of such options, @ref{Position-Sensitive Options}.
+
+For example, the common use of this feature is to change to another
+directory by specifying @option{-C} option:
 
 @smallexample
 @group
