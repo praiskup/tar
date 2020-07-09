@@ -684,7 +684,7 @@ check_data_region (struct tar_sparse_file *file, size_t i)
 	}
       size_left -= bytes_read;
       mv_size_left (file->stat_info->archive_file_size - file->dumped_size);
-      if (memcmp (blk->buffer, diff_buffer, rdsize))
+      if (memcmp (blk->buffer, diff_buffer, bytes_read))
 	{
 	  report_difference (file->stat_info, _("Contents differ"));
 	  return false;
