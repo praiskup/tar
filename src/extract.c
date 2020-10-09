@@ -865,7 +865,13 @@ set_xattr (char const *file_name, struct tar_stat_info const *st,
 
       for (;;)
         {
-          if (!mknodat (chdir_fd, file_name, mode ^ invert_permissions, 0))
+          /* We'll open the file with O_WRONLY later by open_output_file,
+             therefore we need to give us the S_IWUSR bit.  If the file was
+             meant to be user-read-only, the permissions will be corrected by
+             the set_stat call. */
+          mode_t initial_mode = mode ^ invert_permissions | S_IWUSR;
+
+          if (!mknodat (chdir_fd, file_name, initial_mode, 0))
             {
               /* Successfully created file */
               xattrs_xattrs_set (st, file_name, typeflag, 0);
