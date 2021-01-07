@@ -1,8 +1,37 @@
-GNU tar NEWS - User visible changes. 2019-11-27
+GNU tar NEWS - User visible changes. 2021-01-07
 Please send GNU tar bug reports to <bug-tar@gnu.org>
-
 
-version 1.32.90 (git)
+version 1.33 - Sergey Poznyakoff, 2021-01-07
+
+* POSIX extended format headers do not include PID by default
+    
+The intent is to make binary-equivalent PAX archives easy to create.  If
+POSIXLY_CORRECT is set, the POSIX standard default is used, which embeds
+the pid.
+
+* --delay-directory-restore works for archives with reversed member ordering
+
+* Fix extraction of a symbolic link hardlinked to another symbolic link
+
+* Wildcards in exclude-vcs-ignore mode don't match slash
+
+* Fix the --no-overwrite-dir option
+    
+Given this option, previous versions of tar failed to preserve
+permissions of empty directories and to create files under directories
+owned by the current user that did not have the S_IWUSR bit set.
+
+* Fix handling of chained renames in incremental backups
+
+* Link counting works for file names supplied with -T
+
+* Accept only position-sensitive (file-selection) options in file list files.
+    
+Using such options as -f, -z, etc. is senseless in a file list file and
+bypasses option consistency checks in decode_options.  Therefore, 
+only options related to file selection (a.k.a position-sensitive options)
+are allowed in file list files.
+
 
 version 1.32 - Sergey Poznyakoff, 2019-02-23
 
