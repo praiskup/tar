@@ -2751,8 +2751,11 @@ main (int argc, char **argv)
 
   set_quoting_style (0, DEFAULT_QUOTING_STYLE);
 
+  close_stdout_set_file_name (_("stdout"));
   /* Make sure we have first three descriptors available */
-  stdopen ();
+  if (!stdopen ())
+    FATAL_ERROR ((0, errno, "%s",
+		  _("failed to ensure first three descriptors are available")));
 
   /* Pre-allocate a few structures.  */
 
