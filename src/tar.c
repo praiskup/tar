@@ -2753,9 +2753,9 @@ main (int argc, char **argv)
 
   close_stdout_set_file_name (_("stdout"));
   /* Make sure we have first three descriptors available */
-  if (!stdopen ())
-    FATAL_ERROR ((0, errno, "%s",
-		  _("failed to ensure first three descriptors are available")));
+  if (stdopen ())
+    FATAL_ERROR ((0, 0, "%s",
+		  _("failed to assert availability of the standard file descriptors")));
 
   /* Pre-allocate a few structures.  */
 

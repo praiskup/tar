@@ -83,6 +83,7 @@ stat-time
 stdbool
 stdint
 stpcpy
+stdopen
 strdup-posix
 strerror
 strnlen
