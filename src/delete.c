@@ -147,6 +147,23 @@ write_recent_bytes (char *data, size_t bytes)
     write_record (1);
 }
 
+static inline void
+flush_file (void)
+{
+  off_t blocks_to_skip;
+
+  set_next_block_after (current_header);
+  blocks_to_skip = (current_stat_info.stat.st_size
+			  + BLOCKSIZE - 1) / BLOCKSIZE;
+
+  while (record_end - current_block <= blocks_to_skip)
+    {
+      blocks_to_skip -= (record_end - current_block);
+      flush_archive ();
+    }
+  current_block += blocks_to_skip;
+}
+
 void
 delete_archive_members (void)
 {
@@ -155,7 +172,6 @@ delete_archive_members (void)
 
   /* FIXME: Should clean the routine before cleaning these variables :-( */
   struct name *name;
-  off_t blocks_to_skip = 0;
   off_t blocks_to_keep = 0;
   int kept_blocks_in_record;
 
@@ -163,11 +179,12 @@ delete_archive_members (void)
   open_archive (ACCESS_UPDATE);
   acting_as_filter = strcmp (archive_name_array[0], "-") == 0;
 
+  /* Skip to the first member that matches the name list. */
   do
     {
       enum read_header status = read_header (&current_header,
-                                             &current_stat_info,
-                                             read_header_x_raw);
+					     &current_stat_info,
+					     read_header_x_raw);
 
       switch (status)
 	{
@@ -181,7 +198,7 @@ delete_archive_members (void)
 	      break;
 	    }
 	  name->found_count++;
-	  if (!ISFOUND(name))
+	  if (!ISFOUND (name))
 	    {
 	      skip_member ();
 	      break;
@@ -243,15 +260,12 @@ delete_archive_members (void)
 
       if (logical_status == HEADER_SUCCESS)
 	{
-	  /* FIXME: Pheew!  This is crufty code!  */
 	  logical_status = HEADER_STILL_UNREAD;
-	  goto flush_file;
+	  flush_file ();
 	}
 
-      /* FIXME: Solaris 2.4 Sun cc (the ANSI one, not the old K&R) says:
-	 "delete.c", line 223: warning: loop not entered at top
-	 Reported by Bruno Haible.  */
-      while (1)
+      /* Skip matching members and move the rest up the archive. */
+      while (logical_status != HEADER_END_OF_FILE)
 	{
 	  enum read_header status;
 
@@ -259,105 +273,108 @@ delete_archive_members (void)
 
 	  if (current_block == record_end)
 	    flush_archive ();
+
 	  status = read_header (&current_header, &current_stat_info,
-	                        read_header_auto);
+				read_header_auto);
 
-	  xheader_decode (&current_stat_info);
-
-	  if (status == HEADER_ZERO_BLOCK && ignore_zeros_option)
+	  switch (status)
 	    {
-	      set_next_block_after (current_header);
-	      continue;
-	    }
-	  if (status == HEADER_END_OF_FILE || status == HEADER_ZERO_BLOCK)
-	    {
-	      logical_status = HEADER_END_OF_FILE;
-	      break;
-	    }
+	    case HEADER_STILL_UNREAD:
+	    case HEADER_SUCCESS_EXTENDED:
+	      abort ();
 
-	  if (status == HEADER_FAILURE)
-	    {
-	      ERROR ((0, 0, _("Deleting non-header from archive")));
-	      set_next_block_after (current_header);
-	      continue;
-	    }
+	    case HEADER_SUCCESS:
+	      /* Found another header.  */
+	      xheader_decode (&current_stat_info);
 
-	  /* Found another header.  */
-
-	  if ((name = name_scan (current_stat_info.file_name)) != NULL)
-	    {
-	      name->found_count++;
-	      if (ISFOUND(name))
+	      if ((name = name_scan (current_stat_info.file_name)) != NULL)
 		{
-		flush_file:
-		  set_next_block_after (current_header);
-		  blocks_to_skip = (current_stat_info.stat.st_size
-				    + BLOCKSIZE - 1) / BLOCKSIZE;
-
-		  while (record_end - current_block <= blocks_to_skip)
+		  name->found_count++;
+		  if (ISFOUND (name))
 		    {
-		      blocks_to_skip -= (record_end - current_block);
-		      flush_archive ();
+		      flush_file ();
+		      break;
 		    }
-		  current_block += blocks_to_skip;
-		  blocks_to_skip = 0;
-		  continue;
 		}
-	    }
-	  /* Copy header.  */
+	      /* Copy header.  */
 
-	  if (current_stat_info.xhdr.size)
-	    {
-	      write_recent_bytes (current_stat_info.xhdr.buffer,
-				  current_stat_info.xhdr.size);
-	    }
-	  else
-	    {
-	      write_recent_blocks (recent_long_name, recent_long_name_blocks);
-	      write_recent_blocks (recent_long_link, recent_long_link_blocks);
-	    }
-	  new_record[new_blocks] = *current_header;
-	  new_blocks++;
-	  blocks_to_keep
-	    = (current_stat_info.stat.st_size + BLOCKSIZE - 1) / BLOCKSIZE;
-	  set_next_block_after (current_header);
-	  if (new_blocks == blocking_factor)
-	    write_record (1);
-
-	  /* Copy data.  */
-
-	  kept_blocks_in_record = record_end - current_block;
-	  if (kept_blocks_in_record > blocks_to_keep)
-	    kept_blocks_in_record = blocks_to_keep;
-
-	  while (blocks_to_keep)
-	    {
-	      int count;
-
-	      if (current_block == record_end)
+	      if (current_stat_info.xhdr.size)
 		{
-		  flush_read ();
-		  current_block = record_start;
-		  kept_blocks_in_record = blocking_factor;
-		  if (kept_blocks_in_record > blocks_to_keep)
-		    kept_blocks_in_record = blocks_to_keep;
+		  write_recent_bytes (current_stat_info.xhdr.buffer,
+				      current_stat_info.xhdr.size);
 		}
-	      count = kept_blocks_in_record;
-	      if (blocking_factor - new_blocks < count)
-		count = blocking_factor - new_blocks;
-
-	      if (! count)
-		abort ();
-
-	      memcpy (new_record + new_blocks, current_block, count * BLOCKSIZE);
-	      new_blocks += count;
-	      current_block += count;
-	      blocks_to_keep -= count;
-	      kept_blocks_in_record -= count;
-
+	      else
+		{
+		  write_recent_blocks (recent_long_name,
+				       recent_long_name_blocks);
+		  write_recent_blocks (recent_long_link,
+				       recent_long_link_blocks);
+		}
+	      new_record[new_blocks] = *current_header;
+	      new_blocks++;
+	      blocks_to_keep
+		= (current_stat_info.stat.st_size + BLOCKSIZE - 1) / BLOCKSIZE;
+	      set_next_block_after (current_header);
 	      if (new_blocks == blocking_factor)
 		write_record (1);
+
+	      /* Copy data.  */
+
+	      kept_blocks_in_record = record_end - current_block;
+	      if (kept_blocks_in_record > blocks_to_keep)
+		kept_blocks_in_record = blocks_to_keep;
+
+	      while (blocks_to_keep)
+		{
+		  int count;
+
+		  if (current_block == record_end)
+		    {
+		      flush_read ();
+		      current_block = record_start;
+		      kept_blocks_in_record = blocking_factor;
+		      if (kept_blocks_in_record > blocks_to_keep)
+			kept_blocks_in_record = blocks_to_keep;
+		    }
+		  count = kept_blocks_in_record;
+		  if (blocking_factor - new_blocks < count)
+		    count = blocking_factor - new_blocks;
+
+		  if (! count)
+		    abort ();
+
+		  memcpy (new_record + new_blocks, current_block,
+			  count * BLOCKSIZE);
+		  new_blocks += count;
+		  current_block += count;
+		  blocks_to_keep -= count;
+		  kept_blocks_in_record -= count;
+
+		  if (new_blocks == blocking_factor)
+		    write_record (1);
+		}
+	      break;
+
+	    case HEADER_ZERO_BLOCK:
+	      if (ignore_zeros_option)
+		set_next_block_after (current_header);
+	      else
+		logical_status = HEADER_END_OF_FILE;
+	      break;
+
+	    case HEADER_END_OF_FILE:
+	      logical_status = HEADER_END_OF_FILE;
+	      break;
+
+	    case HEADER_FAILURE:
+	      ERROR ((0, 0, _("Deleting non-header from archive")));
+	      set_next_block_after (current_header);
+	      break;
+
+	    default:
+	      abort ();
 	    }
+	  tar_stat_destroy (&current_stat_info);
 	}
 
       if (logical_status == HEADER_END_OF_FILE)
