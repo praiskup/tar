@@ -2248,7 +2248,7 @@ parse_default_options (struct tar_args *args)
       if (argp_parse (&argp,
 		      ws.ws_offs + ws.ws_wordc,
 		      ws.ws_wordv,
-		      ARGP_IN_ORDER|ARGP_NO_EXIT, &idx, &args))
+		      ARGP_IN_ORDER|ARGP_NO_EXIT, &idx, args))
 	abort (); /* shouldn't happen */
       args->loc = save_loc_ptr;
       if (name_more_files ())
