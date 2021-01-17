@@ -408,26 +408,27 @@ read_header (union block **return_block, struct tar_stat_info *info,
 	     enum read_header_mode mode)
 {
   union block *header;
-  union block *header_copy;
   char *bp;
   union block *data_block;
   size_t size, written;
-  union block *next_long_name = 0;
-  union block *next_long_link = 0;
+  union block *next_long_name = NULL;
+  union block *next_long_link = NULL;
   size_t next_long_name_blocks = 0;
   size_t next_long_link_blocks = 0;
-
+  enum read_header status = HEADER_SUCCESS;
+  
   while (1)
     {
-      enum read_header status;
-
       header = find_next_block ();
       *return_block = header;
       if (!header)
-	return HEADER_END_OF_FILE;
+	{
+	  status = HEADER_END_OF_FILE;
+	  break;
+	}
 
       if ((status = tar_checksum (header, false)) != HEADER_SUCCESS)
-	return status;
+	break;
 
       /* Good block.  Decode file size and return.  */
 
@@ -437,7 +438,10 @@ read_header (union block **return_block, struct tar_stat_info *info,
 	{
 	  info->stat.st_size = OFF_FROM_HEADER (header->header.size);
 	  if (info->stat.st_size < 0)
-	    return HEADER_FAILURE;
+	    {
+	      status = HEADER_FAILURE;
+	      break;
+	    }
 	}
 
       if (header->header.typeflag == GNUTYPE_LONGNAME
@@ -447,10 +451,14 @@ read_header (union block **return_block, struct tar_stat_info *info,
 	  || header->header.typeflag == SOLARIS_XHDTYPE)
 	{
 	  if (mode == read_header_x_raw)
-	    return HEADER_SUCCESS_EXTENDED;
+	    {
+	      status = HEADER_SUCCESS_EXTENDED;
+	      break;
+	    }
 	  else if (header->header.typeflag == GNUTYPE_LONGNAME
 		   || header->header.typeflag == GNUTYPE_LONGLINK)
 	    {
+	      union block *header_copy;
 	      size_t name_size = info->stat.st_size;
 	      size_t n = name_size % BLOCKSIZE;
 	      size = name_size + BLOCKSIZE;
@@ -517,7 +525,10 @@ read_header (union block **return_block, struct tar_stat_info *info,
 	      xheader_decode_global (&xhdr);
 	      xheader_destroy (&xhdr);
 	      if (mode == read_header_x_global)
-		return HEADER_SUCCESS_EXTENDED;
+		{
+		  status = HEADER_SUCCESS_EXTENDED;
+		  break;
+		}
 	    }
 
 	  /* Loop!  */
@@ -536,6 +547,7 @@ read_header (union block **return_block, struct tar_stat_info *info,
 	      name = next_long_name->buffer + BLOCKSIZE;
 	      recent_long_name = next_long_name;
 	      recent_long_name_blocks = next_long_name_blocks;
+	      next_long_name = NULL;
 	    }
 	  else
 	    {
@@ -567,6 +579,7 @@ read_header (union block **return_block, struct tar_stat_info *info,
 	      name = next_long_link->buffer + BLOCKSIZE;
 	      recent_long_link = next_long_link;
 	      recent_long_link_blocks = next_long_link_blocks;
+	      next_long_link = NULL;
 	    }
 	  else
 	    {
@@ -578,9 +591,12 @@ read_header (union block **return_block, struct tar_stat_info *info,
 	    }
 	  assign_string (&info->link_name, name);
 
-	  return HEADER_SUCCESS;
+	  break;
 	}
     }
+  free (next_long_name);
+  free (next_long_link);
+  return status;
 }
 
 #define ISOCTAL(c) ((c)>='0'&&(c)<='7')
