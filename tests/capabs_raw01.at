@@ -44,10 +44,13 @@ rm -rf dir
 # restore _all_ xattrs (not just the user.* domain)
 tar --xattrs --xattrs-include='*' -xf archive.tar
 
-getcap dir/file
+# Newer systems switched to different format:
+# - dir/file = cap_chown+ei
+# + dir/file cap_chown=ei
+getcap dir/file | sed -e 's/+/=/' -e 's|dir/file = |dir/file |'
 ],
 [0],
-[dir/file = cap_chown+ei
+[dir/file cap_chown=ei
 ])
 
 AT_CLEANUP
