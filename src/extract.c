@@ -1708,7 +1708,12 @@ prepare_to_extract (char const *file_name, int typeflag, tar_extractor_t *fun)
       extractor = extract_file;
     }
 
-  if (!EXTRACT_OVER_PIPE)
+  if (EXTRACT_OVER_PIPE)
+    {
+      if (extractor != extract_file)
+	return false;
+    }
+  else
     {
       switch (old_files_option)
 	{
