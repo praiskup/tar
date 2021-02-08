@@ -1323,6 +1323,41 @@ extract_file (char *file_name, int typeflag)
   return status;
 }
 
+/* Find a delayed_link structure corresponding to the source NAME.
+   Such a structure exists in the delayed link list only if the link
+   placeholder file has been created. Therefore, try to stat the NAME
+   first. If it doesn't exist, there is no matching entry in the list.
+   Otherwise, look for the entry in list which has the matching dev
+   and ino numbers.
+   
+   This approach avoids scanning the singly-linked list in obvious cases
+   and does not rely on comparing file names, which may differ for
+   various reasons (e.g. relative vs. absolute file names).
+ */
+static struct delayed_link *
+find_delayed_link_source (char const *name)
+{
+  struct delayed_link *dl;
+  struct stat st;
+
+  if (!delayed_link_head)
+    return NULL;
+  
+  if (fstatat (chdir_fd, name, &st, AT_SYMLINK_NOFOLLOW))
+    {
+      if (errno != ENOENT)
+	stat_error (name);
+      return NULL;
+    }
+  
+  for (dl = delayed_link_head; dl; dl = dl->next)
+    {
+      if (dl->dev == st.st_dev && dl->ino == st.st_ino)
+	break;
+    }
+  return dl;
+}
+  
 /* Create a placeholder file with name FILE_NAME, which will be
    replaced after other extraction is done by a symbolic link if
    IS_SYMLINK is true, and by a hard link otherwise.  Set
@@ -1342,6 +1377,15 @@ create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made,
 
   while ((fd = openat (chdir_fd, file_name, O_WRONLY | O_CREAT | O_EXCL, 0)) < 0)
     {
+      if (errno == EEXIST && find_delayed_link_source (file_name))
+	{
+	  /* The placeholder file has already been created.  This means
+	     that the link being extracted is a duplicate of an already
+	     processed one.  Skip it.
+	   */
+	  return 0;
+	}
+      
       switch (maybe_recoverable (file_name, false, interdir_made))
 	{
 	case RECOVER_OK:
@@ -1416,41 +1460,6 @@ create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made,
   return -1;
 }
 
-/* Find a delayed_link structure corresponding to the source NAME.
-   Such a structure exists in the delayed link list only if the link
-   placeholder file has been created. Therefore, try to stat the NAME
-   first. If it doesn't exist, there is no matching entry in the list.
-   Otherwise, look for the entry in list which has the matching dev
-   and ino numbers.
-   
-   This approach avoids scanning the singly-linked list in obvious cases
-   and does not rely on comparing file names, which may differ for
-   various reasons (e.g. relative vs. absolute file names).
- */
-static struct delayed_link *
-find_delayed_link_source (char const *name)
-{
-  struct delayed_link *dl;
-  struct stat st;
-
-  if (!delayed_link_head)
-    return NULL;
-  
-  if (fstatat (chdir_fd, name, &st, AT_SYMLINK_NOFOLLOW))
-    {
-      if (errno != ENOENT)
-	stat_error (name);
-      return NULL;
-    }
-  
-  for (dl = delayed_link_head; dl; dl = dl->next)
-    {
-      if (dl->dev == st.st_dev && dl->ino == st.st_ino)
-	break;
-    }
-  return dl;
-}
-  
 static int
 extract_link (char *file_name, int typeflag)
 {
