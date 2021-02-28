@@ -335,8 +335,6 @@ sparse_scan_file_seek (struct tar_sparse_file *file)
       st->archive_file_size += sp.numbytes;
       offset = hole_offset;
     }
-
-  return true;
 }
 #endif
 
