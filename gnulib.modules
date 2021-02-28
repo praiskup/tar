@@ -23,6 +23,7 @@ areadlinkat-with-size
 argmatch
 argp
 argp-version-etc
+attribute
 backupfile
 closeout
 configmake

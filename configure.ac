@@ -112,7 +112,7 @@ if test $ac_cv_lib_error_at_line = no; then
   AC_DEFINE([ENABLE_ERROR_PRINT_PROGNAME],[1],
             [Enable the use of error_print_progname to print program name with error messages.
 	     See comment to function tar_print_progname in src/tar.c])
-fi  
+fi
 
 # paxutils modules
 tar_PAXUTILS
@@ -162,6 +162,7 @@ if test "$gl_gcc_warnings" = yes; then
   nw="$nw -Winline"                 # It's OK to not inline.
   nw="$nw -Wstrict-overflow"	    # It's OK to optimize strictly.
   nw="$nw -Wsuggest-attribute=pure" # Too many warnings for now.
+  nw="$nw -Wsystem-headers"         # Don't let system headers trigger warnings
   nw="$nw -Wstack-protector"
 
   gl_MANYWARN_ALL_GCC([ws])
@@ -173,10 +174,10 @@ if test "$gl_gcc_warnings" = yes; then
   gl_WARN_ADD([-Wno-type-limits])      # It's OK to optimize based on types.
   gl_WARN_ADD([-Wno-unused-parameter]) # Too many warnings for now
   gl_WARN_ADD([-Wno-format-nonliteral])
-  
+
   gl_WARN_ADD([-fdiagnostics-show-option])
   gl_WARN_ADD([-funit-at-a-time])
-  
+
 
   AC_SUBST([WARN_CFLAGS])
 

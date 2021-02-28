@@ -43,18 +43,13 @@
 # define GLOBAL extern
 #endif
 
-#if 7 <= __GNUC__
-# define FALLTHROUGH __attribute__ ((__fallthrough__))
-#else
-# define FALLTHROUGH ((void) 0)
-#endif
-
 #define TAREXIT_SUCCESS PAXEXIT_SUCCESS
 #define TAREXIT_DIFFERS PAXEXIT_DIFFERS
 #define TAREXIT_FAILURE PAXEXIT_FAILURE
 
 
 #include "arith.h"
+#include <attribute.h>
 #include <backupfile.h>
 #include <exclude.h>
 #include <full-write.h>
@@ -633,7 +628,10 @@ void skip_member (void);
 #define max(a, b) ((a) < (b) ? (b) : (a))
 
 char const *quote_n_colon (int n, char const *arg);
-void assign_string (char **dest, const char *src);
+void assign_string_or_null (char **dest, const char *src)
+  ATTRIBUTE_NONNULL ((1));
+void assign_string (char **dest, const char *src) ATTRIBUTE_NONNULL ((1, 2));
+void assign_null (char **dest) ATTRIBUTE_NONNULL ((1));
 void assign_string_n (char **string, const char *value, size_t n);
 #define ASSIGN_STRING_N(s,v) assign_string_n (s, v, sizeof (v))
 int unquote_string (char *str);

@@ -520,7 +520,7 @@ delay_set_stat (char const *file_name, struct tar_stat_info const *st,
   data->change_dir = chdir_current;
   data->cntx_name = NULL;
   if (st)
-    assign_string (&data->cntx_name, st->cntx_name);
+    assign_string_or_null (&data->cntx_name, st->cntx_name);
   if (st && st->acls_a_ptr)
     {
       data->acls_a_ptr = xmemdup (st->acls_a_ptr, st->acls_a_len + 1);
@@ -1329,7 +1329,7 @@ extract_file (char *file_name, int typeflag)
    first. If it doesn't exist, there is no matching entry in the list.
    Otherwise, look for the entry in list which has the matching dev
    and ino numbers.
-   
+
    This approach avoids scanning the singly-linked list in obvious cases
    and does not rely on comparing file names, which may differ for
    various reasons (e.g. relative vs. absolute file names).
@@ -1342,14 +1342,14 @@ find_delayed_link_source (char const *name)
 
   if (!delayed_link_head)
     return NULL;
-  
+
   if (fstatat (chdir_fd, name, &st, AT_SYMLINK_NOFOLLOW))
     {
       if (errno != ENOENT)
 	stat_error (name);
       return NULL;
     }
-  
+
   for (dl = delayed_link_head; dl; dl = dl->next)
     {
       if (dl->dev == st.st_dev && dl->ino == st.st_ino)
@@ -1357,7 +1357,7 @@ find_delayed_link_source (char const *name)
     }
   return dl;
 }
-  
+
 /* Create a placeholder file with name FILE_NAME, which will be
    replaced after other extraction is done by a symbolic link if
    IS_SYMLINK is true, and by a hard link otherwise.  Set
@@ -1385,7 +1385,7 @@ create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made,
 	   */
 	  return 0;
 	}
-      
+
       switch (maybe_recoverable (file_name, false, interdir_made))
 	{
 	case RECOVER_OK:
@@ -1442,7 +1442,7 @@ create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made,
       p->sources->next = 0;
       strcpy (p->sources->string, file_name);
       p->cntx_name = NULL;
-      assign_string (&p->cntx_name, current_stat_info.cntx_name);
+      assign_string_or_null (&p->cntx_name, current_stat_info.cntx_name);
       p->acls_a_ptr = NULL;
       p->acls_a_len = 0;
       p->acls_d_ptr = NULL;
@@ -1467,7 +1467,7 @@ extract_link (char *file_name, int typeflag)
   char const *link_name;
   int rc;
   struct delayed_link *dl;
-  
+
   link_name = current_stat_info.link_name;
 
   if (! absolute_names_option && contains_dot_dot (link_name))
@@ -1475,7 +1475,7 @@ extract_link (char *file_name, int typeflag)
   dl = find_delayed_link_source (link_name);
   if (dl)
     return create_placeholder_file (file_name, false, &interdir_made, dl);
-  
+
   do
     {
       struct stat st1, st2;
@@ -1697,7 +1697,7 @@ prepare_to_extract (char const *file_name, int typeflag, tar_extractor_t *fun)
 
     case GNUTYPE_VOLHDR:
       return false;
-      
+
     case GNUTYPE_MULTIVOL:
       ERROR ((0, 0,
 	      _("%s: Cannot extract -- file is continued from another volume"),
@@ -1753,7 +1753,7 @@ prepare_to_extract (char const *file_name, int typeflag, tar_extractor_t *fun)
 	}
     }
   *fun = extractor;
-  
+
   return true;
 }
 

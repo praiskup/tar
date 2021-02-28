@@ -28,6 +28,7 @@
 #include <fnmatch.h>
 #include <human.h>
 #include <quotearg.h>
+#include <verify.h>
 
 #include "common.h"
 #include <rmt.h>
@@ -1325,8 +1326,8 @@ new_volume (enum access_mode mode)
   if (verify_option)
     verify_volume ();
 
-  assign_string (&volume_label, NULL);
-  assign_string (&continued_file_name, NULL);
+  assign_null (&volume_label);
+  assign_null (&continued_file_name);
   continued_file_size = continued_file_offset = 0;
   current_block = record_start;
 
@@ -1505,7 +1506,7 @@ try_new_volume (void)
       ASSIGN_STRING_N (&volume_label, current_header->header.name);
       set_next_block_after (header);
       header = find_next_block ();
-      if (header->header.typeflag != GNUTYPE_MULTIVOL)
+      if (! (header && header->header.typeflag == GNUTYPE_MULTIVOL))
         break;
       FALLTHROUGH;
     case GNUTYPE_MULTIVOL:
@@ -1688,6 +1689,7 @@ _write_volume_label (const char *str)
     {
       union block *label = find_next_block ();
 
+      assume (label);
       memset (label, 0, BLOCKSIZE);
 
       strcpy (label->header.name, str);

@@ -43,10 +43,27 @@ quote_n_colon (int n, char const *arg)
 /* Assign STRING to a copy of VALUE if not zero, or to zero.  If
    STRING was nonzero, it is freed first.  */
 void
+assign_string_or_null (char **string, const char *value)
+{
+  if (value)
+    assign_string (string, value);
+  else
+    assign_null (string);
+}
+
+void
 assign_string (char **string, const char *value)
 {
   free (*string);
-  *string = value ? xstrdup (value) : 0;
+  *string = xstrdup (value);
+}
+
+void
+assign_null (char **string)
+{
+  char *old = *string;
+  *string = NULL;
+  free (old);
 }
 
 void
@@ -61,6 +78,8 @@ assign_string_n (char **string, const char *value, size_t n)
       p[l] = 0;
       *string = p;
     }
+  else
+    *string = NULL;
 }
 
 #if 0
@@ -715,7 +734,7 @@ maybe_backup_file (const char *file_name, bool this_is_the_archive)
      possible, real problems are unlikely.  Doing any better would require a
      convention, GNU-wide, for all programs doing backups.  */
 
-  assign_string (&after_backup_name, 0);
+  assign_null (&after_backup_name);
 
   /* Check if we really need to backup the file.  */
 
@@ -758,7 +777,7 @@ maybe_backup_file (const char *file_name, bool this_is_the_archive)
       ERROR ((0, e, _("%s: Cannot rename to %s"),
 	      quotearg_colon (before_backup_name),
 	      quote_n (1, after_backup_name)));
-      assign_string (&after_backup_name, 0);
+      assign_null (&after_backup_name);
       return false;
     }
 }
@@ -782,7 +801,7 @@ undo_last_backup (void)
 	fprintf (stdlis, _("Renaming %s back to %s\n"),
 		 quote_n (0, after_backup_name),
 		 quote_n (1, before_backup_name));
-      assign_string (&after_backup_name, 0);
+      assign_null (&after_backup_name);
     }
 }
 
@@ -1041,11 +1060,11 @@ tar_getcdpath (int idx)
     {
       int i;
       int save_cwdi = chdir_current;
-      
+
       for (i = idx; i >= 0; i--)
 	if (wd[i].abspath)
 	  break;
-      
+
       while (++i <= idx)
 	{
 	  chdir_do (i);
@@ -1069,7 +1088,7 @@ tar_getcdpath (int idx)
 
       chdir_do (save_cwdi);
     }
-	   
+
   return wd[idx].abspath;
 }
 
