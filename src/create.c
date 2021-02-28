@@ -308,7 +308,7 @@ to_chars (int negative, uintmax_t value, size_t valsize,
       if (((negative ? -1 - value : value)
 	   <= MAX_VAL_WITH_DIGITS (size - 1, LG_256)))
 	{
-	  where[0] = negative ? -1 : 1 << (LG_256 - 1);
+	  where[0] = (char) (negative ? -1 : 1 << (LG_256 - 1));
 	  to_base256 (negative, value, where + 1, size - 1);
 	  return true;
 	}
