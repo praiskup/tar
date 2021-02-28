@@ -1,5 +1,21 @@
-GNU tar NEWS - User visible changes. 2021-01-07
+GNU tar NEWS - User visible changes. 2021-02-13
 Please send GNU tar bug reports to <bug-tar@gnu.org>
+
+version 1.34 - Sergey Poznyakoff, 2021-02-13
+
+* Fix extraction over pipe (savannah bug #60002)
+
+* Fix memory leak in read_header (savannah bug #59897)
+
+* Fix extraction when . and .. are unreadable
+
+See https://lists.gnu.org/archive/html/bug-tar/2021-01/msg00012.html
+
+* Gracefully handle duplicate symlinks when extracting
+
+See https://lists.gnu.org/archive/html/bug-tar/2021-01/msg00026.html
+
+* Re-initialize supplementary groups when switching to user privileges
 
 version 1.33 - Sergey Poznyakoff, 2021-01-07
 
