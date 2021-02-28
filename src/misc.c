@@ -1214,7 +1214,7 @@ xpipe (int fd[2])
    PTR) through ((char *) PTR + ALIGNMENT - 1) to be addressable
    locations.  */
 
-static inline void *
+static void *
 ptr_align (void *ptr, size_t alignment)
 {
   char *p0 = ptr;

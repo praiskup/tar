@@ -147,7 +147,7 @@ write_recent_bytes (char *data, size_t bytes)
     write_record (1);
 }
 
-static inline void
+static void
 flush_file (void)
 {
   off_t blocks_to_skip;

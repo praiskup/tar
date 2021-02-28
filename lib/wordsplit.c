@@ -1911,19 +1911,19 @@ skip_sed_expr (const char *command, size_t i, size_t len)
 
 /* wsp->ws_endp points to a delimiter character. If RETURN_DELIMS
    is true, return its value, otherwise return the index past it. */
-static inline size_t
+static size_t
 skip_delim_internal (struct wordsplit *wsp, int return_delims)
 {
   return return_delims ? wsp->ws_endp : wsp->ws_endp + 1;
 }
 
-static inline size_t
+static size_t
 skip_delim (struct wordsplit *wsp)
 {
   return skip_delim_internal (wsp, WSP_RETURN_DELIMS (wsp));
 }
 
-static inline size_t
+static size_t
 skip_delim_real (struct wordsplit *wsp)
 {
   return skip_delim_internal (wsp, wsp->ws_flags & WRDSF_RETURN_DELIMS);
@@ -2316,8 +2316,8 @@ static struct exptab exptab[] = {
   { NULL }
 };
 
-static inline int
-exptab_matches(struct exptab *p, struct wordsplit *wsp)
+static int
+exptab_matches (struct exptab *p, struct wordsplit *wsp)
 {
   int result;
 

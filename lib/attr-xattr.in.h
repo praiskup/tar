@@ -22,39 +22,39 @@
 #endif
 
 /* setting */
-static inline int setxattr (const char *path, const char *name, const void
-                            *value, size_t size, int flags)
+static int setxattr (const char *path, const char *name, const void
+		     *value, size_t size, int flags)
 { errno = ENOTSUP; return -1; }
 
-static inline int lsetxattr (const char *path, const char *name, const void
-                             *value, size_t size, int flags)
+static int lsetxattr (const char *path, const char *name, const void
+		      *value, size_t size, int flags)
 { errno = ENOTSUP; return -1; }
 
-static inline int fsetxattr (int filedes, const char *name, const void *value,
-                             size_t size, int flags)
+static int fsetxattr (int filedes, const char *name, const void *value,
+		      size_t size, int flags)
 { errno = ENOTSUP; return -1; }
 
 
 /* getting */
-static inline ssize_t getxattr (const char *path, const char *name, void *value,
-                                size_t size)
+static ssize_t getxattr (const char *path, const char *name, void *value,
+			 size_t size)
 { errno = ENOTSUP; return -1; }
-static inline ssize_t lgetxattr (const char *path, const char *name, void
-                                 *value, size_t size)
+static ssize_t lgetxattr (const char *path, const char *name, void
+			  *value, size_t size)
 { errno = ENOTSUP; return -1; }
-static inline ssize_t fgetxattr (int filedes, const char *name, void *value,
-                                 size_t size)
+static ssize_t fgetxattr (int filedes, const char *name, void *value,
+			  size_t size)
 { errno = ENOTSUP; return -1; }
 
 
 /* listing */
-static inline ssize_t listxattr (const char *path, char *list, size_t size)
+static ssize_t listxattr (const char *path, char *list, size_t size)
 { errno = ENOTSUP; return -1; }
 
-static inline ssize_t llistxattr (const char *path, char *list, size_t size)
+static ssize_t llistxattr (const char *path, char *list, size_t size)
 { errno = ENOTSUP; return -1; }
 
-static inline ssize_t flistxattr (int filedes, char *list, size_t size)
+static ssize_t flistxattr (int filedes, char *list, size_t size)
 { errno = ENOTSUP; return -1; }
 
 #endif

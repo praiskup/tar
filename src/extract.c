@@ -994,7 +994,7 @@ is_directory_link (const char *file_name)
    If not root, though, make the directory writeable and searchable at first,
    so that files can be created under it.
 */
-static inline int
+static int
 safe_dir_mode (struct stat const *st)
 {
   return ((st->st_mode

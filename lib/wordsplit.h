@@ -248,15 +248,6 @@ void wordsplit_free_words (wordsplit_t *ws);
 void wordsplit_free_envbuf (wordsplit_t *ws);
 int wordsplit_get_words (wordsplit_t *ws, size_t *wordc, char ***wordv);
 
-static inline void wordsplit_getwords (wordsplit_t *ws, size_t *wordc, char ***wordv)
-  DEPRECATED;
-
-static inline void
-wordsplit_getwords (wordsplit_t *ws, size_t *wordc, char ***wordv)
-{
-  wordsplit_get_words (ws, wordc, wordv);
-}
-
 int wordsplit_append (wordsplit_t *wsp, int argc, char **argv);
 
 int wordsplit_c_unquote_char (int c);

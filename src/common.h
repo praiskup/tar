@@ -748,7 +748,7 @@ enum files_count
 extern enum files_count filename_args;
 
 /* Return true if there are file names in the list */
-static inline bool
+COMMON_INLINE bool
 name_more_files (void)
 {
   return filename_args != FILES_NONE;
@@ -762,7 +762,6 @@ void uid_to_uname (uid_t uid, char **uname);
 int uname_to_uid (char const *uname, uid_t *puid);
 
 void name_init (void);
-bool name_more_files (void);
 void name_add_name (const char *name);
 void name_term (void);
 const char *name_next (int change_dirs);

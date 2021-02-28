@@ -35,7 +35,6 @@ gl_EARLY
 AC_CHECK_TOOLS([AR], [ar])
 
 AC_SYS_LARGEFILE
-AC_C_INLINE
 
 AC_CHECK_HEADERS_ONCE(fcntl.h linux/fd.h memory.h net/errno.h \
   sgtty.h string.h \
