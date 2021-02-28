@@ -298,10 +298,8 @@ xdup2 (int from, int into)
     }
 }
 
-static void wait_for_grandchild (pid_t pid) __attribute__ ((__noreturn__));
-
 /* Propagate any failure of the grandchild back to the parent.  */
-static void
+static _Noreturn void
 wait_for_grandchild (pid_t pid)
 {
   int wait_status;

@@ -464,7 +464,7 @@ void reset_eof (void);
 void set_next_block_after (union block *block);
 void clear_read_error_count (void);
 void xclose (int fd);
-void archive_write_error (ssize_t status) __attribute__ ((noreturn));
+_Noreturn void archive_write_error (ssize_t status);
 void archive_read_error (void);
 off_t seek_archive (off_t size);
 void set_start_time (void);
@@ -727,9 +727,8 @@ void stat_diag (char const *name);
 void file_removed_diag (const char *name, bool top_level,
 			void (*diagfn) (char const *name));
 void write_error_details (char const *name, size_t status, size_t size);
-void write_fatal (char const *name) __attribute__ ((noreturn));
-void write_fatal_details (char const *name, ssize_t status, size_t size)
-     __attribute__ ((noreturn));
+_Noreturn void write_fatal (char const *name);
+_Noreturn void write_fatal_details (char const *name, ssize_t status, size_t size);
 
 pid_t xfork (void);
 void xpipe (int fd[2]);
@@ -797,14 +796,14 @@ bool contains_dot_dot (char const *name);
 
 /* Module tar.c.  */
 
-void usage (int);
+_Noreturn void usage (int);
 
 int confirm (const char *message_action, const char *name);
 
 void tar_stat_init (struct tar_stat_info *st);
 bool tar_stat_close (struct tar_stat_info *st);
 void tar_stat_destroy (struct tar_stat_info *st);
-void usage (int) __attribute__ ((noreturn));
+_Noreturn void usage (int);
 int tar_timespec_cmp (struct timespec a, struct timespec b);
 const char *archive_format_string (enum archive_format fmt);
 const char *subcommand_string (enum subcommand c);
@@ -913,7 +912,7 @@ void sys_exec_checkpoint_script (const char *script_name,
 
 /* Module compare.c */
 void report_difference (struct tar_stat_info *st, const char *message, ...)
-  __attribute__ ((format (printf, 2, 3)));
+  ATTRIBUTE_FORMAT ((printf, 2, 3));
 
 /* Module sparse.c */
 bool sparse_member_p (struct tar_stat_info *st);

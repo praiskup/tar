@@ -29,7 +29,6 @@
 static void xheader_init (struct xheader *xhdr);
 static bool xheader_protected_pattern_p (char const *pattern);
 static bool xheader_protected_keyword_p (char const *keyword);
-static void xheader_set_single_keyword (char *) __attribute__ ((noreturn));
 
 /* Used by xheader_finish() */
 static void code_string (char const *string, char const *keyword,
@@ -158,7 +157,7 @@ xheader_list_destroy (struct keyword_list **root)
     }
 }
 
-static void
+static _Noreturn void
 xheader_set_single_keyword (char *kw)
 {
   USAGE_ERROR ((0, 0, _("Keyword %s is unknown or not yet implemented"), kw));
@@ -186,7 +185,7 @@ xheader_set_keyword_equal (char *kw, char *eq)
 
   if (eq == kw)
     USAGE_ERROR ((0, 0, _("Malformed pax option: %s"), quote (kw)));
-    
+
   if (eq[-1] == ':')
     {
       p--;
@@ -306,7 +305,7 @@ xheader_format_name (struct tar_stat_info *st, const char *fmt, size_t n)
 	      nptr = umaxtostr (n, nbuf);
 	      len += nbuf + sizeof nbuf - 1 - nptr;
 	      break;
-	      
+
 	    default:
 	      len += 2;
 	    }
@@ -804,7 +803,7 @@ xheader_decode (struct tar_stat_info *st)
 
 static void
 decg (void *data, char const *keyword, char const *value,
-      size_t size __attribute__((unused)))
+      size_t size MAYBE_UNUSED)
 {
   struct keyword_list **kwl = data;
   struct xhdr_tab const *tab = locate_handler (keyword);
@@ -1196,24 +1195,24 @@ decode_num (uintmax_t *num, char const *arg, uintmax_t maxval,
 }
 
 static void
-dummy_coder (struct tar_stat_info const *st __attribute__ ((unused)),
-	     char const *keyword __attribute__ ((unused)),
-	     struct xheader *xhdr __attribute__ ((unused)),
-	     void const *data __attribute__ ((unused)))
+dummy_coder (struct tar_stat_info const *st MAYBE_UNUSED,
+	     char const *keyword MAYBE_UNUSED,
+	     struct xheader *xhdr MAYBE_UNUSED,
+	     void const *data MAYBE_UNUSED)
 {
 }
 
 static void
-dummy_decoder (struct tar_stat_info *st __attribute__ ((unused)),
-	       char const *keyword __attribute__ ((unused)),
-	       char const *arg __attribute__ ((unused)),
-	       size_t size __attribute__((unused)))
+dummy_decoder (struct tar_stat_info *st MAYBE_UNUSED,
+	       char const *keyword MAYBE_UNUSED,
+	       char const *arg MAYBE_UNUSED,
+	       size_t size MAYBE_UNUSED)
 {
 }
 
 static void
 atime_coder (struct tar_stat_info const *st, char const *keyword,
-	     struct xheader *xhdr, void const *data __attribute__ ((unused)))
+	     struct xheader *xhdr, void const *data MAYBE_UNUSED)
 {
   code_time (st->atime, keyword, xhdr);
 }
@@ -1222,7 +1221,7 @@ static void
 atime_decoder (struct tar_stat_info *st,
 	       char const *keyword,
 	       char const *arg,
-	       size_t size __attribute__((unused)))
+	       size_t size MAYBE_UNUSED)
 {
   struct timespec ts;
   if (decode_time (&ts, arg, keyword))
@@ -1231,7 +1230,7 @@ atime_decoder (struct tar_stat_info *st,
 
 static void
 gid_coder (struct tar_stat_info const *st, char const *keyword,
-	   struct xheader *xhdr, void const *data __attribute__ ((unused)))
+	   struct xheader *xhdr, void const *data MAYBE_UNUSED)
 {
   code_signed_num (st->stat.st_gid, keyword,
 		   TYPE_MINIMUM (gid_t), TYPE_MAXIMUM (gid_t), xhdr);
@@ -1241,7 +1240,7 @@ static void
 gid_decoder (struct tar_stat_info *st,
 	     char const *keyword,
 	     char const *arg,
-	     size_t size __attribute__((unused)))
+	     size_t size MAYBE_UNUSED)
 {
   intmax_t u;
   if (decode_signed_num (&u, arg, TYPE_MINIMUM (gid_t),
@@ -1251,39 +1250,39 @@ gid_decoder (struct tar_stat_info *st,
 
 static void
 gname_coder (struct tar_stat_info const *st, char const *keyword,
-	     struct xheader *xhdr, void const *data __attribute__ ((unused)))
+	     struct xheader *xhdr, void const *data MAYBE_UNUSED)
 {
   code_string (st->gname, keyword, xhdr);
 }
 
 static void
 gname_decoder (struct tar_stat_info *st,
-	       char const *keyword __attribute__((unused)),
+	       char const *keyword MAYBE_UNUSED,
 	       char const *arg,
-	       size_t size __attribute__((unused)))
+	       size_t size MAYBE_UNUSED)
 {
   decode_string (&st->gname, arg);
 }
 
 static void
 linkpath_coder (struct tar_stat_info const *st, char const *keyword,
-		struct xheader *xhdr, void const *data __attribute__ ((unused)))
+		struct xheader *xhdr, void const *data MAYBE_UNUSED)
 {
   code_string (st->link_name, keyword, xhdr);
 }
 
 static void
 linkpath_decoder (struct tar_stat_info *st,
-		  char const *keyword __attribute__((unused)),
+		  char const *keyword MAYBE_UNUSED,
 		  char const *arg,
-		  size_t size __attribute__((unused)))
+		  size_t size MAYBE_UNUSED)
 {
   decode_string (&st->link_name, arg);
 }
 
 static void
 ctime_coder (struct tar_stat_info const *st, char const *keyword,
-	     struct xheader *xhdr, void const *data __attribute__ ((unused)))
+	     struct xheader *xhdr, void const *data MAYBE_UNUSED)
 {
   code_time (st->ctime, keyword, xhdr);
 }
@@ -1292,7 +1291,7 @@ static void
 ctime_decoder (struct tar_stat_info *st,
 	       char const *keyword,
 	       char const *arg,
-	       size_t size __attribute__((unused)))
+	       size_t size MAYBE_UNUSED)
 {
   struct timespec ts;
   if (decode_time (&ts, arg, keyword))
@@ -1311,7 +1310,7 @@ static void
 mtime_decoder (struct tar_stat_info *st,
 	       char const *keyword,
 	       char const *arg,
-	       size_t size __attribute__((unused)))
+	       size_t size MAYBE_UNUSED)
 {
   struct timespec ts;
   if (decode_time (&ts, arg, keyword))
@@ -1320,7 +1319,7 @@ mtime_decoder (struct tar_stat_info *st,
 
 static void
 path_coder (struct tar_stat_info const *st, char const *keyword,
-	    struct xheader *xhdr, void const *data __attribute__ ((unused)))
+	    struct xheader *xhdr, void const *data MAYBE_UNUSED)
 {
   code_string (st->file_name, keyword, xhdr);
 }
@@ -1336,9 +1335,9 @@ raw_path_decoder (struct tar_stat_info *st, char const *arg)
 
 static void
 path_decoder (struct tar_stat_info *st,
-	      char const *keyword __attribute__((unused)),
+	      char const *keyword MAYBE_UNUSED,
 	      char const *arg,
-	      size_t size __attribute__((unused)))
+	      size_t size MAYBE_UNUSED)
 {
   if (! st->sparse_name_done)
     raw_path_decoder (st, arg);
@@ -1346,9 +1345,9 @@ path_decoder (struct tar_stat_info *st,
 
 static void
 sparse_path_decoder (struct tar_stat_info *st,
-                     char const *keyword __attribute__((unused)),
+                     char const *keyword MAYBE_UNUSED,
                      char const *arg,
-                     size_t size __attribute__((unused)))
+                     size_t size MAYBE_UNUSED)
 {
   st->sparse_name_done = true;
   raw_path_decoder (st, arg);
@@ -1356,7 +1355,7 @@ sparse_path_decoder (struct tar_stat_info *st,
 
 static void
 size_coder (struct tar_stat_info const *st, char const *keyword,
-	    struct xheader *xhdr, void const *data __attribute__ ((unused)))
+	    struct xheader *xhdr, void const *data MAYBE_UNUSED)
 {
   code_num (st->stat.st_size, keyword, xhdr);
 }
@@ -1365,7 +1364,7 @@ static void
 size_decoder (struct tar_stat_info *st,
 	      char const *keyword,
 	      char const *arg,
-	      size_t size __attribute__((unused)))
+	      size_t size MAYBE_UNUSED)
 {
   uintmax_t u;
   if (decode_num (&u, arg, TYPE_MAXIMUM (off_t), keyword))
@@ -1374,7 +1373,7 @@ size_decoder (struct tar_stat_info *st,
 
 static void
 uid_coder (struct tar_stat_info const *st, char const *keyword,
-	   struct xheader *xhdr, void const *data __attribute__ ((unused)))
+	   struct xheader *xhdr, void const *data MAYBE_UNUSED)
 {
   code_signed_num (st->stat.st_uid, keyword,
 		   TYPE_MINIMUM (uid_t), TYPE_MAXIMUM (uid_t), xhdr);
@@ -1384,7 +1383,7 @@ static void
 uid_decoder (struct tar_stat_info *st,
 	     char const *keyword,
 	     char const *arg,
-	     size_t size __attribute__((unused)))
+	     size_t size MAYBE_UNUSED)
 {
   intmax_t u;
   if (decode_signed_num (&u, arg, TYPE_MINIMUM (uid_t),
@@ -1394,16 +1393,16 @@ uid_decoder (struct tar_stat_info *st,
 
 static void
 uname_coder (struct tar_stat_info const *st, char const *keyword,
-	     struct xheader *xhdr, void const *data __attribute__ ((unused)))
+	     struct xheader *xhdr, void const *data MAYBE_UNUSED)
 {
   code_string (st->uname, keyword, xhdr);
 }
 
 static void
 uname_decoder (struct tar_stat_info *st,
-	       char const *keyword __attribute__((unused)),
+	       char const *keyword MAYBE_UNUSED,
 	       char const *arg,
-	       size_t size __attribute__((unused)))
+	       size_t size MAYBE_UNUSED)
 {
   decode_string (&st->uname, arg);
 }
@@ -1419,7 +1418,7 @@ static void
 sparse_size_decoder (struct tar_stat_info *st,
 		     char const *keyword,
 		     char const *arg,
-		     size_t size __attribute__((unused)))
+		     size_t size MAYBE_UNUSED)
 {
   uintmax_t u;
   if (decode_num (&u, arg, TYPE_MAXIMUM (off_t), keyword))
@@ -1432,7 +1431,7 @@ sparse_size_decoder (struct tar_stat_info *st,
 static void
 sparse_numblocks_coder (struct tar_stat_info const *st, char const *keyword,
 			struct xheader *xhdr,
-			void const *data __attribute__ ((unused)))
+			void const *data MAYBE_UNUSED)
 {
   code_num (st->sparse_map_avail, keyword, xhdr);
 }
@@ -1441,7 +1440,7 @@ static void
 sparse_numblocks_decoder (struct tar_stat_info *st,
 			  char const *keyword,
 			  char const *arg,
-			  size_t size __attribute__((unused)))
+			  size_t size MAYBE_UNUSED)
 {
   uintmax_t u;
   if (decode_num (&u, arg, SIZE_MAX, keyword))
@@ -1464,7 +1463,7 @@ static void
 sparse_offset_decoder (struct tar_stat_info *st,
 		       char const *keyword,
 		       char const *arg,
-		       size_t size __attribute__((unused)))
+		       size_t size MAYBE_UNUSED)
 {
   uintmax_t u;
   if (decode_num (&u, arg, TYPE_MAXIMUM (off_t), keyword))
@@ -1489,7 +1488,7 @@ static void
 sparse_numbytes_decoder (struct tar_stat_info *st,
 			 char const *keyword,
 			 char const *arg,
-			 size_t size __attribute__((unused)))
+			 size_t size MAYBE_UNUSED)
 {
   uintmax_t u;
   if (decode_num (&u, arg, TYPE_MAXIMUM (off_t), keyword))
@@ -1506,7 +1505,7 @@ static void
 sparse_map_decoder (struct tar_stat_info *st,
 		    char const *keyword,
 		    char const *arg,
-		    size_t size __attribute__((unused)))
+		    size_t size MAYBE_UNUSED)
 {
   int offset = 1;
   struct sp_array e;
@@ -1588,7 +1587,7 @@ dumpdir_coder (struct tar_stat_info const *st, char const *keyword,
 
 static void
 dumpdir_decoder (struct tar_stat_info *st,
-		 char const *keyword __attribute__((unused)),
+		 char const *keyword MAYBE_UNUSED,
 		 char const *arg,
 		 size_t size)
 {
@@ -1605,9 +1604,9 @@ volume_label_coder (struct tar_stat_info const *st, char const *keyword,
 
 static void
 volume_label_decoder (struct tar_stat_info *st,
-		      char const *keyword __attribute__((unused)),
+		      char const *keyword MAYBE_UNUSED,
 		      char const *arg,
-		      size_t size __attribute__((unused)))
+		      size_t size MAYBE_UNUSED)
 {
   decode_string (&volume_label, arg);
 }
@@ -1651,9 +1650,9 @@ volume_offset_decoder (struct tar_stat_info *st,
 
 static void
 volume_filename_decoder (struct tar_stat_info *st,
-			 char const *keyword __attribute__((unused)),
+			 char const *keyword MAYBE_UNUSED,
 			 char const *arg,
-			 size_t size __attribute__((unused)))
+			 size_t size MAYBE_UNUSED)
 {
   decode_string (&continued_file_name, arg);
 }

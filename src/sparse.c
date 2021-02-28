@@ -439,7 +439,7 @@ sparse_dump_region (struct tar_sparse_file *file, size_t i)
 	      - (file->stat_info->sparse_map[i].offset
 		 + file->stat_info->sparse_map[i].numbytes
 		 - bytes_left);
-	  
+
 	  WARNOPT (WARN_FILE_SHRANK,
 		   (0, 0,
 		    ngettext ("%s: File shrank by %s byte; padding with zeros",
@@ -627,7 +627,7 @@ check_sparse_region (struct tar_sparse_file *file, off_t beg, off_t end)
 	  report_difference (file->stat_info, _("Size differs"));
 	  return false;
 	}
-      
+
       if (!zero_block_p (diff_buffer, bytes_read))
 	{
 	  char begbuf[INT_BUFSIZE_BOUND (off_t)];
@@ -666,7 +666,7 @@ check_data_region (struct tar_sparse_file *file, size_t i)
 	  return false;
 	}
       set_next_block_after (blk);
-      file->dumped_size += BLOCKSIZE;      
+      file->dumped_size += BLOCKSIZE;
       bytes_read = safe_read (file->fd, diff_buffer, rdsize);
       if (bytes_read == SAFE_READ_ERROR)
 	{
@@ -754,7 +754,7 @@ enum oldgnu_add_status
   };
 
 static bool
-oldgnu_sparse_member_p (struct tar_sparse_file *file __attribute__ ((unused)))
+oldgnu_sparse_member_p (struct tar_sparse_file *file MAYBE_UNUSED)
 {
   return current_header->header.typeflag == GNUTYPE_SPARSE;
 }
@@ -898,7 +898,7 @@ static struct tar_sparse_optab const oldgnu_optab = {
 /* Star */
 
 static bool
-star_sparse_member_p (struct tar_sparse_file *file __attribute__ ((unused)))
+star_sparse_member_p (struct tar_sparse_file *file MAYBE_UNUSED)
 {
   return current_header->header.typeflag == GNUTYPE_SPARSE;
 }
@@ -1250,7 +1250,7 @@ pax_decode_header (struct tar_sparse_file *file)
       char *p;
       size_t i;
       off_t start;
-      
+
 #define COPY_BUF(b,buf,src) do                                     \
  {                                                                 \
    char *endp = b->buffer + BLOCKSIZE;                             \

@@ -36,14 +36,6 @@
 #define _(msgid) gettext (msgid)
 #define N_(msgid) msgid
 
-#ifndef FALLTHROUGH
-# if __GNUC__ < 7
-#  define FALLTHROUGH ((void) 0)
-# else
-#  define FALLTHROUGH __attribute__ ((__fallthrough__))
-# endif
-#endif
-
 #include <wordsplit.h>
 
 #define ISWS(c) ((c)==' '||(c)=='\t'||(c)=='\n')
@@ -74,7 +66,7 @@ _wsplt_alloc_die (struct wordsplit *wsp)
   abort ();
 }
 
-static void __WORDSPLIT_ATTRIBUTE_FORMAT ((__printf__, 1, 2))
+static void ATTRIBUTE_FORMAT ((__printf__, 1, 2))
 _wsplt_error (const char *fmt, ...)
 {
   va_list ap;

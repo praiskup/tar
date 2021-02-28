@@ -1850,7 +1850,7 @@ simple_flush_read (void)
 
 /* Simple flush write (no multi-volume or label extensions) */
 static void
-simple_flush_write (size_t level __attribute__((unused)))
+simple_flush_write (size_t level MAYBE_UNUSED)
 {
   ssize_t status;
 
