@@ -328,15 +328,15 @@ static struct zip_program zip_program[] = {
   { ct_lzop,     LZOP_PROGRAM,     "--lzop" },
   { ct_xz,       XZ_PROGRAM,       "-J" },
   { ct_zstd,     ZSTD_PROGRAM,     "--zstd" },
-  { ct_none }
 };
+enum { n_zip_programs = sizeof zip_program / sizeof *zip_program };
 
 static struct zip_program const *
 find_zip_program (enum compress_type type, int *pstate)
 {
   int i;
 
-  for (i = *pstate; zip_program[i].type != ct_none; i++)
+  for (i = *pstate; i < n_zip_programs; i++)
     {
       if (zip_program[i].type == type)
 	{
@@ -352,6 +352,8 @@ const char *
 first_decompress_program (int *pstate)
 {
   struct zip_program const *zp;
+
+  *pstate = n_zip_programs;
 
   if (use_compress_program_option)
     return use_compress_program_option;
@@ -369,8 +371,6 @@ next_decompress_program (int *pstate)
 {
   struct zip_program const *zp;
 
-  if (use_compress_program_option)
-    return NULL;
   zp = find_zip_program (archive_compression_type, pstate);
   return zp ? zp->program : NULL;
 }
