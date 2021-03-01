@@ -1803,7 +1803,7 @@ will extract the file @file{folk} into the current working directory.
 
 @node going further
 @section Going Further Ahead in this Manual
-@UNREVISED
+@UNREVISED{}
 
 @FIXME{need to write up a node here about the things that are going to
 be in the rest of the manual.}
@@ -2940,7 +2940,7 @@ the pattern specified in @var{name}.  @xref{Tape Files}.
 
 @opsummary{level}
 @item --level=@var{n}
-Force incremental backup of level @var{n}.  As of @GNUTAR version
+Force incremental backup of level @var{n}.  As of @GNUTAR{} version
 @value{VERSION}, the option @option{--level=0} truncates the snapshot
 file, thereby forcing the level 0 dump.  Other values of @var{n} are
 effectively ignored.  @xref{--level=0}, for details and examples.
@@ -5632,7 +5632,7 @@ controlled by the following command line arguments:
 @table @option
 @item --xattrs
 Enable extended attributes support.  When used with @option{--create},
-this option instructs @GNUTAR to store extended file attribute in the
+this option instructs @GNUTAR{} to store extended file attribute in the
 created archive.  This implies POSIX.1-2001 archive format
 (@option{--format=pax}).
 
@@ -5870,7 +5870,7 @@ encountered while reading an archive.  Use in conjunction with
 
 @node Writing
 @subsection Changing How @command{tar} Writes Files
-@UNREVISED
+@UNREVISED{}
 
 @FIXME{Introductory paragraph}
 
@@ -6383,7 +6383,7 @@ Remove files after adding them to the archive.
 
 @node Scarce
 @subsection Coping with Scarce Resources
-@UNREVISED
+@UNREVISED{}
 
 @cindex Small memory
 @cindex Running out of space
@@ -6630,7 +6630,7 @@ called @dfn{dumps}.
 
 @node Full Dumps
 @section Using @command{tar} to Perform Full Dumps
-@UNREVISED
+@UNREVISED{}
 
 @cindex full dumps
 @cindex dumps, full
@@ -7867,7 +7867,7 @@ $ @kbd{find . -size +800 -print0 |
 This example uses short options for typographic reasons, to avoid
 very long lines.
 
-@GNUTAR is tries to automatically detect @code{NUL}-terminated file
+@GNUTAR{} is tries to automatically detect @code{NUL}-terminated file
 lists, so in many cases it is safe to use them even without the
 @option{--null} option.  In this case @command{tar} will print a
 warning and continue reading such a file as if @option{--null} were
@@ -10645,7 +10645,7 @@ a @command{tar} able to read the good archives they receive.
 @cindex large values
 @cindex future time stamps
 @cindex negative time stamps
-@UNREVISED
+@UNREVISED{}
 
 The above sections suggest to use @samp{oldest possible} archive
 format if in doubt.  However, sometimes it is not possible.  If you
@@ -11028,7 +11028,7 @@ Done
 
 @node cpio
 @section Comparison of @command{tar} and @command{cpio}
-@UNREVISED
+@UNREVISED{}
 
 @FIXME{Reorganize the following material}
 
@@ -11140,7 +11140,7 @@ easily test, because the resulting archive gets smaller, and
 
 @node Media
 @chapter Tapes and Other Archive Media
-@UNREVISED
+@UNREVISED{}
 
 A few special cases about tape handling warrant more detailed
 description.  These special cases are discussed below.
@@ -11184,7 +11184,7 @@ not a good idea.
 
 @node Device
 @section Device Selection and Switching
-@UNREVISED
+@UNREVISED{}
 
 @table @option
 @item -f [@var{hostname}:]@var{file}
@@ -11552,7 +11552,7 @@ device.
 @cindex Format Options
 @cindex Options, archive format specifying
 @cindex Options, format specifying
-@UNREVISED
+@UNREVISED{}
 
 Format parameters specify how an archive is written on the archive
 media.  The best choice of format parameters will vary depending on
@@ -11576,7 +11576,7 @@ examples of format parameter considerations.
 @cindex Number of bytes per record
 @cindex Bytes per record
 @cindex Blocks per record
-@UNREVISED
+@UNREVISED{}
 
 @opindex blocking-factor
 The data in an archive is grouped into blocks, which are 512 bytes.
@@ -11929,7 +11929,7 @@ you should do the proper things for that as well.  @xref{Blocking}.
 
 @node Tape Positioning
 @subsection Tape Positions and Tape Marks
-@UNREVISED
+@UNREVISED{}
 
 Just as archives can store more than one file from the file system,
 tapes can store more than one archive file.  To keep track of where
@@ -11970,7 +11970,7 @@ rrrr*rrrrrr*rrrrr*rr*rrrrr*rrr*rrrr**----------------
 
 @node mt
 @subsection The @command{mt} Utility
-@UNREVISED
+@UNREVISED{}
 
 @FIXME{Is it true that this only works on non-block devices?
 should explain the difference, (fixed or variable).}
@@ -12355,7 +12355,7 @@ implementation, read @ref{Split Recovery}.
 @subsection Tape Files
 @cindex labeling archives
 @opindex label
-@UNREVISED
+@UNREVISED{}
 
 To give the archive a name which will be recorded in it, use the
 @option{--label=@var{volume-label}} (@option{-V @var{volume-label}})
