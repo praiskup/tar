@@ -568,7 +568,10 @@ sparse_extract_file (int fd, struct tar_stat_info *st, off_t *size)
   size_t i;
 
   if (!tar_sparse_init (&file))
-    return dump_status_not_implemented;
+    {
+      *size = st->stat.st_size;
+      return dump_status_not_implemented;
+    }
 
   file.stat_info = st;
   file.fd = fd;
