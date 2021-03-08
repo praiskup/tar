@@ -26,6 +26,7 @@
 # include <attr/xattr.h>
 #endif
 
+#include <errno.h>
 #ifndef ENOATTR
 # define ENOATTR ENODATA        /* No such attribute */
 #endif
