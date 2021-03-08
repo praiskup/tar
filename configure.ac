@@ -102,6 +102,20 @@ gt_TYPE_SSIZE_T
 # gnulib modules
 gl_INIT
 
+AC_DEFINE([GNULIB_EXCLUDE_SINGLE_THREAD], [1],
+  [Define if all programs in this package call functions of the Gnulib
+   'exclude' module only from a single thread.])
+AC_DEFINE([GNULIB_MBRTOWC_SINGLE_THREAD], [1],
+  [Define if all programs in this package call functions of the Gnulib
+   'mbtowc' module only from a single thread.])
+AC_DEFINE([GNULIB_REGEX_SINGLE_THREAD], [1],
+  [Define if all programs in this package call functions of the Gnulib
+   'regex' module only from a single thread.])
+AC_DEFINE([GNULIB_WCHAR_SINGLE_LOCALE], [1],
+  [Define if all programs in this package call locale-sensitive functions
+   like mbrtowc only after setting the locale, and never change the
+   locale once set.])
+
 if test $ac_cv_lib_error_at_line = no; then
   # This means that the error() function is not present in libc, so
   # the one from gnulib will be used instead. This function precedes
