@@ -49,6 +49,7 @@ tar_SOURCES = \
 AM_CPPFLAGS = -I$(top_srcdir)/gnu -I../ -I../gnu -I$(top_srcdir)/lib -I../lib
 AM_CFLAGS = $(WARN_CFLAGS) $(WERROR_CFLAGS)
 
-LDADD = ../lib/libtar.a ../gnu/libgnu.a $(LIBINTL) $(LIBICONV)
-
-tar_LDADD = $(LIBS) $(LDADD) $(LIB_CLOCK_GETTIME) $(LIB_EACCESS) $(LIB_SELINUX)
+tar_LDADD = $(LIBS) ../lib/libtar.a ../gnu/libgnu.a\
+ $(LIB_ACL) $(LIB_CLOCK_GETTIME) $(LIB_EACCESS)\
+ $(LIB_GETRANDOM) $(LIB_HARD_LOCALE) $(LIB_HAS_ACL) $(LIB_MBRTOWC)\
+ $(LIB_SELINUX) $(LIB_SETLOCALE_NULL)
