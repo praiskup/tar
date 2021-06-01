@@ -395,7 +395,7 @@ handle_file_selection_option (int key, const char *arg)
       break;
 
     case NO_ANCHORED_OPTION:
-      include_anchored = 0; /* Clear the default for comman line args */
+      include_anchored = 0; /* Clear the default for command line args */
       matching_flags &= ~ EXCLUDE_ANCHORED;
       break;
 

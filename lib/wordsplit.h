@@ -40,7 +40,7 @@ struct wordsplit
   char **ws_wordv;          /* [Output] Array of parsed out words. */
   size_t ws_offs;           /* [Input] (WRDSF_DOOFFS) Number of initial
 			       elements in ws_wordv to fill with NULLs. */
-  size_t ws_wordn;          /* Number of elements ws_wordv can accomodate. */
+  size_t ws_wordn;          /* Number of elements ws_wordv can accommodate. */
   unsigned ws_flags;        /* [Input] Flags passed to wordsplit. */
   unsigned ws_options;      /* [Input] (WRDSF_OPTIONS)
 			       Additional options. */

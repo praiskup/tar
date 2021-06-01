@@ -183,7 +183,7 @@ restore_files()
     done
 }
 
-# Operation Overwiew:
+# Operation Overview:
 #
 # 1. Determine the time of the last backup
 # 2. Create list of incremental listings to process

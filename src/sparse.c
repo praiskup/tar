@@ -1019,7 +1019,7 @@ static struct tar_sparse_optab const star_optab = {
    * 1.0
 
    Starting from this version, the exact sparse format version is specified
-   explicitely in the header using the following variables:
+   explicitly in the header using the following variables:
 
    GNU.sparse.major     Major version
    GNU.sparse.minor     Minor version

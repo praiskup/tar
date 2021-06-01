@@ -19,7 +19,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Description: Test interaction of --recursion and --no-recursion options.
-# Each of them remains in effect until cancelled by the next ocurrence
+# Each of them remains in effect until cancelled by the next occurrence
 # of its counterpart.  This didn't work in v.1.27.1 and was fixed by
 # commit 2bd9c153.
 # Reported by: Kai <hellsy22@mail.ru>

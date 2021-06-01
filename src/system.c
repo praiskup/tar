@@ -538,7 +538,7 @@ sys_child_open_for_uncompress (void)
       && !_remdev (archive_name_array[0])
       && is_regular_file (archive_name_array[0]))
     {
-      /* We don't need a grandchild tar.  Open the archive and lauch the
+      /* We don't need a grandchild tar.  Open the archive and launch the
 	 uncompressor.  */
 
       archive = open (archive_name_array[0], O_RDONLY | O_BINARY, MODE_RW);

@@ -889,7 +889,7 @@ enum option_class
   };
 
 /* Table of locations of potentially conflicting options.  Two options can
-   conflict only if they procede from the command line.  Otherwise, options
+   conflict only if they proceed from the command line.  Otherwise, options
    in command line silently override those defined in TAR_OPTIONS. */
 static struct option_locus *option_class[OC_MAX];
 
@@ -2697,7 +2697,7 @@ decode_options (int argc, char **argv)
   if (backup_option)
     {
       backup_type = xget_version ("--backup", args.version_control_string);
-      /* No backup is needed either if explicitely disabled or if
+      /* No backup is needed either if explicitly disabled or if
 	 the extracted files are not being written to disk. */
       if (backup_type == no_backups || EXTRACT_OVER_PIPE)
 	backup_option = false;

@@ -16,7 +16,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # Description: Tar <=1.28 would segfault extracting from a multi-volume
-# archive containging filenames >= 100 characters if the subsequent volume
+# archive containing filenames >= 100 characters if the subsequent volume
 # was not set properly.
 # Reported by: Pavel Raiskup <praiskup@redhat.com>
 # References: https://bugzilla.redhat.com/show_bug.cgi?id=866071,

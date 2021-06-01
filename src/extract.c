@@ -456,7 +456,7 @@ mark_after_links (struct delayed_set_stat *head)
    members. To help cope with this case the variable
    delay_directory_restore_option is set by prepare_to_extract.
 
-   If an archive was explicitely created so that its member order is
+   If an archive was explicitly created so that its member order is
    reversed, some directory timestamps can be restored incorrectly,
    e.g.:
        tar --no-recursion -cf archive dir dir/file1 foo dir/file2

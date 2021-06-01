@@ -20,7 +20,7 @@
 #
 # Test description:  Test if file capabilities are archived/restored correctly
 # using just the default xattr support (capabilities are stored/restored in
-# binary format -> system dependant).
+# binary format -> system dependent).
 
 AT_SETUP([capabilities: binary store/restore])
 AT_KEYWORDS([xattrs capabilities capabs_raw01])

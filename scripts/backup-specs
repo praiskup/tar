@@ -13,7 +13,7 @@ TAR=/bin/tar
 # In this case you will have to use public key authentication.
 RSH=/usr/local/bin/ssh
 
-# (Optional) Path to rsh binary on remote mashines. This will be
+# (Optional) Path to rsh binary on remote machines. This will be
 # passed via --rsh-command option to the remote invocation of
 # tar
 RSH_COMMAND=/usr/local/bin/ssh
@@ -43,7 +43,7 @@ BACKUP_DIRS='remote1:/etc remote1:/var/spool/crontab'
 # DIRLIST=/etc/my-backup/dirlist
 
 # List of individual files to be dumped.
-# These should be accesible from the machine on which the dump is run.
+# These should be accessible from the machine on which the dump is run.
 BACKUP_FILES=''
 # This list may also be kept in file $SYSCONFDIR/backup/files, the
 # format of which is the same as described above. The location of

@@ -131,7 +131,7 @@ m4_define([AT_TAR_MKHIER],[
 install-sh -d $1 >/dev/null dnl
 m4_if([$2],,,&& genfile --file [$1]/[$2]) || AT_SKIP_TEST])
 
-dnl Skip test when utlity does not return expected return value
+dnl Skip test when utility does not return expected return value
 m4_define([AT_CHECK_UTIL],[
   $1 &> /dev/null
   if test "$?" != $2; then

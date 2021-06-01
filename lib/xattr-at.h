@@ -63,7 +63,7 @@ ssize_t getxattrat (int dir_fd, const char *path, const char *name,
 ssize_t lgetxattrat (int dir_fd, const char *path, const char *name,
                      void *value, size_t size);
 
-/* dir-fd-relative listxattr.  Obtain the list of extended attrubtes names.  For
+/* dir-fd-relative listxattr.  Obtain the list of extended attributes names.  For
    more info see the listxattr(2) manpage. */
 ssize_t listxattrat (int dir_fd, const char *path, char *list, size_t size);
 
