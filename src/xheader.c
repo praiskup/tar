@@ -708,7 +708,7 @@ decode_record (struct xheader *xhdr,
   if (len_max < len)
     {
       int len_len = len_lim - p;
-      ERROR ((0, 0, _("Extended header length %*s is out of range"),
+      ERROR ((0, 0, _("Extended header length %.*s is out of range"),
 	      len_len, p));
       return false;
     }
@@ -919,7 +919,7 @@ xattr_encode_keyword(const char *keyword)
     {
       char c = *keyword;
 
-      if (bp + 2 /* enough for URL encoding also.. */ >= encode_buffer_size)
+      if (bp + 3 /* enough for URL encoding also.. */ >= encode_buffer_size)
         {
           encode_buffer = x2realloc (encode_buffer, &encode_buffer_size);
         }
