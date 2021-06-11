@@ -84,7 +84,7 @@ copy_string_unquote (const char *str)
   char *output = xstrdup (str);
   size_t len = strlen (output);
   if ((*output == '"' || *output == '\'')
-      && output[len-1] == *output)
+      && len > 1 && output[len-1] == *output)
     {
       memmove (output, output+1, len-2);
       output[len-2] = 0;
