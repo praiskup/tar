@@ -980,7 +980,6 @@ read_name_from_file (struct name_elt *ent)
   if (counter == name_buffer_length)
     name_buffer = x2realloc (name_buffer, &name_buffer_length);
   name_buffer[counter] = 0;
-  chopslash (name_buffer);
   return (counter == 0 && c == EOF) ? file_list_end : file_list_success;
 }
 
@@ -1060,6 +1059,7 @@ read_next_name (struct name_elt *ent, struct name_elt *ret)
 		  return 1;
 		}
 	    }
+	  chopslash (name_buffer);
 	  ret->type = NELT_NAME;
 	  ret->v.name = name_buffer;
 	  return 0;
