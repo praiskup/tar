@@ -493,9 +493,6 @@ _single_transform_name_to_obstack (struct transform *tf, char *input)
 
 	  disp = rmp[0].rm_eo;
 
-	  if (rmp[0].rm_so)
-	    obstack_grow (&stk, input, rmp[0].rm_so);
-
 	  nmatches++;
 	  if (tf->match_number && nmatches < tf->match_number)
 	    {
@@ -503,6 +500,9 @@ _single_transform_name_to_obstack (struct transform *tf, char *input)
 	      input += disp;
 	      continue;
 	    }
+
+	  if (rmp[0].rm_so)
+	    obstack_grow (&stk, input, rmp[0].rm_so);
 
 	  for (segm = tf->repl_head; segm; segm = segm->next)
 	    {
