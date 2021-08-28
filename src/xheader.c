@@ -637,11 +637,11 @@ static struct xhdr_tab const *
 locate_handler (char const *keyword)
 {
   struct xhdr_tab const *p;
-
   for (p = xhdr_tab; p->keyword; p++)
     if (p->prefix)
       {
-        if (strncmp (p->keyword, keyword, strlen(p->keyword)) == 0)
+	size_t kwlen = strlen (p->keyword);
+        if (keyword[kwlen] == '.' && strncmp (p->keyword, keyword, kwlen) == 0)
           return p;
       }
     else
@@ -1716,19 +1716,20 @@ xattr_decoder (struct tar_stat_info *st,
                char const *keyword, char const *arg, size_t size)
 {
   char *xstr, *xkey;
-
+  
   /* copy keyword */
-  size_t klen_raw = strlen (keyword);
-  xkey = alloca (klen_raw + 1);
-  memcpy (xkey, keyword, klen_raw + 1) /* including null-terminating */;
+  xkey = xstrdup (keyword);
 
   /* copy value */
-  xstr = alloca (size + 1);
+  xstr = xmalloc (size + 1);
   memcpy (xstr, arg, size + 1); /* separator included, for GNU tar '\n' */;
 
   xattr_decode_keyword (xkey);
 
-  xheader_xattr_add (st, xkey + strlen("SCHILY.xattr."), xstr, size);
+  xheader_xattr_add (st, xkey + strlen ("SCHILY.xattr."), xstr, size);
+
+  free (xkey);
+  free (xstr);
 }
 
 static void
