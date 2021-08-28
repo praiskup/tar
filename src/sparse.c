@@ -1309,7 +1309,9 @@ pax_decode_header (struct tar_sparse_file *file)
 	    }
 	  sp.offset = u;
 	  COPY_BUF (blk,nbuf,p);
-	  if (!decode_num (&u, nbuf, TYPE_MAXIMUM (off_t)))
+	  if (!decode_num (&u, nbuf, TYPE_MAXIMUM (off_t))
+	      || INT_ADD_OVERFLOW (sp.offset, u)
+	      || file->stat_info->stat.st_size < sp.offset + u)
 	    {
 	      ERROR ((0, 0, _("%s: malformed sparse archive member"),
 		      file->stat_info->orig_file_name));
