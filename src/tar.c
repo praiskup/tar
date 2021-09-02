@@ -2883,7 +2883,7 @@ void
 tar_stat_destroy (struct tar_stat_info *st)
 {
   tar_stat_close (st);
-  xheader_xattr_free (st->xattr_map, st->xattr_map_size);
+  xattr_map_free (&st->xattr_map);
   free (st->orig_file_name);
   free (st->file_name);
   free (st->link_name);

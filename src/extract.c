@@ -105,7 +105,7 @@ struct delayed_set_stat
     char *acls_d_ptr;
     size_t acls_d_len;
     size_t xattr_map_size;
-    struct xattr_array *xattr_map;
+    struct xattr_map xattr_map;
     /* Length and contents of name.  */
     size_t file_name_len;
     char *file_name;
@@ -155,8 +155,7 @@ struct delayed_link
     char *acls_d_ptr;
     size_t acls_d_len;
 
-    size_t xattr_map_size;
-    struct xattr_array *xattr_map;
+    struct xattr_map xattr_map;
 
     /* The desired target of the desired link.  */
     char target[1];
@@ -503,6 +502,7 @@ delay_set_stat (char const *file_name, struct tar_stat_info const *st,
 	  data->dev = st->stat.st_dev;
 	  data->ino = st->stat.st_ino;
 	}
+      xattr_map_init (&data->xattr_map);
     }
 
   data->mode = mode;
@@ -542,12 +542,7 @@ delay_set_stat (char const *file_name, struct tar_stat_info const *st,
       data->acls_d_len = 0;
     }
   if (st)
-    xheader_xattr_copy (st, &data->xattr_map, &data->xattr_map_size);
-  else
-    {
-      data->xattr_map = NULL;
-      data->xattr_map_size = 0;
-    }
+    xattr_map_copy (&data->xattr_map, &st->xattr_map);
   if (must_be_dot_or_slash (file_name))
     mark_after_links (data);
 }
@@ -595,7 +590,7 @@ static void
 free_delayed_set_stat (struct delayed_set_stat *data)
 {
   free (data->file_name);
-  xheader_xattr_free (data->xattr_map, data->xattr_map_size);
+  xattr_map_free (&data->xattr_map);
   free (data->cntx_name);
   free (data->acls_a_ptr);
   free (data->acls_d_ptr);
@@ -859,7 +854,7 @@ set_xattr (char const *file_name, struct tar_stat_info const *st,
 #ifdef HAVE_XATTRS
   bool interdir_made = false;
 
-  if ((xattrs_option > 0) && st->xattr_map_size)
+  if ((xattrs_option > 0) && st->xattr_map.xm_size)
     {
       mode_t mode = current_stat_info.stat.st_mode & MODE_RWX & ~ current_umask;
 
@@ -957,7 +952,6 @@ apply_nonancestor_delayed_set_stat (char const *file_name, bool after_links)
 	  sb.acls_d_ptr = data->acls_d_ptr;
 	  sb.acls_d_len = data->acls_d_len;
 	  sb.xattr_map = data->xattr_map;
-	  sb.xattr_map_size = data->xattr_map_size;
 	  set_stat (data->file_name, &sb,
 		    -1, current_mode, current_mode_mask,
 		    DIRTYPE, data->interdir, data->atflag);
@@ -1447,8 +1441,8 @@ create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made,
       p->acls_a_len = 0;
       p->acls_d_ptr = NULL;
       p->acls_d_len = 0;
-      xheader_xattr_copy (&current_stat_info, &p->xattr_map,
-			  &p->xattr_map_size);
+      xattr_map_init (&p->xattr_map);
+      xattr_map_copy (&p->xattr_map, &current_stat_info.xattr_map);
       strcpy (p->target, current_stat_info.link_name);
 
       if ((h = find_direct_ancestor (file_name)) != NULL)
@@ -1882,7 +1876,6 @@ apply_delayed_links (void)
                   st1.acls_d_ptr = ds->acls_d_ptr;
                   st1.acls_d_len = ds->acls_d_len;
                   st1.xattr_map = ds->xattr_map;
-                  st1.xattr_map_size = ds->xattr_map_size;
 		  set_stat (source, &st1, -1, 0, 0, SYMTYPE,
 			    false, AT_SYMLINK_NOFOLLOW);
 		  valid_source = source;
@@ -1897,7 +1890,7 @@ apply_delayed_links (void)
 	  sources = next;
 	}
 
-      xheader_xattr_free (ds->xattr_map, ds->xattr_map_size);
+      xattr_map_free (&ds->xattr_map);
       free (ds->cntx_name);
 
       {

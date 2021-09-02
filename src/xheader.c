@@ -492,48 +492,6 @@ xheader_forbid_global (void)
     USAGE_ERROR ((0, 0, _("can't update global extended header record")));
 }
 
-void
-xheader_xattr_init (struct tar_stat_info *st)
-{
-  st->xattr_map = NULL;
-  st->xattr_map_size = 0;
-
-  st->acls_a_ptr = NULL;
-  st->acls_a_len = 0;
-  st->acls_d_ptr = NULL;
-  st->acls_d_len = 0;
-  st->cntx_name = NULL;
-}
-
-void
-xheader_xattr_free (struct xattr_array *xattr_map, size_t xattr_map_size)
-{
-  size_t scan = 0;
-
-  while (scan < xattr_map_size)
-    {
-      free (xattr_map[scan].xkey);
-      free (xattr_map[scan].xval_ptr);
-
-      ++scan;
-    }
-  free (xattr_map);
-}
-
-static void
-xheader_xattr__add (struct xattr_array **xattr_map,
-		    size_t *xattr_map_size,
-		    const char *key, const char *val, size_t len)
-{
-  size_t pos = (*xattr_map_size)++;
-
-  *xattr_map = xrealloc (*xattr_map,
-                         *xattr_map_size * sizeof(struct xattr_array));
-  (*xattr_map)[pos].xkey = xstrdup (key);
-  (*xattr_map)[pos].xval_ptr = xmemdup (val, len + 1);
-  (*xattr_map)[pos].xval_len = len;
-}
-
 /* This is reversal function for xattr_encode_keyword.  See comment for
    xattr_encode_keyword() for more info. */
 static void
@@ -571,44 +529,6 @@ xattr_decode_keyword (char *keyword)
       kpl++;
     }
 }
-
-void
-xheader_xattr_add (struct tar_stat_info *st,
-		   const char *key, const char *val, size_t len)
-{
-  size_t klen = strlen (key);
-  char *xkey = xmalloc (strlen("SCHILY.xattr.") + klen + 1);
-  char *tmp = xkey;
-
-  tmp = stpcpy (tmp, "SCHILY.xattr.");
-  stpcpy (tmp, key);
-
-  xheader_xattr__add (&st->xattr_map, &st->xattr_map_size, xkey, val, len);
-
-  free (xkey);
-}
-
-void
-xheader_xattr_copy (const struct tar_stat_info *st,
-		    struct xattr_array **xattr_map, size_t *xattr_map_size)
-{
-  size_t scan = 0;
-
-  *xattr_map = NULL;
-  *xattr_map_size = 0;
-
-  while (scan < st->xattr_map_size)
-    {
-      char  *key = st->xattr_map[scan].xkey;
-      char  *val = st->xattr_map[scan].xval_ptr;
-      size_t len = st->xattr_map[scan].xval_len;
-
-      xheader_xattr__add(xattr_map, xattr_map_size, key, val, len);
-
-      ++scan;
-    }
-}
-
 
 /* General Interface */
 
@@ -1705,31 +1625,26 @@ static void
 xattr_coder (struct tar_stat_info const *st, char const *keyword,
              struct xheader *xhdr, void const *data)
 {
-  struct xattr_array *xattr_map = st->xattr_map;
-  const size_t *off = data;
+  size_t n = *(size_t *)data;
   xheader_print_n (xhdr, keyword,
-                   xattr_map[*off].xval_ptr, xattr_map[*off].xval_len);
+		   st->xattr_map.xm_map[n].xval_ptr,
+		   st->xattr_map.xm_map[n].xval_len);
 }
 
 static void
 xattr_decoder (struct tar_stat_info *st,
                char const *keyword, char const *arg, size_t size)
 {
-  char *xstr, *xkey;
+  char *xkey;
   
   /* copy keyword */
   xkey = xstrdup (keyword);
 
-  /* copy value */
-  xstr = xmalloc (size + 1);
-  memcpy (xstr, arg, size + 1); /* separator included, for GNU tar '\n' */;
-
   xattr_decode_keyword (xkey);
 
-  xheader_xattr_add (st, xkey + strlen ("SCHILY.xattr."), xstr, size);
+  xattr_map_add (&st->xattr_map, xkey, arg, size);
 
   free (xkey);
-  free (xstr);
 }
 
 static void

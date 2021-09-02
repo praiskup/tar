@@ -881,11 +881,15 @@ bool xheader_keyword_deleted_p (const char *kw);
 char *xheader_format_name (struct tar_stat_info *st, const char *fmt,
 			   size_t n);
 void xheader_xattr_init (struct tar_stat_info *st);
-void xheader_xattr_free (struct xattr_array *vals, size_t sz);
-void xheader_xattr_copy (const struct tar_stat_info *st,
-                         struct xattr_array **vals, size_t *sz);
 void xheader_xattr_add (struct tar_stat_info *st,
                         const char *key, const char *val, size_t len);
+
+void xattr_map_init (struct xattr_map *map);
+void xattr_map_copy (struct xattr_map *dst,
+		     const struct xattr_map *src);
+void xattr_map_add (struct xattr_map *map,
+		    const char *key, const char *val, size_t len);
+void xattr_map_free (struct xattr_map *xattr_map);
 
 /* Module system.c */
 

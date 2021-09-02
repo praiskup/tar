@@ -966,14 +966,9 @@ start_header (struct tar_stat_info *st)
         xheader_store ("RHT.security.selinux", st, NULL);
       if (xattrs_option > 0)
         {
-          size_t scan_xattr = 0;
-          struct xattr_array *xattr_map = st->xattr_map;
-
-          while (scan_xattr < st->xattr_map_size)
-            {
-              xheader_store (xattr_map[scan_xattr].xkey, st, &scan_xattr);
-              ++scan_xattr;
-            }
+          size_t i;
+	  for (i = 0; i < st->xattr_map.xm_size; i++)
+	    xheader_store (st->xattr_map.xm_map[i].xkey, st, &i);
         }
     }
 
