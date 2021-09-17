@@ -499,7 +499,8 @@ enum dump_status
 void add_exclusion_tag (const char *name, enum exclusion_tag_type type,
 			bool (*predicate) (int));
 bool cachedir_file_p (int fd);
-char *get_directory_entries (struct tar_stat_info *st);
+char *get_directory_entries (struct tar_stat_info *st)
+  _GL_ATTRIBUTE_MALLOC _GL_ATTRIBUTE_DEALLOC_FREE;
 
 void create_archive (void);
 void pad_archive (off_t size_left);
