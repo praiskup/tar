@@ -673,10 +673,11 @@ enum { SYSINT_BUFSIZE =
 char *sysinttostr (uintmax_t, intmax_t, uintmax_t, char buf[SYSINT_BUFSIZE]);
 intmax_t strtosysint (char const *, char **, intmax_t, uintmax_t);
 void code_ns_fraction (int ns, char *p);
-char const *code_timespec (struct timespec ts, char *sbuf);
 enum { BILLION = 1000000000, LOG10_BILLION = 9 };
 enum { TIMESPEC_STRSIZE_BOUND =
          UINTMAX_STRSIZE_BOUND + LOG10_BILLION + sizeof "-." - 1 };
+char const *code_timespec (struct timespec ts,
+			   char sbuf[TIMESPEC_STRSIZE_BOUND]);
 struct timespec decode_timespec (char const *, char **, bool);
 
 /* Return true if T does not represent an out-of-range or invalid value.  */
