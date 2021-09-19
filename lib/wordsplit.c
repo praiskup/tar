@@ -472,7 +472,7 @@ wsnode_remove (struct wordsplit *wsp, struct wordsplit_node *node)
 static struct wordsplit_node *
 wsnode_tail (struct wordsplit_node *p)
 {
-  while (p && p->next)
+  while (p->next)
     p = p->next;
   return p;
 }
@@ -573,15 +573,15 @@ coalesce_segment (struct wordsplit *wsp, struct wordsplit_node *node)
   char *buf, *cur;
   int stop;
 
-  if (!(node->flags & _WSNF_JOIN))
-    return 0;
-
-  for (p = node; p && (p->flags & _WSNF_JOIN); p = p->next)
+  for (p = node; p->flags & _WSNF_JOIN; )
     {
       len += wsnode_len (p);
+      p = p->next;
+      if (!p)
+	break;
     }
-  if (p)
-    len += wsnode_len (p);
+  if (p == node)
+    return 0;
   end = p;
 
   buf = malloc (len + 1);
