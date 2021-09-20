@@ -158,7 +158,7 @@ AC_ARG_ENABLE([gcc-warnings],
    gl_gcc_warnings=$enableval],
   [gl_gcc_warnings=no
    if test -d "$srcdir"/.git; then
-     gl_GCC_VERSION_IFELSE([4], [6], [gl_gcc_warnings=yes])
+     gl_GCC_VERSION_IFELSE([11], [2], [gl_gcc_warnings=yes])
    fi]
 )
 
