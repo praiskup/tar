@@ -105,3 +105,4 @@ xalloc-die
 xgetcwd
 xstrtoumax
 xvasprintf
+year2038
