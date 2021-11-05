@@ -1,14 +1,14 @@
 %bcond_without selinux
 %bcond_without check
 
-Summary: A GNU file archiving program
+Summary: GNU file archiving program
 Name: tar
 Epoch: 2
 Version: <GENERATED>
 Release: <GENERATED>
 License: GPLv3+
 Group: Applications/Archiving
-URL: http://www.gnu.org/software/tar/
+URL: https://www.gnu.org/software/tar/
 
 Source0: tar-%{version}.tar.xz
 
@@ -24,6 +24,7 @@ BuildRequires: attr acl policycoreutils
 BuildRequires: libselinux-devel
 %endif
 Provides: bundled(gnulib)
+Provides: bundled(paxutils)
 Provides: /bin/tar
 Provides: /bin/gtar
 
