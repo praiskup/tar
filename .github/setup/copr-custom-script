@@ -1,0 +1,38 @@
+#! /bin/sh -x
+
+set -e
+
+resultdir=$PWD
+
+clone_url_parent=https://github.com/praiskup/tar
+workdir=$(basename "$clone_url_parent")
+workdir=${workdir%%.git}
+hook_payload=$(readlink -f "${HOOK_PAYLOAD-hook_payload}")
+
+# clone the helper scripts when needed, and add to PATH
+test -d copr-ci-tooling \
+    || git clone --depth 1 https://github.com/praiskup/copr-ci-tooling.git
+export PATH="$PWD/copr-ci-tooling:$PATH"
+
+# clone the tested project
+git clone \
+    --no-single-branch \
+    "$clone_url_parent"
+
+# checkout requested revision
+cd "$workdir"
+webhook-checkout "$hook_payload"
+
+./bootstrap && ./configure && make dist-xz
+tarball=$(echo tar-*.tar.xz)
+version=${tarball%%.tar.xz}
+version=${version##tar-}
+
+# spec file synced with Fedora
+cat .github/setup/tar.spec \
+    | sed "s/^Version: .*/Version: $version/" \
+    | sed "s/^Release: .*/Release: $(date +"%Y%m%d_%H%M%S")/" \
+    > "$resultdir"/tar.spec
+
+mv "$tarball" "$resultdir"
+
