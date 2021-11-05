@@ -1,6 +1,6 @@
 /* Support for extended attributes.
 
-   Copyright (C) 2006-2020 Free Software Foundation, Inc.
+   Copyright (C) 2006-2021 Free Software Foundation, Inc.
 
    This file is part of GNU tar.
 
@@ -30,6 +30,83 @@
 #include "xattr-at.h"
 #include "selinux-at.h"
 
+#define XATTRS_PREFIX "SCHILY.xattr."
+#define XATTRS_PREFIX_LEN (sizeof XATTRS_PREFIX - 1)
+
+void
+xheader_xattr_init (struct tar_stat_info *st)
+{
+  xattr_map_init (&st->xattr_map);
+
+  st->acls_a_ptr = NULL;
+  st->acls_a_len = 0;
+  st->acls_d_ptr = NULL;
+  st->acls_d_len = 0;
+  st->cntx_name = NULL;
+}
+
+void
+xattr_map_init (struct xattr_map *map)
+{
+  memset (map, 0, sizeof *map);
+}
+
+void
+xattr_map_free (struct xattr_map *xattr_map)
+{
+  size_t i;
+
+  for (i = 0; i < xattr_map->xm_size; i++)
+    {
+      free (xattr_map->xm_map[i].xkey);
+      free (xattr_map->xm_map[i].xval_ptr);
+    }
+  free (xattr_map->xm_map);
+}
+
+void
+xattr_map_add (struct xattr_map *map,
+	       const char *key, const char *val, size_t len)
+{
+  struct xattr_array *p;
+  
+  if (map->xm_size == map->xm_max)
+    map->xm_map = x2nrealloc (map->xm_map, &map->xm_max,
+			      sizeof (map->xm_map[0]));
+  p = &map->xm_map[map->xm_size];
+  p->xkey = xstrdup (key);
+  p->xval_ptr = xmemdup (val, len + 1);
+  p->xval_len = len;
+  map->xm_size++;
+}
+
+void
+xheader_xattr_add (struct tar_stat_info *st,
+		   const char *key, const char *val, size_t len)
+{
+  size_t klen = strlen (key);
+  char *xkey = xmalloc (XATTRS_PREFIX_LEN + klen + 1);
+  char *tmp = xkey;
+
+  tmp = stpcpy (tmp, XATTRS_PREFIX);
+  stpcpy (tmp, key);
+
+  xattr_map_add (&st->xattr_map, xkey, val, len);
+
+  free (xkey);
+}
+
+void
+xattr_map_copy (struct xattr_map *dst, const struct xattr_map *src)
+{
+  size_t i;
+
+  for (i = 0; i < src->xm_size; i++)
+    xattr_map_add (dst, src->xm_map[i].xkey,
+		   src->xm_map[i].xval_ptr,
+		   src->xm_map[i].xval_len);
+}
+
 struct xattrs_mask_map
 {
   const char **masks;
@@ -678,15 +755,14 @@ xattrs_xattrs_set (struct tar_stat_info const *st,
         WARN ((0, 0, _("XATTR support is not available")));
       done = 1;
 #else
-      size_t scan = 0;
+      size_t i;
 
-      if (!st->xattr_map_size)
+      if (!st->xattr_map.xm_size)
         return;
 
-      for (; scan < st->xattr_map_size; ++scan)
+      for (i = 0; i < st->xattr_map.xm_size; i++)
         {
-          char *keyword = st->xattr_map[scan].xkey;
-          keyword += strlen ("SCHILY.xattr.");
+          char *keyword = st->xattr_map.xm_map[i].xkey + XATTRS_PREFIX_LEN;
 
           /* TODO: this 'later_run' workaround is temporary solution -> once
              capabilities should become fully supported by it's API and there
@@ -703,8 +779,8 @@ xattrs_xattrs_set (struct tar_stat_info const *st,
             continue;
 
           xattrs__fd_set (st, file_name, typeflag, keyword,
-                          st->xattr_map[scan].xval_ptr,
-                          st->xattr_map[scan].xval_len);
+                          st->xattr_map.xm_map[i].xval_ptr,
+                          st->xattr_map.xm_map[i].xval_len);
         }
 #endif
     }
@@ -728,10 +804,10 @@ xattrs_print_char (struct tar_stat_info const *st, char *output)
       output[1] = 0;
     }
 
-  if (xattrs_option > 0 && st->xattr_map_size)
-    for (i = 0; i < st->xattr_map_size; ++i)
+  if (xattrs_option > 0 && st->xattr_map.xm_size)
+    for (i = 0; i < st->xattr_map.xm_size; ++i)
       {
-        char *keyword = st->xattr_map[i].xkey + strlen ("SCHILY.xattr.");
+        char *keyword = st->xattr_map.xm_map[i].xkey + XATTRS_PREFIX_LEN;
         if (!xattrs_masked_out (keyword, false /* like extracting */ ))
 	  {
 	    *output = '*';
@@ -768,16 +844,16 @@ xattrs_print (struct tar_stat_info const *st)
     }
 
   /* xattrs */
-  if (xattrs_option > 0 && st->xattr_map_size)
+  if (xattrs_option > 0 && st->xattr_map.xm_size)
     {
       int i;
 
-      for (i = 0; i < st->xattr_map_size; ++i)
+      for (i = 0; i < st->xattr_map.xm_size; ++i)
         {
-          char *keyword = st->xattr_map[i].xkey + strlen ("SCHILY.xattr.");
+          char *keyword = st->xattr_map.xm_map[i].xkey + XATTRS_PREFIX_LEN;
           if (!xattrs_masked_out (keyword, false /* like extracting */ ))
 	    fprintf (stdlis, "  x: %lu %s\n",
-		     (unsigned long) st->xattr_map[i].xval_len, keyword);
+		     (unsigned long) st->xattr_map.xm_map[i].xval_len, keyword);
         }
     }
 }

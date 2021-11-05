@@ -1,0 +1,91 @@
+* Overview
+
+This file is a short instruction for maintainers on how to create and
+publish the online version of the Tar Manual.
+
+In the sections below we assume that the tar project has been properly
+cloned from the git repo, bootstrapped and configured.  We also assume
+that top-level directory of the project is the current local directory.
+
+* Creating the web manual
+
+To create the online version of the documentation, run
+
+  make -C doc manual-rebuild
+
+This will create the directory doc/manual populated with the tar
+documentation files in various formats.  If the doc/manual directory
+already exists, it will be removed prior to rebuilding.
+
+The command produces very copious output.  We advise you to examine it
+closely to make sure no error messages slip your attention. 
+
+For the completeness sake, there are two more Makefile goals related
+to the online manual:
+
+** make -C doc clean-local
+
+Removes the doc/manual directory, if it exists.
+
+** make -C doc manual
+
+Builds the doc/manual, unless it already exists.
+
+* CVS Repository
+
+The online tar manual[1] is a part of tar web pages[2] and is
+traditionally maintained in the CVS repository[3].  To publish the
+generated documentation, you will need first to check out tar web
+pages from the CVS.  To do so, run
+
+  cvs -z3 -d:ext:<username>@cvs.savannah.gnu.org:/web/tar co tar
+
+where <username> is your user name on Savannah.  For the rest of this
+document we will assume that the checked out version of the tar web
+pages resides in the ~/websrc/tar directory.
+
+If you have already checked out the web pages, be sure to update them
+before publishing:
+
+  cd ~/websrc/tar
+  cvs update
+
+* Publishing
+
+To publish the created manual, change to the tar top-level directory
+and run:
+
+  rsync -avz --exclude CVS --delete manual ~/websrc/tar 
+
+This will synchronize the newly created manual pages with the content
+of the CVS sandbox.  Then, change to the ~/websrc/tar directory and
+schedule any removed files for removal and any new files for addition
+to the repository:
+
+  cvs diff --brief 2>&1 | sed -n 's/.*cannot find //p' | xargs cvs rm
+  cvs diff --brief 2>&1 | sed -n 's/^? //p' | xargs cvs add
+
+Then commit your changes:
+
+  cvs commit 
+
+Once the changes are committed to CVS a job is scheduled on the server,
+which synchronizes them with the content of the directory served by
+the httpd daemon.  Normally such synchronization happens within
+several seconds from the commit.
+
+For more information about CVS, please see its documentation[4].
+
+* References
+
+[1] https://www.gnu.org/software/tar/manual/
+[2] https://www.gnu.org/software/tar/
+[3] https://web.cvs.savannah.gnu.org/viewvc/tar/
+[4] https://www.nongnu.org/cvs/#documentation
+
+
+Local Variables:
+mode: outline
+paragraph-separate: "[	]*$"
+version-control: never
+End:

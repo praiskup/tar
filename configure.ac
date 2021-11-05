@@ -1,6 +1,6 @@
 # Configure template for GNU tar.  -*- autoconf -*-
 
-# Copyright 1991, 1994-2010, 2013-2020 Free Software Foundation, Inc.
+# Copyright 1991, 1994-2010, 2013-2021 Free Software Foundation, Inc.
 
 # This file is part of GNU tar.
 
@@ -17,12 +17,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-AC_INIT([GNU tar], [1.32.90], [bug-tar@gnu.org])
+AC_INIT([GNU tar], [1.34], [bug-tar@gnu.org])
 AC_CONFIG_SRCDIR([src/tar.c])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_HEADERS([config.h])
-AC_PREREQ([2.63])
-AM_INIT_AUTOMAKE([1.11 gnits tar-ustar dist-bzip2 dist-xz std-options silent-rules])
+AC_PREREQ([2.64])
+AM_INIT_AUTOMAKE([1.15 gnits tar-ustar dist-bzip2 dist-xz std-options silent-rules])
 
 # Enable silent rules by default:
 AM_SILENT_RULES([yes])
@@ -35,7 +35,6 @@ gl_EARLY
 AC_CHECK_TOOLS([AR], [ar])
 
 AC_SYS_LARGEFILE
-AC_C_INLINE
 
 AC_CHECK_HEADERS_ONCE(fcntl.h linux/fd.h memory.h net/errno.h \
   sgtty.h string.h \
@@ -103,6 +102,20 @@ gt_TYPE_SSIZE_T
 # gnulib modules
 gl_INIT
 
+AC_DEFINE([GNULIB_EXCLUDE_SINGLE_THREAD], [1],
+  [Define if all programs in this package call functions of the Gnulib
+   'exclude' module only from a single thread.])
+AC_DEFINE([GNULIB_MBRTOWC_SINGLE_THREAD], [1],
+  [Define if all programs in this package call functions of the Gnulib
+   'mbtowc' module only from a single thread.])
+AC_DEFINE([GNULIB_REGEX_SINGLE_THREAD], [1],
+  [Define if all programs in this package call functions of the Gnulib
+   'regex' module only from a single thread.])
+AC_DEFINE([GNULIB_WCHAR_SINGLE_LOCALE], [1],
+  [Define if all programs in this package call locale-sensitive functions
+   like mbrtowc only after setting the locale, and never change the
+   locale once set.])
+
 if test $ac_cv_lib_error_at_line = no; then
   # This means that the error() function is not present in libc, so
   # the one from gnulib will be used instead. This function precedes
@@ -112,7 +125,7 @@ if test $ac_cv_lib_error_at_line = no; then
   AC_DEFINE([ENABLE_ERROR_PRINT_PROGNAME],[1],
             [Enable the use of error_print_progname to print program name with error messages.
 	     See comment to function tar_print_progname in src/tar.c])
-fi  
+fi
 
 # paxutils modules
 tar_PAXUTILS
@@ -145,7 +158,7 @@ AC_ARG_ENABLE([gcc-warnings],
    gl_gcc_warnings=$enableval],
   [gl_gcc_warnings=no
    if test -d "$srcdir"/.git; then
-     gl_GCC_VERSION_IFELSE([4], [6], [gl_gcc_warnings=yes])
+     gl_GCC_VERSION_IFELSE([11], [2], [gl_gcc_warnings=yes])
    fi]
 )
 
@@ -162,6 +175,7 @@ if test "$gl_gcc_warnings" = yes; then
   nw="$nw -Winline"                 # It's OK to not inline.
   nw="$nw -Wstrict-overflow"	    # It's OK to optimize strictly.
   nw="$nw -Wsuggest-attribute=pure" # Too many warnings for now.
+  nw="$nw -Wsystem-headers"         # Don't let system headers trigger warnings
   nw="$nw -Wstack-protector"
 
   gl_MANYWARN_ALL_GCC([ws])
@@ -173,10 +187,10 @@ if test "$gl_gcc_warnings" = yes; then
   gl_WARN_ADD([-Wno-type-limits])      # It's OK to optimize based on types.
   gl_WARN_ADD([-Wno-unused-parameter]) # Too many warnings for now
   gl_WARN_ADD([-Wno-format-nonliteral])
-  
+
   gl_WARN_ADD([-fdiagnostics-show-option])
   gl_WARN_ADD([-funit-at-a-time])
-  
+
 
   AC_SUBST([WARN_CFLAGS])
 

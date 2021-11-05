@@ -1,7 +1,7 @@
 /* Prototypes for openat-style fd-relative functions for operating with
    extended file attributes.
 
-   Copyright 2012-2020 Free Software Foundation, Inc.
+   Copyright 2012-2021 Free Software Foundation, Inc.
 
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@
 # include <attr/xattr.h>
 #endif
 
+#include <errno.h>
 #ifndef ENOATTR
 # define ENOATTR ENODATA        /* No such attribute */
 #endif
@@ -62,7 +63,7 @@ ssize_t getxattrat (int dir_fd, const char *path, const char *name,
 ssize_t lgetxattrat (int dir_fd, const char *path, const char *name,
                      void *value, size_t size);
 
-/* dir-fd-relative listxattr.  Obtain the list of extended attrubtes names.  For
+/* dir-fd-relative listxattr.  Obtain the list of extended attributes names.  For
    more info see the listxattr(2) manpage. */
 ssize_t listxattrat (int dir_fd, const char *path, char *list, size_t size);
 

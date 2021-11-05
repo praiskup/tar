@@ -1,6 +1,6 @@
 /* GNU dump extensions to tar.
 
-   Copyright 1988-2020 Free Software Foundation, Inc.
+   Copyright 1988-2021 Free Software Foundation, Inc.
 
    This file is part of GNU tar.
 
@@ -903,19 +903,19 @@ store_rename (struct directory *dir, struct obstack *stk)
   else
     {
       char *temp_name;
-      
+
       /* Break the cycle by using a temporary name for one of its
 	 elements.
 	 First, create a temp name stub entry. */
       temp_name = dir_name (dir->name);
       obstack_1grow (stk, 'X');
       obstack_grow (stk, temp_name, strlen (temp_name) + 1);
-      
+
       obstack_code_rename (stk, dir->name, "");
-      
+
       for (p = dir; p != prev; p = p->orig)
 	obstack_code_rename (stk, p->orig->name, p->name);
-      
+
       obstack_code_rename (stk, "", prev->name);
       free (temp_name);
     }
@@ -993,7 +993,7 @@ read_incr_db_01 (int version, const char *initbuf)
     }
   else
     {
-      buf = strdup (initbuf);
+      buf = xstrdup (initbuf);
       bufsize = strlen (buf) + 1;
     }
 

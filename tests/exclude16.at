@@ -1,7 +1,7 @@
 # Process this file with autom4te to create testsuite. -*- Autotest -*-
 #
 # Test suite for GNU tar.
-# Copyright 2013-2020 Free Software Foundation, Inc.
+# Copyright 2013-2021 Free Software Foundation, Inc.
 
 # This file is part of GNU tar.
 
@@ -24,7 +24,7 @@
 # --listed-incremental option is given.
 #
 # This testcase verifies whether the --exclude-tag-all option works
-# as expected whe used together with --listed-incremental.  If the
+# as expected when used together with --listed-incremental.  If the
 # exclusion tag is created after the level 0 dump, the level 1 dump
 # must skip the entire affected subdirectory and any previously-included
 # files within it.

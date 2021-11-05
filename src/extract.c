@@ -1,6 +1,6 @@
 /* Extract files from a tar archive.
 
-   Copyright 1988-2020 Free Software Foundation, Inc.
+   Copyright 1988-2021 Free Software Foundation, Inc.
 
    This file is part of GNU tar.
 
@@ -105,7 +105,7 @@ struct delayed_set_stat
     char *acls_d_ptr;
     size_t acls_d_len;
     size_t xattr_map_size;
-    struct xattr_array *xattr_map;
+    struct xattr_map xattr_map;
     /* Length and contents of name.  */
     size_t file_name_len;
     char *file_name;
@@ -155,8 +155,7 @@ struct delayed_link
     char *acls_d_ptr;
     size_t acls_d_len;
 
-    size_t xattr_map_size;
-    struct xattr_array *xattr_map;
+    struct xattr_map xattr_map;
 
     /* The desired target of the desired link.  */
     char target[1];
@@ -456,7 +455,7 @@ mark_after_links (struct delayed_set_stat *head)
    members. To help cope with this case the variable
    delay_directory_restore_option is set by prepare_to_extract.
 
-   If an archive was explicitely created so that its member order is
+   If an archive was explicitly created so that its member order is
    reversed, some directory timestamps can be restored incorrectly,
    e.g.:
        tar --no-recursion -cf archive dir dir/file1 foo dir/file2
@@ -503,6 +502,7 @@ delay_set_stat (char const *file_name, struct tar_stat_info const *st,
 	  data->dev = st->stat.st_dev;
 	  data->ino = st->stat.st_ino;
 	}
+      xattr_map_init (&data->xattr_map);
     }
 
   data->mode = mode;
@@ -520,7 +520,7 @@ delay_set_stat (char const *file_name, struct tar_stat_info const *st,
   data->change_dir = chdir_current;
   data->cntx_name = NULL;
   if (st)
-    assign_string (&data->cntx_name, st->cntx_name);
+    assign_string_or_null (&data->cntx_name, st->cntx_name);
   if (st && st->acls_a_ptr)
     {
       data->acls_a_ptr = xmemdup (st->acls_a_ptr, st->acls_a_len + 1);
@@ -542,12 +542,7 @@ delay_set_stat (char const *file_name, struct tar_stat_info const *st,
       data->acls_d_len = 0;
     }
   if (st)
-    xheader_xattr_copy (st, &data->xattr_map, &data->xattr_map_size);
-  else
-    {
-      data->xattr_map = NULL;
-      data->xattr_map_size = 0;
-    }
+    xattr_map_copy (&data->xattr_map, &st->xattr_map);
   if (must_be_dot_or_slash (file_name))
     mark_after_links (data);
 }
@@ -595,7 +590,7 @@ static void
 free_delayed_set_stat (struct delayed_set_stat *data)
 {
   free (data->file_name);
-  xheader_xattr_free (data->xattr_map, data->xattr_map_size);
+  xattr_map_free (&data->xattr_map);
   free (data->cntx_name);
   free (data->acls_a_ptr);
   free (data->acls_d_ptr);
@@ -859,7 +854,7 @@ set_xattr (char const *file_name, struct tar_stat_info const *st,
 #ifdef HAVE_XATTRS
   bool interdir_made = false;
 
-  if ((xattrs_option > 0) && st->xattr_map_size)
+  if ((xattrs_option > 0) && st->xattr_map.xm_size)
     {
       mode_t mode = current_stat_info.stat.st_mode & MODE_RWX & ~ current_umask;
 
@@ -957,7 +952,6 @@ apply_nonancestor_delayed_set_stat (char const *file_name, bool after_links)
 	  sb.acls_d_ptr = data->acls_d_ptr;
 	  sb.acls_d_len = data->acls_d_len;
 	  sb.xattr_map = data->xattr_map;
-	  sb.xattr_map_size = data->xattr_map_size;
 	  set_stat (data->file_name, &sb,
 		    -1, current_mode, current_mode_mask,
 		    DIRTYPE, data->interdir, data->atflag);
@@ -994,7 +988,7 @@ is_directory_link (const char *file_name)
    If not root, though, make the directory writeable and searchable at first,
    so that files can be created under it.
 */
-static inline int
+static int
 safe_dir_mode (struct stat const *st)
 {
   return ((st->st_mode
@@ -1323,6 +1317,41 @@ extract_file (char *file_name, int typeflag)
   return status;
 }
 
+/* Find a delayed_link structure corresponding to the source NAME.
+   Such a structure exists in the delayed link list only if the link
+   placeholder file has been created. Therefore, try to stat the NAME
+   first. If it doesn't exist, there is no matching entry in the list.
+   Otherwise, look for the entry in list which has the matching dev
+   and ino numbers.
+
+   This approach avoids scanning the singly-linked list in obvious cases
+   and does not rely on comparing file names, which may differ for
+   various reasons (e.g. relative vs. absolute file names).
+ */
+static struct delayed_link *
+find_delayed_link_source (char const *name)
+{
+  struct delayed_link *dl;
+  struct stat st;
+
+  if (!delayed_link_head)
+    return NULL;
+
+  if (fstatat (chdir_fd, name, &st, AT_SYMLINK_NOFOLLOW))
+    {
+      if (errno != ENOENT)
+	stat_error (name);
+      return NULL;
+    }
+
+  for (dl = delayed_link_head; dl; dl = dl->next)
+    {
+      if (dl->dev == st.st_dev && dl->ino == st.st_ino)
+	break;
+    }
+  return dl;
+}
+
 /* Create a placeholder file with name FILE_NAME, which will be
    replaced after other extraction is done by a symbolic link if
    IS_SYMLINK is true, and by a hard link otherwise.  Set
@@ -1342,6 +1371,15 @@ create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made,
 
   while ((fd = openat (chdir_fd, file_name, O_WRONLY | O_CREAT | O_EXCL, 0)) < 0)
     {
+      if (errno == EEXIST && find_delayed_link_source (file_name))
+	{
+	  /* The placeholder file has already been created.  This means
+	     that the link being extracted is a duplicate of an already
+	     processed one.  Skip it.
+	   */
+	  return 0;
+	}
+
       switch (maybe_recoverable (file_name, false, interdir_made))
 	{
 	case RECOVER_OK:
@@ -1398,13 +1436,13 @@ create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made,
       p->sources->next = 0;
       strcpy (p->sources->string, file_name);
       p->cntx_name = NULL;
-      assign_string (&p->cntx_name, current_stat_info.cntx_name);
+      assign_string_or_null (&p->cntx_name, current_stat_info.cntx_name);
       p->acls_a_ptr = NULL;
       p->acls_a_len = 0;
       p->acls_d_ptr = NULL;
       p->acls_d_len = 0;
-      xheader_xattr_copy (&current_stat_info, &p->xattr_map,
-			  &p->xattr_map_size);
+      xattr_map_init (&p->xattr_map);
+      xattr_map_copy (&p->xattr_map, &current_stat_info.xattr_map);
       strcpy (p->target, current_stat_info.link_name);
 
       if ((h = find_direct_ancestor (file_name)) != NULL)
@@ -1416,41 +1454,6 @@ create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made,
   return -1;
 }
 
-/* Find a delayed_link structure corresponding to the source NAME.
-   Such a structure exists in the delayed link list only if the link
-   placeholder file has been created. Therefore, try to stat the NAME
-   first. If it doesn't exist, there is no matching entry in the list.
-   Otherwise, look for the entry in list which has the matching dev
-   and ino numbers.
-   
-   This approach avoids scanning the singly-linked list in obvious cases
-   and does not rely on comparing file names, which may differ for
-   various reasons (e.g. relative vs. absolute file names).
- */
-static struct delayed_link *
-find_delayed_link_source (char const *name)
-{
-  struct delayed_link *dl;
-  struct stat st;
-
-  if (!delayed_link_head)
-    return NULL;
-  
-  if (fstatat (chdir_fd, name, &st, AT_SYMLINK_NOFOLLOW))
-    {
-      if (errno != ENOENT)
-	stat_error (name);
-      return NULL;
-    }
-  
-  for (dl = delayed_link_head; dl; dl = dl->next)
-    {
-      if (dl->dev == st.st_dev && dl->ino == st.st_ino)
-	break;
-    }
-  return dl;
-}
-  
 static int
 extract_link (char *file_name, int typeflag)
 {
@@ -1458,7 +1461,7 @@ extract_link (char *file_name, int typeflag)
   char const *link_name;
   int rc;
   struct delayed_link *dl;
-  
+
   link_name = current_stat_info.link_name;
 
   if (! absolute_names_option && contains_dot_dot (link_name))
@@ -1466,7 +1469,7 @@ extract_link (char *file_name, int typeflag)
   dl = find_delayed_link_source (link_name);
   if (dl)
     return create_placeholder_file (file_name, false, &interdir_made, dl);
-  
+
   do
     {
       struct stat st1, st2;
@@ -1688,7 +1691,7 @@ prepare_to_extract (char const *file_name, int typeflag, tar_extractor_t *fun)
 
     case GNUTYPE_VOLHDR:
       return false;
-      
+
     case GNUTYPE_MULTIVOL:
       ERROR ((0, 0,
 	      _("%s: Cannot extract -- file is continued from another volume"),
@@ -1708,7 +1711,12 @@ prepare_to_extract (char const *file_name, int typeflag, tar_extractor_t *fun)
       extractor = extract_file;
     }
 
-  if (!EXTRACT_OVER_PIPE)
+  if (EXTRACT_OVER_PIPE)
+    {
+      if (extractor != extract_file)
+	return false;
+    }
+  else
     {
       switch (old_files_option)
 	{
@@ -1739,7 +1747,7 @@ prepare_to_extract (char const *file_name, int typeflag, tar_extractor_t *fun)
 	}
     }
   *fun = extractor;
-  
+
   return true;
 }
 
@@ -1868,7 +1876,6 @@ apply_delayed_links (void)
                   st1.acls_d_ptr = ds->acls_d_ptr;
                   st1.acls_d_len = ds->acls_d_len;
                   st1.xattr_map = ds->xattr_map;
-                  st1.xattr_map_size = ds->xattr_map_size;
 		  set_stat (source, &st1, -1, 0, 0, SYMTYPE,
 			    false, AT_SYMLINK_NOFOLLOW);
 		  valid_source = source;
@@ -1883,7 +1890,7 @@ apply_delayed_links (void)
 	  sources = next;
 	}
 
-      xheader_xattr_free (ds->xattr_map, ds->xattr_map_size);
+      xattr_map_free (&ds->xattr_map);
       free (ds->cntx_name);
 
       {

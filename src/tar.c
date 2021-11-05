@@ -1,6 +1,6 @@
 /* A tar (tape archiver) program.
 
-   Copyright 1988-2020 Free Software Foundation, Inc.
+   Copyright 1988-2021 Free Software Foundation, Inc.
 
    Written by John Gilmore, starting 1985-08-25.
 
@@ -889,7 +889,7 @@ enum option_class
   };
 
 /* Table of locations of potentially conflicting options.  Two options can
-   conflict only if they procede from the command line.  Otherwise, options
+   conflict only if they proceed from the command line.  Otherwise, options
    in command line silently override those defined in TAR_OPTIONS. */
 static struct option_locus *option_class[OC_MAX];
 
@@ -2248,7 +2248,7 @@ parse_default_options (struct tar_args *args)
       if (argp_parse (&argp,
 		      ws.ws_offs + ws.ws_wordc,
 		      ws.ws_wordv,
-		      ARGP_IN_ORDER|ARGP_NO_EXIT, &idx, &args))
+		      ARGP_IN_ORDER|ARGP_NO_EXIT, &idx, args))
 	abort (); /* shouldn't happen */
       args->loc = save_loc_ptr;
       if (name_more_files ())
@@ -2697,7 +2697,7 @@ decode_options (int argc, char **argv)
   if (backup_option)
     {
       backup_type = xget_version ("--backup", args.version_control_string);
-      /* No backup is needed either if explicitely disabled or if
+      /* No backup is needed either if explicitly disabled or if
 	 the extracted files are not being written to disk. */
       if (backup_type == no_backups || EXTRACT_OVER_PIPE)
 	backup_option = false;
@@ -2751,8 +2751,11 @@ main (int argc, char **argv)
 
   set_quoting_style (0, DEFAULT_QUOTING_STYLE);
 
+  close_stdout_set_file_name (_("stdout"));
   /* Make sure we have first three descriptors available */
-  stdopen ();
+  if (stdopen ())
+    FATAL_ERROR ((0, 0, "%s",
+		  _("failed to assert availability of the standard file descriptors")));
 
   /* Pre-allocate a few structures.  */
 
@@ -2880,7 +2883,7 @@ void
 tar_stat_destroy (struct tar_stat_info *st)
 {
   tar_stat_close (st);
-  xheader_xattr_free (st->xattr_map, st->xattr_map_size);
+  xattr_map_free (&st->xattr_map);
   free (st->orig_file_name);
   free (st->file_name);
   free (st->link_name);

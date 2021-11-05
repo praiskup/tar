@@ -1,6 +1,6 @@
 /* GNU tar Archive Format description.
 
-   Copyright 1988-2020 Free Software Foundation, Inc.
+   Copyright 1988-2021 Free Software Foundation, Inc.
 
    This file is part of GNU tar.
 
@@ -284,6 +284,13 @@ struct xattr_array
     size_t xval_len;
   };
 
+struct xattr_map
+{
+  struct xattr_array *xm_map;
+  size_t xm_size;   /* Size of the xattr map */
+  size_t xm_max;    /* Max. number of entries in xattr_map */
+};
+
 struct tar_stat_info
 {
   char *orig_file_name;     /* name of file read from the archive header */
@@ -334,8 +341,7 @@ struct tar_stat_info
                                processed pax header parsing.  Following 'path'
                                header (lower priority) will be ignored. */
 
-  size_t xattr_map_size;   /* Size of the xattr map */
-  struct xattr_array *xattr_map;
+  struct xattr_map xattr_map;
 
   /* Extended headers */
   struct xheader xhdr;

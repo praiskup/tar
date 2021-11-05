@@ -1,6 +1,6 @@
 /* System-dependent calls for tar.
 
-   Copyright 2003-2020 Free Software Foundation, Inc.
+   Copyright 2003-2021 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -298,10 +298,8 @@ xdup2 (int from, int into)
     }
 }
 
-static void wait_for_grandchild (pid_t pid) __attribute__ ((__noreturn__));
-
 /* Propagate any failure of the grandchild back to the parent.  */
-static void
+static _Noreturn void
 wait_for_grandchild (pid_t pid)
 {
   int wait_status;
@@ -540,7 +538,7 @@ sys_child_open_for_uncompress (void)
       && !_remdev (archive_name_array[0])
       && is_regular_file (archive_name_array[0]))
     {
-      /* We don't need a grandchild tar.  Open the archive and lauch the
+      /* We don't need a grandchild tar.  Open the archive and launch the
 	 uncompressor.  */
 
       archive = open (archive_name_array[0], O_RDONLY | O_BINARY, MODE_RW);

@@ -1,6 +1,6 @@
 /* Miscellaneous functions, not really specific to GNU tar.
 
-   Copyright 1988-2020 Free Software Foundation, Inc.
+   Copyright 1988-2021 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -43,10 +43,27 @@ quote_n_colon (int n, char const *arg)
 /* Assign STRING to a copy of VALUE if not zero, or to zero.  If
    STRING was nonzero, it is freed first.  */
 void
+assign_string_or_null (char **string, const char *value)
+{
+  if (value)
+    assign_string (string, value);
+  else
+    assign_null (string);
+}
+
+void
 assign_string (char **string, const char *value)
 {
   free (*string);
-  *string = value ? xstrdup (value) : 0;
+  *string = xstrdup (value);
+}
+
+void
+assign_null (char **string)
+{
+  char *old = *string;
+  *string = NULL;
+  free (old);
 }
 
 void
@@ -61,6 +78,8 @@ assign_string_n (char **string, const char *value, size_t n)
       p[l] = 0;
       *string = p;
     }
+  else
+    *string = NULL;
 }
 
 #if 0
@@ -715,7 +734,7 @@ maybe_backup_file (const char *file_name, bool this_is_the_archive)
      possible, real problems are unlikely.  Doing any better would require a
      convention, GNU-wide, for all programs doing backups.  */
 
-  assign_string (&after_backup_name, 0);
+  assign_null (&after_backup_name);
 
   /* Check if we really need to backup the file.  */
 
@@ -758,7 +777,7 @@ maybe_backup_file (const char *file_name, bool this_is_the_archive)
       ERROR ((0, e, _("%s: Cannot rename to %s"),
 	      quotearg_colon (before_backup_name),
 	      quote_n (1, after_backup_name)));
-      assign_string (&after_backup_name, 0);
+      assign_null (&after_backup_name);
       return false;
     }
 }
@@ -782,7 +801,7 @@ undo_last_backup (void)
 	fprintf (stdlis, _("Renaming %s back to %s\n"),
 		 quote_n (0, after_backup_name),
 		 quote_n (1, before_backup_name));
-      assign_string (&after_backup_name, 0);
+      assign_null (&after_backup_name);
     }
 }
 
@@ -908,8 +927,6 @@ chdir_count (void)
 int
 chdir_arg (char const *dir)
 {
-  char *absdir;
-
   if (wd_count == wd_alloc)
     {
       if (wd_alloc == 0)
@@ -919,9 +936,7 @@ chdir_arg (char const *dir)
       if (! wd_count)
 	{
 	  wd[wd_count].name = ".";
-	  wd[wd_count].abspath = xgetcwd ();
-	  if (!wd[wd_count].abspath)
-	    call_arg_fatal ("getcwd", ".");
+	  wd[wd_count].abspath = NULL;
 	  wd[wd_count].fd = AT_FDCWD;
 	  wd_count++;
 	}
@@ -938,22 +953,8 @@ chdir_arg (char const *dir)
 	return wd_count - 1;
     }
 
-
-  /* If the given name is absolute, use it to represent this directory;
-     otherwise, construct a name based on the previous -C option.  */
-  if (IS_ABSOLUTE_FILE_NAME (dir))
-    absdir = xstrdup (dir);
-  else if (wd[wd_count - 1].abspath)
-    {
-      namebuf_t nbuf = namebuf_create (wd[wd_count - 1].abspath);
-      namebuf_add_dir (nbuf, dir);
-      absdir = namebuf_finish (nbuf);
-    }
-  else
-    absdir = 0;
-
   wd[wd_count].name = dir;
-  wd[wd_count].abspath = absdir;
+  wd[wd_count].abspath = NULL;
   wd[wd_count].fd = 0;
   return wd_count++;
 }
@@ -1054,6 +1055,40 @@ tar_getcdpath (int idx)
 	}
       return cwd;
     }
+
+  if (!wd[idx].abspath)
+    {
+      int i;
+      int save_cwdi = chdir_current;
+
+      for (i = idx; i >= 0; i--)
+	if (wd[i].abspath)
+	  break;
+
+      while (++i <= idx)
+	{
+	  chdir_do (i);
+	  if (i == 0)
+	    {
+	      if ((wd[i].abspath = xgetcwd ()) == NULL)
+		call_arg_fatal ("getcwd", ".");
+	    }
+	  else if (IS_ABSOLUTE_FILE_NAME (wd[i].name))
+	    /* If the given name is absolute, use it to represent this
+	       directory; otherwise, construct a name based on the
+	       previous -C option.  */
+	    wd[i].abspath = xstrdup (wd[i].name);
+	  else
+	    {
+	      namebuf_t nbuf = namebuf_create (wd[i - 1].abspath);
+	      namebuf_add_dir (nbuf, wd[i].name);
+	      wd[i].abspath = namebuf_finish (nbuf);
+	    }
+	}
+
+      chdir_do (save_cwdi);
+    }
+
   return wd[idx].abspath;
 }
 
@@ -1179,7 +1214,7 @@ xpipe (int fd[2])
    PTR) through ((char *) PTR + ALIGNMENT - 1) to be addressable
    locations.  */
 
-static inline void *
+static void *
 ptr_align (void *ptr, size_t alignment)
 {
   char *p0 = ptr;

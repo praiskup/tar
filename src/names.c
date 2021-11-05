@@ -1,6 +1,6 @@
 /* Various processing of names.
 
-   Copyright 1988-2020 Free Software Foundation, Inc.
+   Copyright 1988-2021 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -395,7 +395,7 @@ handle_file_selection_option (int key, const char *arg)
       break;
 
     case NO_ANCHORED_OPTION:
-      include_anchored = 0; /* Clear the default for comman line args */
+      include_anchored = 0; /* Clear the default for command line args */
       matching_flags &= ~ EXCLUDE_ANCHORED;
       break;
 
@@ -980,7 +980,6 @@ read_name_from_file (struct name_elt *ent)
   if (counter == name_buffer_length)
     name_buffer = x2realloc (name_buffer, &name_buffer_length);
   name_buffer[counter] = 0;
-  chopslash (name_buffer);
   return (counter == 0 && c == EOF) ? file_list_end : file_list_success;
 }
 
@@ -1060,6 +1059,7 @@ read_next_name (struct name_elt *ent, struct name_elt *ret)
 		  return 1;
 		}
 	    }
+	  chopslash (name_buffer);
 	  ret->type = NELT_NAME;
 	  ret->v.name = name_buffer;
 	  return 0;
@@ -1830,7 +1830,7 @@ collect_and_sort_names (void)
 		{
 		  if (p->child)
 		    rebase_child_list (p->child, name);
-		  hash_delete (nametab, name);
+		  hash_remove (nametab, name);
 		  /* FIXME: remove_directory (p->caname); ? */
 		  remname (p);
 		  free_name (p);

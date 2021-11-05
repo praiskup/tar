@@ -1,6 +1,6 @@
 /* Common declarations for the tar program.
 
-   Copyright 1988-2020 Free Software Foundation, Inc.
+   Copyright 1988-2021 Free Software Foundation, Inc.
 
    This file is part of GNU tar.
 
@@ -43,18 +43,13 @@
 # define GLOBAL extern
 #endif
 
-#if 7 <= __GNUC__
-# define FALLTHROUGH __attribute__ ((__fallthrough__))
-#else
-# define FALLTHROUGH ((void) 0)
-#endif
-
 #define TAREXIT_SUCCESS PAXEXIT_SUCCESS
 #define TAREXIT_DIFFERS PAXEXIT_DIFFERS
 #define TAREXIT_FAILURE PAXEXIT_FAILURE
 
 
 #include "arith.h"
+#include <attribute.h>
 #include <backupfile.h>
 #include <exclude.h>
 #include <full-write.h>
@@ -469,7 +464,7 @@ void reset_eof (void);
 void set_next_block_after (union block *block);
 void clear_read_error_count (void);
 void xclose (int fd);
-void archive_write_error (ssize_t status) __attribute__ ((noreturn));
+_Noreturn void archive_write_error (ssize_t status);
 void archive_read_error (void);
 off_t seek_archive (off_t size);
 void set_start_time (void);
@@ -504,7 +499,8 @@ enum dump_status
 void add_exclusion_tag (const char *name, enum exclusion_tag_type type,
 			bool (*predicate) (int));
 bool cachedir_file_p (int fd);
-char *get_directory_entries (struct tar_stat_info *st);
+char *get_directory_entries (struct tar_stat_info *st)
+  _GL_ATTRIBUTE_MALLOC _GL_ATTRIBUTE_DEALLOC_FREE;
 
 void create_archive (void);
 void pad_archive (off_t size_left);
@@ -633,7 +629,10 @@ void skip_member (void);
 #define max(a, b) ((a) < (b) ? (b) : (a))
 
 char const *quote_n_colon (int n, char const *arg);
-void assign_string (char **dest, const char *src);
+void assign_string_or_null (char **dest, const char *src)
+  ATTRIBUTE_NONNULL ((1));
+void assign_string (char **dest, const char *src) ATTRIBUTE_NONNULL ((1, 2));
+void assign_null (char **dest) ATTRIBUTE_NONNULL ((1));
 void assign_string_n (char **string, const char *value, size_t n);
 #define ASSIGN_STRING_N(s,v) assign_string_n (s, v, sizeof (v))
 int unquote_string (char *str);
@@ -675,10 +674,11 @@ enum { SYSINT_BUFSIZE =
 char *sysinttostr (uintmax_t, intmax_t, uintmax_t, char buf[SYSINT_BUFSIZE]);
 intmax_t strtosysint (char const *, char **, intmax_t, uintmax_t);
 void code_ns_fraction (int ns, char *p);
-char const *code_timespec (struct timespec ts, char *sbuf);
 enum { BILLION = 1000000000, LOG10_BILLION = 9 };
 enum { TIMESPEC_STRSIZE_BOUND =
          UINTMAX_STRSIZE_BOUND + LOG10_BILLION + sizeof "-." - 1 };
+char const *code_timespec (struct timespec ts,
+			   char sbuf[TIMESPEC_STRSIZE_BOUND]);
 struct timespec decode_timespec (char const *, char **, bool);
 
 /* Return true if T does not represent an out-of-range or invalid value.  */
@@ -729,9 +729,8 @@ void stat_diag (char const *name);
 void file_removed_diag (const char *name, bool top_level,
 			void (*diagfn) (char const *name));
 void write_error_details (char const *name, size_t status, size_t size);
-void write_fatal (char const *name) __attribute__ ((noreturn));
-void write_fatal_details (char const *name, ssize_t status, size_t size)
-     __attribute__ ((noreturn));
+_Noreturn void write_fatal (char const *name);
+_Noreturn void write_fatal_details (char const *name, ssize_t status, size_t size);
 
 pid_t xfork (void);
 void xpipe (int fd[2]);
@@ -751,7 +750,7 @@ enum files_count
 extern enum files_count filename_args;
 
 /* Return true if there are file names in the list */
-static inline bool
+COMMON_INLINE bool
 name_more_files (void)
 {
   return filename_args != FILES_NONE;
@@ -765,7 +764,6 @@ void uid_to_uname (uid_t uid, char **uname);
 int uname_to_uid (char const *uname, uid_t *puid);
 
 void name_init (void);
-bool name_more_files (void);
 void name_add_name (const char *name);
 void name_term (void);
 const char *name_next (int change_dirs);
@@ -799,14 +797,14 @@ bool contains_dot_dot (char const *name);
 
 /* Module tar.c.  */
 
-void usage (int);
+_Noreturn void usage (int);
 
 int confirm (const char *message_action, const char *name);
 
 void tar_stat_init (struct tar_stat_info *st);
 bool tar_stat_close (struct tar_stat_info *st);
 void tar_stat_destroy (struct tar_stat_info *st);
-void usage (int) __attribute__ ((noreturn));
+_Noreturn void usage (int);
 int tar_timespec_cmp (struct timespec a, struct timespec b);
 const char *archive_format_string (enum archive_format fmt);
 const char *subcommand_string (enum subcommand c);
@@ -885,11 +883,15 @@ bool xheader_keyword_deleted_p (const char *kw);
 char *xheader_format_name (struct tar_stat_info *st, const char *fmt,
 			   size_t n);
 void xheader_xattr_init (struct tar_stat_info *st);
-void xheader_xattr_free (struct xattr_array *vals, size_t sz);
-void xheader_xattr_copy (const struct tar_stat_info *st,
-                         struct xattr_array **vals, size_t *sz);
 void xheader_xattr_add (struct tar_stat_info *st,
                         const char *key, const char *val, size_t len);
+
+void xattr_map_init (struct xattr_map *map);
+void xattr_map_copy (struct xattr_map *dst,
+		     const struct xattr_map *src);
+void xattr_map_add (struct xattr_map *map,
+		    const char *key, const char *val, size_t len);
+void xattr_map_free (struct xattr_map *xattr_map);
 
 /* Module system.c */
 
@@ -915,7 +917,7 @@ void sys_exec_checkpoint_script (const char *script_name,
 
 /* Module compare.c */
 void report_difference (struct tar_stat_info *st, const char *message, ...)
-  __attribute__ ((format (printf, 2, 3)));
+  ATTRIBUTE_FORMAT ((printf, 2, 3));
 
 /* Module sparse.c */
 bool sparse_member_p (struct tar_stat_info *st);

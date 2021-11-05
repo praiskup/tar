@@ -1,6 +1,6 @@
 /* Create a tar archive.
 
-   Copyright 1985-2020 Free Software Foundation, Inc.
+   Copyright 1985-2021 Free Software Foundation, Inc.
 
    This file is part of GNU tar.
 
@@ -308,7 +308,7 @@ to_chars (int negative, uintmax_t value, size_t valsize,
       if (((negative ? -1 - value : value)
 	   <= MAX_VAL_WITH_DIGITS (size - 1, LG_256)))
 	{
-	  where[0] = negative ? -1 : 1 << (LG_256 - 1);
+	  where[0] = (char) (negative ? -1 : 1 << (LG_256 - 1));
 	  to_base256 (negative, value, where + 1, size - 1);
 	  return true;
 	}
@@ -966,14 +966,9 @@ start_header (struct tar_stat_info *st)
         xheader_store ("RHT.security.selinux", st, NULL);
       if (xattrs_option > 0)
         {
-          size_t scan_xattr = 0;
-          struct xattr_array *xattr_map = st->xattr_map;
-
-          while (scan_xattr < st->xattr_map_size)
-            {
-              xheader_store (xattr_map[scan_xattr].xkey, st, &scan_xattr);
-              ++scan_xattr;
-            }
+          size_t i;
+	  for (i = 0; i < st->xattr_map.xm_size; i++)
+	    xheader_store (st->xattr_map.xm_map[i].xkey, st, &i);
         }
     }
 

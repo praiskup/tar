@@ -1,125 +1,101 @@
-<?xml version="1.0" encoding="utf-8" ?>
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
-    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
-<!-- $Id: gendocs_template,v 1.5 2007/10/30 14:58:52 gray Exp $ -->
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<!--#include virtual="/server/header.html" -->
+<!-- Parent-Version: 1.78 -->
 
-<head>
-<title>%%TITLE%% - GNU Project - Free Software Foundation (FSF)</title>
-<meta http-equiv="content-type" content='text/html; charset=utf-8' />
-<link rel="stylesheet" type="text/css" href="/gnu.css" />
-<link rev="made" href="mailto:gray@gnu.org" />
- <link rel="icon" type="image/png" href="/graphics/gnu-head-icon.png" />
-</head>
+<!--
+Copyright (C) 2006-2021 Free Software Foundation, Inc.
 
-<!-- This document is in XML, and xhtml 1.0 -->
-<!-- Please make sure to properly nest your tags -->
-<!-- and ensure that your final document validates -->
-<!-- consistent with W3C xhtml 1.0 and CSS standards -->
-<!-- See validator.w3.org -->
+Copying and distribution of this file, with or without modification,
+are permitted in any medium without royalty provided the copyright
+notice and this notice are preserved.  This file is offered as-is,
+without any warranty.
+-->
 
-<body>
-
-<h3>%%TITLE%%</h3>
+<title>%%TITLE%% - GNU Project - Free Software Foundation</title>
+<!--#include virtual="/server/banner.html" -->
+<h2>%%TITLE%%</h2>
 
 <address>Free Software Foundation</address>
 <address>last updated %%DATE%%</address>
-<p>
-<a href="/graphics/gnu-head.jpg">
-	<img src="/graphics/gnu-head-sm.jpg"
-	alt=" [image of the head of a GNU] "
-	width="129" height="122" />
-</a>
-</p>
-<hr />
 
-<p>The manual for %%PACKAGE%% is available in the following formats:</p>
+<p>This manual (%%PACKAGE%%) is available in the following formats:</p>
 
 <ul>
-  <li><a href="%%PACKAGE%%.html">HTML
-      (%%HTML_MONO_SIZE%%K bytes)</a> - entirely on one web page.</li>
-  <li><a href="html_node/index.html">HTML</a> - with one web page per
-      node.</li>
+<li><a href="%%PACKAGE%%.html">HTML
+    (%%HTML_MONO_SIZE%%K bytes)</a> - entirely on one web page.</li>
+<li><a href="html_node/index.html">HTML</a> - with one web page per
+    node.</li>
 %%IF HTML_SECTION%%
-  <li><a href="html_section/index.html">HTML</a> - with one web page per
-      section.</li>
+<li><a href="html_section/index.html">HTML</a> - with one web page per
+    section.</li>
 %%ENDIF HTML_SECTION%%
 %%IF HTML_CHAPTER%%
-  <li><a href="html_chapter/index.html">HTML</a> - with one web page per
-      chapter.</li>
+<li><a href="html_chapter/index.html">HTML</a> - with one web page per
+    chapter.</li>
 %%ENDIF HTML_CHAPTER%%
-  <li><a href="%%PACKAGE%%.html.gz">HTML compressed
-      (%%HTML_MONO_GZ_SIZE%%K gzipped characters)</a> - entirely on
-      one web page.</li>
-  <li><a href="%%PACKAGE%%.html_node.tar.gz">HTML compressed
-      (%%HTML_NODE_TGZ_SIZE%%K gzipped tar file)</a> -
-      with one web page per node.</li>
+<li><a href="%%PACKAGE%%.html.gz">HTML compressed
+    (%%HTML_MONO_GZ_SIZE%%K gzipped characters)</a> - entirely on
+    one web page.</li>
+<li><a href="%%PACKAGE%%.html_node.tar.gz">HTML compressed
+    (%%HTML_NODE_TGZ_SIZE%%K gzipped tar file)</a> -
+    with one web page per node.</li>
 %%IF HTML_SECTION%%
-  <li><a href="%%PACKAGE%%.html_section.tar.gz">HTML compressed
-      (%%HTML_SECTION_TGZ_SIZE%%K gzipped tar file)</a> -
-      with one web page per section.</li>
+<li><a href="%%PACKAGE%%.html_section.tar.gz">HTML compressed
+    (%%HTML_SECTION_TGZ_SIZE%%K gzipped tar file)</a> -
+    with one web page per section.</li>
 %%ENDIF HTML_SECTION%%
 %%IF HTML_CHAPTER%%
-  <li><a href="%%PACKAGE%%.html_chapter.tar.gz">HTML compressed
-      (%%HTML_CHAPTER_TGZ_SIZE%%K gzipped tar file)</a> -
-      with one web page per chapter.</li>
+<li><a href="%%PACKAGE%%.html_chapter.tar.gz">HTML compressed
+    (%%HTML_CHAPTER_TGZ_SIZE%%K gzipped tar file)</a> -
+    with one web page per chapter.</li>
 %%ENDIF HTML_CHAPTER%%
-  <li><a href="%%PACKAGE%%.info.tar.gz">Info document
-      (%%INFO_TGZ_SIZE%%K characters gzipped tar file)</a>.</li>
-  <li><a href="%%PACKAGE%%.txt">ASCII text
-      (%%ASCII_SIZE%%K characters)</a>.</li>
-  <li><a href="%%PACKAGE%%.txt.gz">ASCII text compressed
-      (%%ASCII_GZ_SIZE%%K gzipped characters)</a>.</li>
-  <li><a href="%%PACKAGE%%.dvi.gz">TeX dvi file
-      (%%DVI_GZ_SIZE%%K characters gzipped)</a>.</li>
-  <li><a href="%%PACKAGE%%.ps.gz">PostScript file
-      (%%PS_GZ_SIZE%%K characters gzipped)</a>.</li>
-  <li><a href="%%PACKAGE%%.pdf">PDF file
-      (%%PDF_SIZE%%K characters)</a>.</li>
-  <li><a href="%%PACKAGE%%.texi.tar.gz">Texinfo source
-      (%%TEXI_TGZ_SIZE%%K characters gzipped tar file)</a></li>
+<li><a href="%%PACKAGE%%.info.tar.gz">Info document
+    (%%INFO_TGZ_SIZE%%K bytes gzipped tar file)</a>.</li>
+<li><a href="%%PACKAGE%%.txt">ASCII text
+    (%%ASCII_SIZE%%K bytes)</a>.</li>
+<li><a href="%%PACKAGE%%.txt.gz">ASCII text compressed
+    (%%ASCII_GZ_SIZE%%K bytes gzipped)</a>.</li>
+<li><a href="%%PACKAGE%%.dvi.gz">TeX dvi file
+    (%%DVI_GZ_SIZE%%K bytes gzipped)</a>.</li>
+<li><a href="%%PACKAGE%%.pdf">PDF file
+    (%%PDF_SIZE%%K bytes)</a>.</li>
+<li><a href="%%PACKAGE%%.texi.tar.gz">Texinfo source
+    (%%TEXI_TGZ_SIZE%%K bytes gzipped tar file).</a></li>
 </ul>
 
-<p>(This page generated by the <a
-href="%%SCRIPTURL%%">%%SCRIPTNAME%%</a> script.)
-</p>
+<p>You can <a href="https://shop.fsf.org/">buy printed copies of
+some manuals</a> (among other items) from the Free Software Foundation;
+this helps support FSF activities.</p>
 
-<p>
-<a href="http://validator.w3.org/check?uri=referer"><img
-          src="http://www.w3.org/Icons/valid-xhtml10"
-          alt="Valid XHTML 1.0!" height="31" width="88" /></a>
-</p>
+<p>(This page generated by the <a href="%%SCRIPTURL%%">%%SCRIPTNAME%%
+script</a>.)</p>
 
-<div class="copyright">
-<p>
-Return to the <a href="/home.html">GNU Project home page</a>.
-</p>
+<!-- If needed, change the copyright block at the bottom. In general,
+     all pages on the GNU web server should have the section about
+     verbatim copying.  Please do NOT remove this without talking
+     with the webmasters first.
+     Please make sure the copyright date is consistent with the document
+     and that it is like this: "2001, 2002", not this: "2001-2002". -->
+</div><!-- for id="content", starts in the include above -->
+<!--#include virtual="/server/footer.html" -->
+<div id="footer">
+<div class="unprintable">
 
-<p>
-Please send FSF &amp; GNU inquiries to
-<a href="mailto:gnu@gnu.org"><em>gnu@gnu.org</em></a>.
-There are also <a href="/home.html#ContactInfo">other ways to contact</a>
-the FSF.
-<br />
-Please send broken links and other corrections (or suggestions) to
-<a href="mailto:webmasters@gnu.org"><em>webmasters@gnu.org</em></a>.
-</p>
-
-<p>
-Copyright 2004-2020 Free Software Foundation, Inc.,
-51 Franklin Street, Fifth Floor, Boston, MA 02111, USA
-<br />
-Verbatim copying and distribution of this entire article is
-permitted in any medium, provided this notice is preserved.
-</p>
-
-<p>
-Updated:
-<!-- timestamp start -->
-$Date: 2007/10/30 14:58:52 $ $Author: gray $
-<!-- timestamp end -->
-</p>
+<p>Please send general FSF &amp; GNU inquiries to
+<a href="mailto:gnu@gnu.org">&lt;gnu@gnu.org&gt;</a>.
+There are also <a href="/contact/">other ways to contact</a>
+the FSF.  Broken links and other corrections or suggestions can be sent
+to <a href="mailto:%%EMAIL%%">&lt;%%EMAIL%%&gt;</a>.</p>
 </div>
 
+<p>Copyright &copy; 2020 Free Software Foundation, Inc.</p>
+
+<p>This page is licensed under a <a rel="license"
+href="https://creativecommons.org/licenses/by-nd/3.0/us/">Creative
+Commons Attribution-NoDerivs 3.0 United States License</a>.</p>
+
+<!--#include virtual="/server/bottom-notes.html" -->
+
+</div>
+</div>
 </body>
 </html>

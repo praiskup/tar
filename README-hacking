@@ -14,6 +14,10 @@ version.
 - Texinfo <http://www.gnu.org/software/texinfo>
 - Git <http://git.or.cz>
 
+Up-to-date compilers and libraries are also recommended, for better
+static checking.  You may be able to use an older compiler by building
+with 'make WERROR_CFLAGS='; if so, don't worry about its false alarms.
+
 * Bootstrapping
 
 Obviously, if you are reading these notes, you did manage to clone
@@ -39,7 +43,7 @@ See 'bootstrap --help' for a detailed list.
 
 * Copyright information
 
-Copyright 2007-2020 Free Software Foundation, Inc.
+Copyright 2007-2021 Free Software Foundation, Inc.
 
 This file is part of GNU tar.
 

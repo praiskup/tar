@@ -1,5 +1,5 @@
 /* This file is part of GNU tar.
-   Copyright 2006-2020 Free Software Foundation, Inc.
+   Copyright 2006-2021 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -493,9 +493,6 @@ _single_transform_name_to_obstack (struct transform *tf, char *input)
 
 	  disp = rmp[0].rm_eo;
 
-	  if (rmp[0].rm_so)
-	    obstack_grow (&stk, input, rmp[0].rm_so);
-
 	  nmatches++;
 	  if (tf->match_number && nmatches < tf->match_number)
 	    {
@@ -503,6 +500,9 @@ _single_transform_name_to_obstack (struct transform *tf, char *input)
 	      input += disp;
 	      continue;
 	    }
+
+	  if (rmp[0].rm_so)
+	    obstack_grow (&stk, input, rmp[0].rm_so);
 
 	  for (segm = tf->repl_head; segm; segm = segm->next)
 	    {

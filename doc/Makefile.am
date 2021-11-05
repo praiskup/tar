@@ -1,6 +1,6 @@
 # Makefile for GNU tar documentation.
 
-# Copyright 1994-2020 Free Software Foundation, Inc.
+# Copyright 1994-2021 Free Software Foundation, Inc.
 
 # This file is part of GNU tar.
 
@@ -138,9 +138,9 @@ check-docs:
 clean-local:
 	rm -rf manual
 
-GENDOCS=gendocs.sh
+GENDOCS=$(srcdir)/gendocs.sh
 
-TEXI2DVI=texi2dvi -t '@set $(RENDITION)' -E
+TEXI2DVI=texi2dvi -E
 
 # Make sure you set TEXINPUTS
 # Usual value is:
@@ -148,5 +148,8 @@ TEXI2DVI=texi2dvi -t '@set $(RENDITION)' -E
 manual:
 	TEXINPUTS=$(srcdir):$(top_srcdir)/build-tex:$(TEXINPUTS) \
 	 MAKEINFO="$(MAKEINFO) $(MAKEINFOFLAGS)" \
-	 TEXI2DVI="$(TEXI2DVI) -t @finalout" \
+	 TEXI2DVI="$(TEXI2DVI) -t '@set DISTRIB' -t @finalout" \
 	$(GENDOCS) --texi2html tar 'GNU tar manual'
+
+manual-rebuild: clean-local manual
+

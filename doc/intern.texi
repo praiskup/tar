@@ -1,5 +1,5 @@
 @c This is part of the paxutils manual.
-@c Copyright (C) 2006-2020 Free Software Foundation, Inc.
+@c Copyright (C) 2006--2021 Free Software Foundation, Inc.
 @c This file is distributed under GFDL 1.1 or any later version
 @c published by the Free Software Foundation.
 
@@ -13,7 +13,7 @@
 
 @node Standard
 @unnumberedsec Basic Tar Format
-@UNREVISED
+@UNREVISED{}
 
 While an archive may contain many files, the archive itself is a
 single ordinary file.  Like any other file, an archive file can be
@@ -266,7 +266,7 @@ IEEE Std 1003.2-1992, pages 380-388 (section 4.48) and pages 936-940
 
 @node Extensions
 @unnumberedsec @acronym{GNU} Extensions to the Archive Format
-@UNREVISED
+@UNREVISED{}
 
 The @acronym{GNU} format uses additional file types to describe new types of
 files in an archive.  These are listed below.

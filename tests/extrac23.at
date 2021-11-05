@@ -1,5 +1,5 @@
 # Test suite for GNU tar.                             -*- Autotest -*-
-# Copyright 2020 Free Software Foundation, Inc.
+# Copyright 2020-2021 Free Software Foundation, Inc.
 #
 # This file is part of GNU tar.
 #
@@ -38,7 +38,7 @@ chmod 777 dir
 tar -xf a.tar --no-overwrite-dir
 genfile --stat=mode.777 dir
 
-# Test if temprorary permissions are set correctly to allow the owner
+# Test if temporary permissions are set correctly to allow the owner
 # to write to the directory.
 genfile --file dir/file
 tar cf a.tar dir

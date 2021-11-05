@@ -18,12 +18,7 @@
 #define __WORDSPLIT_H
 
 #include <stddef.h>
-
-#if 2 < __GNUC__ + (7 <= __GNUC_MINOR__)
-# define __WORDSPLIT_ATTRIBUTE_FORMAT(spec) __attribute__ ((__format__ spec))
-#else
-# define __WORDSPLIT_ATTRIBUTE_FORMAT(spec) /* empty */
-#endif
+#include <attribute.h>
 
 typedef struct wordsplit wordsplit_t;
 
@@ -36,16 +31,16 @@ typedef struct wordsplit wordsplit_t;
    must be set (or unset, if starting with !) in ws_flags (if starting with
    WRDSF_) or ws_options (if starting with WRDSO_) to initialize or use the
    given member.
-   
+
    If not redefined explicitly, most of them are set to some reasonable
    default value upon entry to wordsplit(). */
-struct wordsplit            
+struct wordsplit
 {
   size_t ws_wordc;          /* [Output] Number of words in ws_wordv. */
   char **ws_wordv;          /* [Output] Array of parsed out words. */
   size_t ws_offs;           /* [Input] (WRDSF_DOOFFS) Number of initial
 			       elements in ws_wordv to fill with NULLs. */
-  size_t ws_wordn;          /* Number of elements ws_wordv can accomodate. */ 
+  size_t ws_wordn;          /* Number of elements ws_wordv can accommodate. */
   unsigned ws_flags;        /* [Input] Flags passed to wordsplit. */
   unsigned ws_options;      /* [Input] (WRDSF_OPTIONS)
 			       Additional options. */
@@ -62,11 +57,11 @@ struct wordsplit
                             /* [Input] (WRDSF_ALLOC_DIE) Function called when
 			       out of memory.  Must not return. */
   void (*ws_error) (const char *, ...)
-                   __attribute__ ((__format__ (__printf__, 1, 2)));
+		ATTRIBUTE_FORMAT ((printf, 1, 2));
                             /* [Input] (WRDSF_ERROR) Function used for error
 			       reporting */
   void (*ws_debug) (const char *, ...)
-                   __attribute__ ((__format__ (__printf__, 1, 2)));
+		ATTRIBUTE_FORMAT ((printf, 1, 2));
                             /* [Input] (WRDSF_DEBUG) Function used for debug
 			       output. */
   const char **ws_env;      /* [Input] (WRDSF_ENV, !WRDSF_NOVAR) Array of
@@ -75,7 +70,7 @@ struct wordsplit
   char **ws_envbuf;
   size_t ws_envidx;
   size_t ws_envsiz;
-  
+
   int (*ws_getvar) (char **ret, const char *var, size_t len, void *clos);
                             /* [Input] (WRDSF_GETVAR, !WRDSF_NOVAR) Looks up
 			       the name VAR (LEN bytes long) in the table of
@@ -100,8 +95,8 @@ struct wordsplit
 
 			       See ws_getvar for a discussion of possible
 			       return values. */
-	
-  const char *ws_input;     /* Input string (the S argument to wordsplit. */  
+
+  const char *ws_input;     /* Input string (the S argument to wordsplit. */
   size_t ws_len;            /* Length of ws_input. */
   size_t ws_endp;           /* Points past the last processed byte in
 			       ws_input. */
@@ -221,9 +216,9 @@ struct wordsplit
 /* Handle hex escapes in quoted strings */
 #define WRDSO_XESC_QUOTE      0x00000400
 
-#define WRDSO_BSKEEP          WRDSO_BSKEEP_WORD     
-#define WRDSO_OESC            WRDSO_OESC_WORD       
-#define WRDSO_XESC            WRDSO_XESC_WORD       
+#define WRDSO_BSKEEP          WRDSO_BSKEEP_WORD
+#define WRDSO_OESC            WRDSO_OESC_WORD
+#define WRDSO_XESC            WRDSO_XESC_WORD
 
 /* Indices into ws_escape */
 #define WRDSX_WORD  0
@@ -252,15 +247,6 @@ void wordsplit_free (wordsplit_t *ws);
 void wordsplit_free_words (wordsplit_t *ws);
 void wordsplit_free_envbuf (wordsplit_t *ws);
 int wordsplit_get_words (wordsplit_t *ws, size_t *wordc, char ***wordv);
-
-static inline void wordsplit_getwords (wordsplit_t *ws, size_t *wordc, char ***wordv)
-  __attribute__ ((deprecated));
-
-static inline void
-wordsplit_getwords (wordsplit_t *ws, size_t *wordc, char ***wordv)
-{
-  wordsplit_get_words (ws, wordc, wordv);
-}
 
 int wordsplit_append (wordsplit_t *wsp, int argc, char **argv);
 

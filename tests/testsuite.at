@@ -1,7 +1,7 @@
 # Process this file with autom4te to create testsuite. -*- Autotest -*-
 
 # Test suite for GNU tar.
-# Copyright 2004-2020 Free Software Foundation, Inc.
+# Copyright 2004-2021 Free Software Foundation, Inc.
 
 # This file is part of GNU tar.
 
@@ -131,7 +131,7 @@ m4_define([AT_TAR_MKHIER],[
 install-sh -d $1 >/dev/null dnl
 m4_if([$2],,,&& genfile --file [$1]/[$2]) || AT_SKIP_TEST])
 
-dnl Skip test when utlity does not return expected return value
+dnl Skip test when utility does not return expected return value
 m4_define([AT_CHECK_UTIL],[
   $1 &> /dev/null
   if test "$?" != $2; then
@@ -344,6 +344,7 @@ m4_include([extrac20.at])
 m4_include([extrac21.at])
 m4_include([extrac22.at])
 m4_include([extrac23.at])
+m4_include([extrac24.at])
 
 m4_include([backup01.at])
 

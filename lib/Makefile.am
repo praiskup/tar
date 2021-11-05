@@ -1,6 +1,6 @@
 # Makefile for GNU tar library.			-*- Makefile -*-
 
-# Copyright 1994-2020 Free Software Foundation, Inc.
+# Copyright 1994-2021 Free Software Foundation, Inc.
 
 # This file is part of GNU tar.
 
@@ -32,7 +32,6 @@ AM_CFLAGS = $(GNULIB_WARN_CFLAGS) $(WERROR_CFLAGS)
 noinst_HEADERS = \
  paxlib.h\
  rmt.h\
- stdopen.h\
  system.h\
  system-ioctl.h\
  wordsplit.h\
@@ -42,7 +41,6 @@ libtar_a_SOURCES = \
   paxerror.c paxexit-status.c paxlib.h paxnames.c \
   rtapelib.c \
   rmt.h \
-  stdopen.c stdopen.h \
   system.h system-ioctl.h \
   wordsplit.c\
   xattr-at.c

@@ -1,7 +1,7 @@
 # List of gnulib modules needed for GNU tar.
 # A module name per line. Empty lines and comments are ignored.
 
-# Copyright 2005-2020 Free Software Foundation, Inc.
+# Copyright 2005-2021 Free Software Foundation, Inc.
 
 # This file is part of GNU tar.
 
@@ -23,6 +23,7 @@ areadlinkat-with-size
 argmatch
 argp
 argp-version-etc
+attribute
 backupfile
 closeout
 configmake
@@ -83,6 +84,7 @@ stat-time
 stdbool
 stdint
 stpcpy
+stdopen
 strdup-posix
 strerror
 strnlen
@@ -103,3 +105,4 @@ xalloc-die
 xgetcwd
 xstrtoumax
 xvasprintf
+year2038

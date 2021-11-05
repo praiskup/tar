@@ -1,6 +1,6 @@
 /* Buffer management for tar.
 
-   Copyright 1988-2020 Free Software Foundation, Inc.
+   Copyright 1988-2021 Free Software Foundation, Inc.
 
    This file is part of GNU tar.
 
@@ -28,6 +28,7 @@
 #include <fnmatch.h>
 #include <human.h>
 #include <quotearg.h>
+#include <verify.h>
 
 #include "common.h"
 #include <rmt.h>
@@ -327,15 +328,15 @@ static struct zip_program zip_program[] = {
   { ct_lzop,     LZOP_PROGRAM,     "--lzop" },
   { ct_xz,       XZ_PROGRAM,       "-J" },
   { ct_zstd,     ZSTD_PROGRAM,     "--zstd" },
-  { ct_none }
 };
+enum { n_zip_programs = sizeof zip_program / sizeof *zip_program };
 
 static struct zip_program const *
 find_zip_program (enum compress_type type, int *pstate)
 {
   int i;
 
-  for (i = *pstate; zip_program[i].type != ct_none; i++)
+  for (i = *pstate; i < n_zip_programs; i++)
     {
       if (zip_program[i].type == type)
 	{
@@ -351,6 +352,8 @@ const char *
 first_decompress_program (int *pstate)
 {
   struct zip_program const *zp;
+
+  *pstate = n_zip_programs;
 
   if (use_compress_program_option)
     return use_compress_program_option;
@@ -368,8 +371,6 @@ next_decompress_program (int *pstate)
 {
   struct zip_program const *zp;
 
-  if (use_compress_program_option)
-    return NULL;
   zp = find_zip_program (archive_compression_type, pstate);
   return zp ? zp->program : NULL;
 }
@@ -1325,8 +1326,8 @@ new_volume (enum access_mode mode)
   if (verify_option)
     verify_volume ();
 
-  assign_string (&volume_label, NULL);
-  assign_string (&continued_file_name, NULL);
+  assign_null (&volume_label);
+  assign_null (&continued_file_name);
   continued_file_size = continued_file_offset = 0;
   current_block = record_start;
 
@@ -1505,7 +1506,7 @@ try_new_volume (void)
       ASSIGN_STRING_N (&volume_label, current_header->header.name);
       set_next_block_after (header);
       header = find_next_block ();
-      if (header->header.typeflag != GNUTYPE_MULTIVOL)
+      if (! (header && header->header.typeflag == GNUTYPE_MULTIVOL))
         break;
       FALLTHROUGH;
     case GNUTYPE_MULTIVOL:
@@ -1688,6 +1689,7 @@ _write_volume_label (const char *str)
     {
       union block *label = find_next_block ();
 
+      assume (label);
       memset (label, 0, BLOCKSIZE);
 
       strcpy (label->header.name, str);
@@ -1848,7 +1850,7 @@ simple_flush_read (void)
 
 /* Simple flush write (no multi-volume or label extensions) */
 static void
-simple_flush_write (size_t level __attribute__((unused)))
+simple_flush_write (size_t level MAYBE_UNUSED)
 {
   ssize_t status;
 

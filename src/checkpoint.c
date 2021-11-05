@@ -1,6 +1,6 @@
 /* Checkpoint management for tar.
 
-   Copyright 2007-2020 Free Software Foundation, Inc.
+   Copyright 2007-2021 Free Software Foundation, Inc.
 
    This file is part of GNU tar.
 
@@ -84,7 +84,7 @@ copy_string_unquote (const char *str)
   char *output = xstrdup (str);
   size_t len = strlen (output);
   if ((*output == '"' || *output == '\'')
-      && output[len-1] == *output)
+      && len > 1 && output[len-1] == *output)
     {
       memmove (output, output+1, len-2);
       output[len-2] = 0;

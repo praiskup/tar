@@ -1,6 +1,6 @@
 # Makefile for GNU tar sources.
 
-# Copyright 1994-2020 Free Software Foundation, Inc.
+# Copyright 1994-2021 Free Software Foundation, Inc.
 
 # This file is part of GNU tar.
 
@@ -49,6 +49,7 @@ tar_SOURCES = \
 AM_CPPFLAGS = -I$(top_srcdir)/gnu -I../ -I../gnu -I$(top_srcdir)/lib -I../lib
 AM_CFLAGS = $(WARN_CFLAGS) $(WERROR_CFLAGS)
 
-LDADD = ../lib/libtar.a ../gnu/libgnu.a $(LIBINTL) $(LIBICONV)
-
-tar_LDADD = $(LIBS) $(LDADD) $(LIB_CLOCK_GETTIME) $(LIB_EACCESS) $(LIB_SELINUX)
+tar_LDADD = $(LIBS) ../lib/libtar.a ../gnu/libgnu.a\
+ $(LIB_ACL) $(LIB_CLOCK_GETTIME) $(LIB_EACCESS)\
+ $(LIB_GETRANDOM) $(LIB_HARD_LOCALE) $(LIB_HAS_ACL) $(LIB_MBRTOWC)\
+ $(LIB_SELINUX) $(LIB_SETLOCALE_NULL)
