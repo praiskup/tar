@@ -1926,15 +1926,6 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
   if (!header)
     return;
   header->header.typeflag = type;
-
-  if (type != FIFOTYPE)
-    {
-      MAJOR_TO_CHARS (major (st->stat.st_rdev),
-		      header->header.devmajor);
-      MINOR_TO_CHARS (minor (st->stat.st_rdev),
-		      header->header.devminor);
-    }
-
   finish_header (st, header, block_ordinal);
   if (remove_files_option)
     queue_deferred_unlink (p, false);
