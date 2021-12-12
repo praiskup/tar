@@ -881,12 +881,6 @@ start_header (struct tar_stat_info *st)
       if (!MINOR_TO_CHARS (devminor, header->header.devminor))
 	return NULL;
     }
-  else if (archive_format != GNU_FORMAT && archive_format != OLDGNU_FORMAT)
-    {
-      if (!(MAJOR_TO_CHARS (0, header->header.devmajor)
-	    && MINOR_TO_CHARS (0, header->header.devminor)))
-	return NULL;
-    }
 
   if (archive_format == POSIX_FORMAT)
     {
