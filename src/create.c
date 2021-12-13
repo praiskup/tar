@@ -174,13 +174,13 @@ tar_name_copy_str (char *dst, const char *src, size_t len)
 }
 
 /* Convert NEGATIVE VALUE to a base-256 representation suitable for
-   tar headers.  NEGATIVE is 1 if VALUE was negative before being cast
-   to uintmax_t, 0 otherwise.  Output to buffer WHERE with size SIZE.
+   tar headers.  NEGATIVE is true iff VALUE was negative before being
+   cast to uintmax_t.  Output to buffer WHERE with size SIZE.
    The result is undefined if SIZE is 0 or if VALUE is too large to
    fit.  */
 
 static void
-to_base256 (int negative, uintmax_t value, char *where, size_t size)
+to_base256 (bool negative, uintmax_t value, char *where, size_t size)
 {
   uintmax_t v = value;
   uintmax_t propagated_sign_bits =
@@ -205,13 +205,13 @@ to_base256 (int negative, uintmax_t value, char *where, size_t size)
 #define GNAME_TO_CHARS(name, buf) string_to_chars (name, buf, sizeof (buf))
 
 static bool
-to_chars (int negative, uintmax_t value, size_t valsize,
-	  uintmax_t (*substitute) (int *),
+to_chars (bool negative, uintmax_t value, size_t valsize,
+	  uintmax_t (*substitute) (bool *),
 	  char *where, size_t size, const char *type);
 
 static bool
-to_chars_subst (int negative, int gnu_format, uintmax_t value, size_t valsize,
-		uintmax_t (*substitute) (int *),
+to_chars_subst (bool negative, bool gnu_format, uintmax_t value, size_t valsize,
+		uintmax_t (*substitute) (bool *),
 		char *where, size_t size, const char *type)
 {
   uintmax_t maxval = (gnu_format
@@ -245,7 +245,7 @@ to_chars_subst (int negative, int gnu_format, uintmax_t value, size_t valsize,
 
   if (substitute)
     {
-      int negsub;
+      bool negsub;
       uintmax_t sub = substitute (&negsub) & maxval;
       /* NOTE: This is one of the few places where GNU_FORMAT differs from
 	 OLDGNU_FORMAT.  The actual differences are:
@@ -272,25 +272,25 @@ to_chars_subst (int negative, int gnu_format, uintmax_t value, size_t valsize,
 
 /* Convert NEGATIVE VALUE (which was originally of size VALSIZE) to
    external form, using SUBSTITUTE (...) if VALUE won't fit.  Output
-   to buffer WHERE with size SIZE.  NEGATIVE is 1 iff VALUE was
+   to buffer WHERE with size SIZE.  NEGATIVE is true iff VALUE was
    negative before being cast to uintmax_t; its original bitpattern
    can be deduced from VALSIZE, its original size before casting.
    TYPE is the kind of value being output (useful for diagnostics).
    Prefer the POSIX format of SIZE - 1 octal digits (with leading zero
    digits), followed by '\0'.  If this won't work, and if GNU or
    OLDGNU format is allowed, use '\200' followed by base-256, or (if
-   NEGATIVE is nonzero) '\377' followed by two's complement base-256.
+   NEGATIVE) '\377' followed by two's complement base-256.
    If neither format works, use SUBSTITUTE (...)  instead.  Pass to
    SUBSTITUTE the address of an 0-or-1 flag recording whether the
    substitute value is negative.  */
 
 static bool
-to_chars (int negative, uintmax_t value, size_t valsize,
-	  uintmax_t (*substitute) (int *),
+to_chars (bool negative, uintmax_t value, size_t valsize,
+	  uintmax_t (*substitute) (bool *),
 	  char *where, size_t size, const char *type)
 {
-  int gnu_format = (archive_format == GNU_FORMAT
-		    || archive_format == OLDGNU_FORMAT);
+  bool gnu_format = (archive_format == GNU_FORMAT
+		     || archive_format == OLDGNU_FORMAT);
 
   /* Generate the POSIX octal representation if the number fits.  */
   if (! negative && value <= MAX_VAL_WITH_DIGITS (size - 1, LG_8))
@@ -321,10 +321,10 @@ to_chars (int negative, uintmax_t value, size_t valsize,
 	 But this is the traditional behavior.  */
       else if (negative && valsize * CHAR_BIT <= (size - 1) * LG_8)
 	{
-	  static int warned_once;
+	  static bool warned_once;
 	  if (! warned_once)
 	    {
-	      warned_once = 1;
+	      warned_once = true;
 	      WARN ((0, 0, _("Generating negative octal headers")));
 	    }
 	  where[size - 1] = '\0';
@@ -342,7 +342,7 @@ to_chars (int negative, uintmax_t value, size_t valsize,
 }
 
 static uintmax_t
-gid_substitute (int *negative)
+gid_substitute (bool *negative)
 {
   gid_t r;
 #ifdef GID_NOBODY
@@ -383,7 +383,7 @@ mode_to_chars (mode_t v, char *p, size_t s)
      propagate all unknown bits to the external mode.
      This matches historical practice.
      Otherwise, just copy the bits we know about.  */
-  int negative;
+  bool negative;
   uintmax_t u;
   if (S_ISUID == TSUID && S_ISGID == TSGID && S_ISVTX == TSVTX
       && S_IRUSR == TUREAD && S_IWUSR == TUWRITE && S_IXUSR == TUEXEC
@@ -398,7 +398,7 @@ mode_to_chars (mode_t v, char *p, size_t s)
     }
   else
     {
-      negative = 0;
+      negative = false;
       u = ((v & S_ISUID ? TSUID : 0)
 	   | (v & S_ISGID ? TSGID : 0)
 	   | (v & S_ISVTX ? TSVTX : 0)
@@ -428,7 +428,7 @@ time_to_chars (time_t v, char *p, size_t s)
 }
 
 static uintmax_t
-uid_substitute (int *negative)
+uid_substitute (bool *negative)
 {
   uid_t r;
 #ifdef UID_NOBODY
@@ -452,7 +452,7 @@ uid_to_chars (uid_t v, char *p, size_t s)
 static bool
 uintmax_to_chars (uintmax_t v, char *p, size_t s)
 {
-  return to_chars (0, v, sizeof v, 0, p, s, "uintmax_t");
+  return to_chars (false, v, sizeof v, 0, p, s, "uintmax_t");
 }
 
 static void
@@ -879,12 +879,6 @@ start_header (struct tar_stat_info *st)
 	  devminor = 0;
 	}
       if (!MINOR_TO_CHARS (devminor, header->header.devminor))
-	return NULL;
-    }
-  else if (archive_format != GNU_FORMAT && archive_format != OLDGNU_FORMAT)
-    {
-      if (!(MAJOR_TO_CHARS (0, header->header.devmajor)
-	    && MINOR_TO_CHARS (0, header->header.devminor)))
 	return NULL;
     }
 
@@ -1932,15 +1926,6 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
   if (!header)
     return;
   header->header.typeflag = type;
-
-  if (type != FIFOTYPE)
-    {
-      MAJOR_TO_CHARS (major (st->stat.st_rdev),
-		      header->header.devmajor);
-      MINOR_TO_CHARS (minor (st->stat.st_rdev),
-		      header->header.devminor);
-    }
-
   finish_header (st, header, block_ordinal);
   if (remove_files_option)
     queue_deferred_unlink (p, false);
