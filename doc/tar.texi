@@ -10423,6 +10423,9 @@ the following forms:
 When used with one of archive-creation commands,
 this option instructs @command{tar} to omit from extended header records
 that it produces any keywords matching the string @var{pattern}.
+If the pattern contains shell metacharacters like @samp{*}, it should
+be quoted to prevent the shell from expanding the pattern before
+@command{tar} sees it.
 
 When used in extract or list mode, this option instructs tar
 to ignore any keywords matching the given @var{pattern} in the extended
@@ -10431,7 +10434,7 @@ matching notation described in @acronym{POSIX 1003.2}, 3.13
 (@pxref{wildcards}).  For example:
 
 @smallexample
---pax-option delete=security.*
+--pax-option 'delete=security.*'
 @end smallexample
 
 would suppress security-related information.
@@ -10560,10 +10563,8 @@ For example, to set all modification times to the current date, you
 use the following option:
 
 @smallexample
---pax-option='mtime:=@{now@}'
+--pax-option 'mtime:=@{now@}'
 @end smallexample
-
-Note quoting of the option's argument.
 
 @cindex archives, binary equivalent
 @cindex binary equivalent archives, creating
@@ -10572,7 +10573,7 @@ archives created using it, will be binary equivalent if they have the
 same contents:
 
 @smallexample
---pax-option=atime:=0
+--pax-option delete=atime
 @end smallexample
 
 @noindent
@@ -10581,27 +10582,33 @@ from them, you will also need to eliminate changes due to ctime, as
 shown in examples below:
 
 @smallexample
---pax-option=atime:=0,ctime:=0
+--pax-option 'delete=[ac]time'
 @end smallexample
 
 @noindent
-or
+Normally @command{tar} saves an mtime value with subsecond resolution
+in an extended header for any file with a timestamp that is not on a
+one-second boundary.  This is in addition to the traditional mtime
+timestamp in the header block, which can represent integer timestamps
+in the 1970-01-01 00:00:00 through 2242-03-16 12:56:31 @sc{utc}.  If
+this traditional timestamp suffices and you do not want subsecond
+timestamp resolution, you can use:
 
 @smallexample
---pax-option=atime:=0,delete=ctime
+--pax-option 'delete=[acm]time'
 @end smallexample
 
-Notice, that if you create an archive in POSIX format (@pxref{posix})
-and the environment variable @env{POSIXLY_CORRECT} is set, then the
-two archives created using the same options on the same set of files
-will not be byte-to-byte equivalent even with the above option.  This
-is because the posix default for extended header names includes the
-PID of the tar process, which is different at each run. To produce
-byte-to-byte equivalent archives in this case, either unset
-@env{POSIXLY_CORRECT}, or use the following option:
+If the environment variable @env{POSIXLY_CORRECT} is set, two POSIX
+archives created using the same options on the same set of files might
+not be byte-to-byte equivalent even with the above options.  This is
+because the POSIX default for extended header names includes
+@command{tar}'s process @acronym{ID}, which typically differs at each
+run.  To produce byte-to-byte equivalent archives in this case, either
+unset @env{POSIXLY_CORRECT}, or use the following option, which can be
+combined with the above options:
 
 @smallexample
----pax-option=exthdr.name=%d/PaxHeaders/%f,atime:=0,ctime:=0
+--pax-option exthdr.name=%d/PaxHeaders/%f
 @end smallexample
 
 @node Checksumming
