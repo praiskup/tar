@@ -5,6 +5,16 @@
 @settitle GNU tar @value{VERSION}
 @setchapternewpage odd
 
+@documentencoding UTF-8
+@c These two commands require Texinfo 5.0; for now use the older
+@c equivalent @set commands supported in Texinfo 4.11 and later.
+@ignore
+@codequotebacktick on
+@codequoteundirected on
+@end ignore
+@set txicodequoteundirected
+@set txicodequotebacktick
+
 @finalout
 
 @smallbook
