@@ -5,6 +5,16 @@
 @settitle GNU tar @value{VERSION}
 @setchapternewpage odd
 
+@documentencoding UTF-8
+@c These two commands require Texinfo 5.0; for now use the older
+@c equivalent @set commands supported in Texinfo 4.11 and later.
+@ignore
+@codequotebacktick on
+@codequoteundirected on
+@end ignore
+@set txicodequoteundirected
+@set txicodequotebacktick
+
 @finalout
 
 @smallbook
@@ -10578,31 +10588,25 @@ same contents:
 
 @noindent
 If you extract files from such an archive and recreate the archive
-from them, you will also need to eliminate changes due to ctime, as
-shown in examples below:
+from them, you will also need to eliminate changes due to ctime:
 
 @smallexample
---pax-option 'delete=[ac]time'
+--pax-option 'delete=atime,delete=ctime'
 @end smallexample
 
-@noindent
 Normally @command{tar} saves an mtime value with subsecond resolution
 in an extended header for any file with a timestamp that is not on a
 one-second boundary.  This is in addition to the traditional mtime
-timestamp in the header block, which can represent integer timestamps
-in the 1970-01-01 00:00:00 through 2242-03-16 12:56:31 @sc{utc}.  If
-this traditional timestamp suffices and you do not want subsecond
-timestamp resolution, you can use:
-
-@smallexample
---pax-option 'delete=[acm]time'
-@end smallexample
+timestamp in the header block.  Although you can suppress subsecond
+timestamp resolution with @option{--pax-option delete=mtime},
+this hack will not work for timestamps before 1970 or after 2242-03-16
+12:56:31 @sc{utc}.
 
 If the environment variable @env{POSIXLY_CORRECT} is set, two POSIX
 archives created using the same options on the same set of files might
 not be byte-to-byte equivalent even with the above options.  This is
 because the POSIX default for extended header names includes
-@command{tar}'s process @acronym{ID}, which typically differs at each
+the @command{tar} process @acronym{ID}, which typically differs at each
 run.  To produce byte-to-byte equivalent archives in this case, either
 unset @env{POSIXLY_CORRECT}, or use the following option, which can be
 combined with the above options:
