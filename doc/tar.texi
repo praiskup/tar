@@ -46,8 +46,8 @@ This manual is for @acronym{GNU} @command{tar} (version
 @value{VERSION}, @value{UPDATED}), which creates and extracts files
 from archives.
 
-Copyright @copyright{} 1992, 1994--1997, 1999--2001, 2003--2017, 2021
-Free Software Foundation, Inc.
+Copyright @copyright{} 1992, 1994--1997, 1999--2001, 2003--2017,
+2021--2022 Free Software Foundation, Inc.
 
 @quotation
 Permission is granted to copy, distribute and/or modify this document

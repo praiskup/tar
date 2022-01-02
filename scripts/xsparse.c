@@ -1,7 +1,7 @@
 /* xsparse - expands compressed sparse file images extracted from GNU tar
    archives.
 
-   Copyright 2006-2021 Free Software Foundation, Inc.
+   Copyright 2006-2022 Free Software Foundation, Inc.
 
    This file is part of GNU tar.
 

@@ -1,6 +1,6 @@
 /* Owner/group mapping for tar
 
-   Copyright 2015-2021 Free Software Foundation, Inc.
+   Copyright 2015-2022 Free Software Foundation, Inc.
 
    This file is part of GNU tar.
 
