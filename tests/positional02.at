@@ -39,11 +39,10 @@ tar -cf a.tar . -C dir
 ./A.b
 ./B.a
 ],
-[tar: ./a.tar: file is the archive; not dumped
+[tar: ./a.tar: archive cannot contain itself; not dumped
 tar: The following options were used after any non-optional arguments in archive create or update mode.  These options are positional and affect only arguments that follow them.  Please, rearrange them properly.
 tar: -C 'dir' has no effect
 tar: Exiting with failure status due to previous errors
 ])
 
 AT_CLEANUP
-

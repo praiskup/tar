@@ -4634,11 +4634,9 @@ Disable all warning messages.
 @item file-unchanged
 @samp{%s: file is unchanged; not dumped}
 @kwindex ignore-archive
-@cindex @samp{file is the archive; not dumped}, warning message
-@kwindex ignore-archive
-@cindex @samp{file is the archive; not dumped}, warning message
+@cindex @samp{archive cannot contain itself; not dumped}, warning message
 @item ignore-archive
-@samp{%s: file is the archive; not dumped}
+@samp{%s: archive cannot contain itself; not dumped}
 @kwindex file-removed
 @cindex @samp{File removed before we read it}, warning message
 @item file-removed
