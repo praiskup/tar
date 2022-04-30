@@ -1723,7 +1723,7 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
   if (sys_file_is_archive (st))
     {
       WARNOPT (WARN_IGNORE_ARCHIVE,
-	       (0, 0, _("%s: file is the archive; not dumped"),
+	       (0, 0, _("%s: archive cannot contain itself; not dumped"),
 		quotearg_colon (p)));
       return;
     }
