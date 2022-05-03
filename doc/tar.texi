@@ -1231,13 +1231,8 @@ jazz
 @end smallexample
 
 This example is just like the example we showed which did not use
-@option{--verbose}, except that @command{tar} generated the remaining
-@iftex
-lines (note the different font styles).
-@end iftex
-@ifinfo
+@option{--verbose}, except that @command{tar} generated three output
 lines.
-@end ifinfo
 
 In the rest of the examples in this chapter, we will frequently use
 @code{verbose} mode so we can show actions or @command{tar} responses that
