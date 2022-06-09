@@ -1,4 +1,4 @@
-GNU tar NEWS - User visible changes. 2021-12-13
+GNU tar NEWS - User visible changes. 2022-06-09
 Please send GNU tar bug reports to <bug-tar@gnu.org>
 
 version 1.34.90 (git)
@@ -1777,7 +1777,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 Local variables:
 mode: outline
 paragraph-separate: "[	]*$"
-eval: (add-hook 'write-file-hooks 'time-stamp)
+eval: (add-hook 'write-file-functions #'time-stamp nil t)
 time-stamp-start: "changes. "
 time-stamp-format: "%:y-%02m-%02d"
 time-stamp-end: "\n"
