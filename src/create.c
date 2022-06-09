@@ -1639,8 +1639,6 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
 {
   union block *header;
   char type;
-  off_t original_size;
-  struct timespec original_ctime;
   off_t block_ordinal = -1;
   int fd = 0;
   bool is_dir;
@@ -1683,10 +1681,11 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
       return;
     }
 
-  st->archive_file_size = original_size = st->stat.st_size;
+  struct stat st1 = st->stat;
+  st->archive_file_size = st->stat.st_size;
   st->atime = get_stat_atime (&st->stat);
   st->mtime = get_stat_mtime (&st->stat);
-  st->ctime = original_ctime = get_stat_ctime (&st->stat);
+  st->ctime = get_stat_ctime (&st->stat);
 
 #ifdef S_ISHIDDEN
   if (S_ISHIDDEN (st->stat.st_mode))
@@ -1736,7 +1735,7 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
   if (is_dir || S_ISREG (st->stat.st_mode) || S_ISCTG (st->stat.st_mode))
     {
       bool ok;
-      struct stat final_stat;
+      struct stat st2;
 
       xattrs_acls_get (parentfd, name, st, 0, !is_dir);
       xattrs_selinux_get (parentfd, name, st, fd);
@@ -1804,31 +1803,54 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
 		  errno = - parentfd;
 		  ok = false;
 		}
-	      else
-		ok = fstatat (parentfd, name, &final_stat, fstatat_flags) == 0;
 	    }
 	  else
-	    ok = fstat (fd, &final_stat) == 0;
+	    ok = fstat (fd, &st2) == 0;
 
 	  if (! ok)
 	    file_removed_diag (p, top_level, stat_diag);
 	}
 
-      if (ok)
+      if (ok && fd)
 	{
-	  if ((timespec_cmp (get_stat_ctime (&final_stat), original_ctime) != 0
-	       /* Original ctime will change if the file is a directory and
-		  --remove-files is given */
-	       && !(remove_files_option && is_dir))
-	      || original_size < final_stat.st_size)
+	  /* Heuristically check whether the file is the same in all
+	     attributes that tar cares about and can easily check.
+	     Although the check is not perfect since it does not
+	     consult file contents, it is typically good enough.
+	     Do not check atime which is saved only to replace it later.
+	     Do not check ctime where changes might be benign (e.g.,
+	     another process creates a hard link to the file).  */
+
+	  /* If the file's user ID, group ID or mode changed, tar may
+	     have output the wrong info for the file.  */
+	  ok &= st1.st_uid == st2.st_uid;
+	  ok &= st1.st_gid == st2.st_gid;
+	  ok &= st1.st_mode == st2.st_mode;
+
+	  /* Likewise for the file's mtime, but skip this check if it
+	     is a directory possibly updated by --remove-files.  */
+	  if (! (is_dir && remove_files_option))
+	    ok &= ! timespec_cmp (get_stat_mtime (&st1),
+				  get_stat_mtime (&st2));
+
+	  /* Likewise for the file's size, but skip this check if it
+	     is a directory as tar does not output directory sizes.
+	     Although dump_regular_file caught regular file shrinkage,
+	     it shouldn't hurt to check for shrinkage again now;
+	     plus, the file may have grown.  */
+	  if (!is_dir)
+	    ok &= st1.st_size == st2.st_size;
+
+	  if (!ok)
 	    {
 	      WARNOPT (WARN_FILE_CHANGED,
 		       (0, 0, _("%s: file changed as we read it"),
 			quotearg_colon (p)));
-	      set_exit_status (TAREXIT_DIFFERS);
+	      if (! ignore_failed_read_option)
+		set_exit_status (TAREXIT_DIFFERS);
 	    }
 	  else if (atime_preserve_option == replace_atime_preserve
-		   && fd && (is_dir || original_size != 0)
+		   && timespec_cmp (st->atime, get_stat_atime (&st2)) != 0
 		   && set_file_atime (fd, parentfd, name, st->atime) != 0)
 	    utime_error (p);
 	}
