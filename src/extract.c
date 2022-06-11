@@ -638,10 +638,9 @@ fixup_delayed_set_stat (char const *src, char const *dst)
 
 /* After a file/link/directory creation has failed due to ENOENT,
    create all required directories.  Return zero if all the required
-   directories were created, nonzero (issuing a diagnostic) otherwise.
-   Set *INTERDIR_MADE if at least one directory was created.  */
+   directories were created, nonzero (issuing a diagnostic) otherwise.  */
 static int
-make_directories (char *file_name, bool *interdir_made)
+make_directories (char *file_name)
 {
   char *cursor0 = file_name + FILE_SYSTEM_PREFIX_LEN (file_name);
   char *cursor;	        	/* points into the file name */
@@ -685,7 +684,6 @@ make_directories (char *file_name, bool *interdir_made)
 			  desired_mode, AT_SYMLINK_NOFOLLOW);
 
 	  print_for_mkdir (file_name, cursor - file_name, desired_mode);
-	  *interdir_made = true;
 	  parent_end = NULL;
 	}
       else
@@ -841,8 +839,11 @@ maybe_recoverable (char *file_name, bool regular, bool *interdir_made)
 
     case ENOENT:
       /* Attempt creating missing intermediate directories.  */
-      if (make_directories (file_name, interdir_made) == 0)
-	return RECOVER_OK;
+      if (make_directories (file_name) == 0)
+	{
+	  *interdir_made = true;
+	  return RECOVER_OK;
+	}
       break;
 
     default:
@@ -1944,12 +1945,11 @@ rename_directory (char *src, char *dst)
   else
     {
       int e = errno;
-      bool interdir_made;
 
       switch (e)
 	{
 	case ENOENT:
-	  if (make_directories (dst, &interdir_made) == 0)
+	  if (make_directories (dst) == 0)
 	    {
 	      if (renameat (chdir_fd, src, chdir_fd, dst) == 0)
 		return true;
