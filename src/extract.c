@@ -636,16 +636,16 @@ fixup_delayed_set_stat (char const *src, char const *dst)
     }
 }
 
-/* After a file/link/directory creation has failed, see if
-   it's because some required directory was not present, and if so,
+/* After a file/link/directory creation has failed due to ENOENT,
    create all required directories.  Return zero if all the required
-   directories were created, nonzero (issuing a diagnostic) otherwise.
-   Set *INTERDIR_MADE if at least one directory was created.  */
+   directories were created, nonzero (issuing a diagnostic) otherwise.  */
 static int
-make_directories (char *file_name, bool *interdir_made)
+make_directories (char *file_name)
 {
   char *cursor0 = file_name + FILE_SYSTEM_PREFIX_LEN (file_name);
   char *cursor;	        	/* points into the file name */
+  char *parent_end = NULL;
+  int parent_errno;
 
   for (cursor = cursor0; *cursor; cursor++)
     {
@@ -684,32 +684,47 @@ make_directories (char *file_name, bool *interdir_made)
 			  desired_mode, AT_SYMLINK_NOFOLLOW);
 
 	  print_for_mkdir (file_name, cursor - file_name, desired_mode);
-	  *interdir_made = true;
+	  parent_end = NULL;
 	}
-      else if (errno == EEXIST)
-	status = 0;
       else
-	{
-	  /* Check whether the desired file exists.  Even when the
-	     file exists, mkdir can fail with some errno value E other
-	     than EEXIST, so long as E describes an error condition
-	     that also applies.  */
-	  int e = errno;
-	  struct stat st;
-	  status = fstatat (chdir_fd, file_name, &st, 0);
-	  if (status)
-	    {
-	      errno = e;
-	      mkdir_error (file_name);
-	    }
-	}
+	switch (errno)
+	  {
+	  case ELOOP: case ENAMETOOLONG: case ENOENT: case ENOTDIR:
+	    /* FILE_NAME doesn't exist and couldn't be created; fail now.  */
+	    mkdir_error (file_name);
+	    *cursor = '/';
+	    return status;
+
+	  default:
+	    /* FILE_NAME may be an existing directory so do not fail now.
+	       Instead, arrange to check at loop exit, assuming this is
+	       the last loop iteration.  */
+	    parent_end = cursor;
+	    parent_errno = errno;
+	    break;
+	  }
 
       *cursor = '/';
-      if (status)
-	return status;
     }
 
-  return 0;
+  if (!parent_end)
+    return 0;
+
+  /* Although we did not create the parent directory, some other
+     process may have created it, so check whether it exists now.  */
+  *parent_end = '\0';
+  struct stat st;
+  int stat_status = fstatat (chdir_fd, file_name, &st, 0);
+  if (!stat_status && !S_ISDIR (st.st_mode))
+    stat_status = -1;
+  if (stat_status)
+    {
+      errno = parent_errno;
+      mkdir_error (file_name);
+    }
+  *parent_end = '/';
+
+  return stat_status;
 }
 
 /* Return true if FILE_NAME (with status *STP, if STP) is not a
@@ -824,8 +839,11 @@ maybe_recoverable (char *file_name, bool regular, bool *interdir_made)
 
     case ENOENT:
       /* Attempt creating missing intermediate directories.  */
-      if (make_directories (file_name, interdir_made) == 0 && *interdir_made)
-	return RECOVER_OK;
+      if (make_directories (file_name) == 0)
+	{
+	  *interdir_made = true;
+	  return RECOVER_OK;
+	}
       break;
 
     default:
@@ -1927,12 +1945,11 @@ rename_directory (char *src, char *dst)
   else
     {
       int e = errno;
-      bool interdir_made;
 
       switch (e)
 	{
 	case ENOENT:
-	  if (make_directories (dst, &interdir_made) == 0)
+	  if (make_directories (dst) == 0)
 	    {
 	      if (renameat (chdir_fd, src, chdir_fd, dst) == 0)
 		return true;
