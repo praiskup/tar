@@ -49,7 +49,7 @@ futimens
 getline
 getopt-gnu
 getpagesize
-gettext
+gettext-h
 gettime
 gitlog-to-changelog
 hash
