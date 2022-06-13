@@ -5667,7 +5667,7 @@ Here, the @var{pattern} is a globbing pattern.  For example, the
 following command:
 
 @example
-$ @kbd{tar --xattrs --xattrs-exclude='user.*' -c a.tar .}
+$ @kbd{tar --xattrs --xattrs-exclude='user.*' -cf a.tar .}
 @end example
 
 will include in the archive @file{a.tar} all attributes, except those
