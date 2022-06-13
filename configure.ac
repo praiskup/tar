@@ -21,13 +21,13 @@ AC_INIT([GNU tar], [1.34.90], [bug-tar@gnu.org])
 AC_CONFIG_SRCDIR([src/tar.c])
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_HEADERS([config.h])
-AC_PREREQ([2.64])
+AC_PREREQ([2.71])
 AM_INIT_AUTOMAKE([1.15 gnits tar-ustar dist-bzip2 dist-xz std-options silent-rules])
 
 # Enable silent rules by default:
 AM_SILENT_RULES([yes])
 
-AC_PROG_CC_STDC
+AC_PROG_CC
 AC_EXEEXT
 AC_PROG_RANLIB
 AC_PROG_YACC
@@ -52,10 +52,14 @@ AC_HEADER_MAJOR
 
 AC_MSG_CHECKING([for st_fstype string in struct stat])
 AC_CACHE_VAL(diff_cv_st_fstype_string,
-  [AC_TRY_COMPILE([#include <sys/types.h>
-#include <sys/stat.h>], [struct stat s; s.st_fstype[0] = 'x';],
-   diff_cv_st_fstype_string=yes,
-   diff_cv_st_fstype_string=no)])
+  [AC_COMPILE_IFELSE(
+     [AC_LANG_PROGRAM(
+        [[#include <sys/types.h>
+          #include <sys/stat.h>
+	]],
+	[[struct stat s; s.st_fstype[0] = 'x';]])],
+     [diff_cv_st_fstype_string=yes],
+     [diff_cv_st_fstype_string=no])])
 AC_MSG_RESULT($diff_cv_st_fstype_string)
 if test $diff_cv_st_fstype_string = yes; then
   AC_DEFINE(HAVE_ST_FSTYPE_STRING, 1,
@@ -370,7 +374,7 @@ AC_CHECK_TYPE(iconv_t,:,
 
 # Gettext.
 AM_GNU_GETTEXT([external], [need-formatstring-macros])
-AM_GNU_GETTEXT_VERSION([0.16])
+AM_GNU_GETTEXT_VERSION([0.21])
 
 # Initialize the test suite.
 AC_CONFIG_TESTDIR(tests)
@@ -380,8 +384,8 @@ AM_MISSING_PROG([AUTOM4TE], [autom4te])
 AC_SUBST(BACKUP_LIBEXEC_SCRIPTS)
 AC_SUBST(BACKUP_SBIN_SCRIPTS)
 AC_ARG_ENABLE(backup-scripts,
-	      AC_HELP_STRING([--enable-backup-scripts],
-                             [Create and install backup and restore scripts]),
+	      AS_HELP_STRING([--enable-backup-scripts],
+			     [Create and install backup and restore scripts]),
               [case $enableval in
 	       yes) BACKUP_LIBEXEC_SCRIPTS='$(BACKUP_LIBEXEC_SCRIPTS_LIST)'
                     BACKUP_SBIN_SCRIPTS='$(BACKUP_SBIN_SCRIPTS_LIST)'
@@ -395,7 +399,7 @@ else
 	BACKUP_SED_COND='/^\#IF_DATE_FORMAT_OK/,/^\#ELSE_DATE_FORMAT_OK/d;/^\#ENDIF_DATE_FORMAT_OK/d'
 fi
 
-AC_OUTPUT([Makefile\
+AC_CONFIG_FILES([Makefile\
            doc/Makefile\
 	   gnu/Makefile\
            lib/Makefile\
@@ -403,3 +407,4 @@ AC_OUTPUT([Makefile\
            scripts/Makefile\
            rmt/Makefile\
            src/Makefile])
+AC_OUTPUT

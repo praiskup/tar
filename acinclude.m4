@@ -21,7 +21,7 @@ AC_DEFUN([TAR_COMPR_PROGRAM],[
  m4_pushdef([tar_compr_define],translit($1,[a-z+-],[A-ZX_])[_PROGRAM])
  m4_pushdef([tar_compr_var],[tar_cv_compressor_]translit($1,[+-],[x_]))
  AC_ARG_WITH($1,
-             AC_HELP_STRING([--with-]$1[=PROG],
+             AS_HELP_STRING([--with-]$1[=PROG],
 	                    [use PROG as ]$1[ compressor program]),
              [tar_compr_var=${withval}],
 	     [tar_compr_var=m4_if($2,,$1,$2)])
