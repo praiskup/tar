@@ -40,6 +40,10 @@ intend to hack on GNU tar, you might need to run it again later.
 There are lots of options that you may find useful in this case.
 See 'bootstrap --help' for a detailed list.
 
+To only fetch auxiliary files from the network, run ./autopull.sh.
+To only generate files such as 'configure', without accessing the
+network, run ./autogen.sh.  The 'bootstrap' script does both.
+
 
 * Copyright information
 
