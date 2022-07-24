@@ -199,7 +199,7 @@ names_parse_opt (int key, char *arg, struct argp_state *state)
     case ADD_FILE_OPTION:
       name_add_name (arg);
       break;
-      
+
     case ARGP_KEY_ERROR:
       {
 	struct tar_args *args = state->input;
@@ -217,7 +217,7 @@ names_parse_opt (int key, char *arg, struct argp_state *state)
 	name_add_option (key, arg);
       else
 	return ARGP_ERR_UNKNOWN;
-      
+
     }
   return 0;
 }
@@ -1028,8 +1028,10 @@ read_next_name (struct name_elt *ent, struct name_elt *ret)
 	      name_list_advance ();
 	      return 1;
 	    }
-	  if ((ent->v.file.fp = fopen (ent->v.file.name, "r")) == NULL)
+	  FILE *fp = fopen (ent->v.file.name, "r");
+	  if (!fp)
 	    open_fatal (ent->v.file.name);
+	  ent->v.file.fp = fp;
 	}
       ent->v.file.term = filename_terminator;
       ent->v.file.verbatim = verbatim_files_from_option;
@@ -1250,13 +1252,13 @@ add_starting_file (char const *file_name)
       remname (head);
       free_name (head);
     }
-  
+
   name->prev = NULL;
   name->next = namelist;
   namelist = name;
   if (!nametail)
     nametail = namelist;
-  
+
   name->found_count = 0;
   name->matching_flags = INCLUDE_OPTIONS;
   name->change_dir = 0;
