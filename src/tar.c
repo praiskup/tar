@@ -845,10 +845,25 @@ static enum atime_preserve const atime_preserve_types[] =
 ARGMATCH_VERIFY (atime_preserve_args, atime_preserve_types);
 
 
+static char * ATTRIBUTE_FORMAT ((printf, 1, 2))
+easprintf (char const *format, ...)
+{
+  va_list args;
+
+  va_start (args, format);
+  char *result = xvasprintf (format, args);
+  int err = errno;
+  va_end (args);
+
+  if (!result)
+    FATAL_ERROR ((0, err, "vasprintf"));
+  return result;
+}
+
 static char *
 format_default_settings (void)
 {
-  return xasprintf (
+  return easprintf (
 	    "--format=%s -f%s -b%d --quoting-style=%s --rmt-command=%s"
 #ifdef REMOTE_SHELL
 	    " --rsh-command=%s"
@@ -1130,35 +1145,35 @@ tar_help_filter (int key, const char *text, void *input)
       break;
 
     case 'j':
-      s = xasprintf (_("filter the archive through %s"), BZIP2_PROGRAM);
+      s = easprintf (_("filter the archive through %s"), BZIP2_PROGRAM);
       break;
 
     case 'z':
-      s = xasprintf (_("filter the archive through %s"), GZIP_PROGRAM);
+      s = easprintf (_("filter the archive through %s"), GZIP_PROGRAM);
       break;
 
     case 'Z':
-      s = xasprintf (_("filter the archive through %s"), COMPRESS_PROGRAM);
+      s = easprintf (_("filter the archive through %s"), COMPRESS_PROGRAM);
       break;
 
     case LZIP_OPTION:
-      s = xasprintf (_("filter the archive through %s"), LZIP_PROGRAM);
+      s = easprintf (_("filter the archive through %s"), LZIP_PROGRAM);
       break;
 
     case LZMA_OPTION:
-      s = xasprintf (_("filter the archive through %s"), LZMA_PROGRAM);
+      s = easprintf (_("filter the archive through %s"), LZMA_PROGRAM);
       break;
 
     case LZOP_OPTION:
-      s = xasprintf (_("filter the archive through %s"), LZOP_PROGRAM);
+      s = easprintf (_("filter the archive through %s"), LZOP_PROGRAM);
       break;
 
     case 'J':
-      s = xasprintf (_("filter the archive through %s"), XZ_PROGRAM);
+      s = easprintf (_("filter the archive through %s"), XZ_PROGRAM);
       break;
 
     case ZSTD_OPTION:
-      s = xasprintf (_("filter the archive through %s"), ZSTD_PROGRAM);
+      s = easprintf (_("filter the archive through %s"), ZSTD_PROGRAM);
       break;
 
     case ARGP_KEY_HELP_EXTRA:
