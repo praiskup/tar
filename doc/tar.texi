@@ -10199,11 +10199,9 @@ contain @samp{/-}.  Avoid deep directory nesting.  For portability to
 old Unix hosts, limit your file name components to 14 characters or
 less.
 
-If you intend to have your @command{tar} archives to be read under
-MSDOS, you should not rely on case distinction for file names, and you
-might use the @acronym{GNU} @command{doschk} program for helping you
-further diagnosing illegal MSDOS names, which are even more limited
-than System V's.
+If you intend to have your @command{tar} archives to be read on
+case-insensitive file systems like FAT32,
+you should not rely on case distinction for file names.
 
 @node dereference
 @subsection Symbolic Links
