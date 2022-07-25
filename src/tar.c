@@ -959,6 +959,7 @@ option_set_in_cl (int id)
 static int
 optloc_eq (struct option_locus *a, struct option_locus *b)
 {
+  assume (a);  /* Pacify GCC bug 106436.  */
   if (a->source != b->source)
     return 0;
   if (a->source == OPTS_COMMAND_LINE)
