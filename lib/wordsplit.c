@@ -571,7 +571,6 @@ coalesce_segment (struct wordsplit *wsp, struct wordsplit_node *node)
   struct wordsplit_node *p, *end;
   size_t len = 0;
   char *buf, *cur;
-  int stop;
 
   for (p = node; p->flags & _WSNF_JOIN; )
     {
@@ -590,7 +589,7 @@ coalesce_segment (struct wordsplit *wsp, struct wordsplit_node *node)
   cur = buf;
 
   p = node;
-  for (stop = 0; !stop;)
+  for (;;)
     {
       struct wordsplit_node *next = p->next;
       const char *str = wsnode_ptr (wsp, p);
@@ -602,7 +601,12 @@ coalesce_segment (struct wordsplit *wsp, struct wordsplit_node *node)
 	{
 	  node->flags |= p->flags & _WSNF_QUOTE;
 	  wsnode_remove (wsp, p);
-	  stop = p == end;
+	  if (p == end)
+	    {
+	      /* Call wsnode_free separately to work around GCC bug 106427.  */
+	      wsnode_free (p);
+	      break;
+	    }
 	  wsnode_free (p);
 	}
       p = next;

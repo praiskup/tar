@@ -33,6 +33,10 @@ Bootstrap reads its configuration from file bootstrap.conf located on the
 top of tar source tree.  Several options are provided that modify its
 behavior.  Run 'bootstrap --help' for a list.
 
+To only fetch auxiliary files from the network, run ./autopull.sh.
+To only generate files such as 'configure', without accessing the
+network, run ./autogen.sh.  The 'bootstrap' script does both.
+
 
 
 Copyright 2001-2022 Free Software Foundation, Inc.

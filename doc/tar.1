@@ -13,7 +13,7 @@
 .\"
 .\" You should have received a copy of the GNU General Public License
 .\" along with this program.  If not, see <http://www.gnu.org/licenses/>.
-.TH TAR 1 "February 15, 2022" "TAR" "GNU TAR Manual"
+.TH TAR 1 "July 11, 2022" "TAR" "GNU TAR Manual"
 .SH NAME
 tar \- an archiving utility
 .SH SYNOPSIS
@@ -610,13 +610,13 @@ Enable extended attributes support.
 Disable extended attributes support.
 .TP
 .BI \-\-xattrs\-exclude= PATTERN
-Specify the exclude pattern for xattr keys.  \fIPATTERN\fR is a POSIX
-regular expression, e.g. \fB\-\-xattrs\-exclude='^user\.'\fR, to exclude
+Specify the exclude pattern for xattr keys.  \fIPATTERN\fR is a globbing
+pattern, e.g. \fB\-\-xattrs\-exclude='user.*'\fR to include only
 attributes from the user namespace.
 .TP
 .BI \-\-xattrs\-include= PATTERN
-Specify the include pattern for xattr keys.  \fIPATTERN\fR is a POSIX
-regular expression.
+Specify the include pattern for xattr keys.  \fIPATTERN\fR is a globbing
+pattern.
 .SS Device selection and switching
 .TP
 \fB\-f\fR, \fB\-\-file\fR=\fIARCHIVE\fR

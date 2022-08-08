@@ -392,36 +392,36 @@ enum
   {
     GRH_COMMAND,
     GRID_COMMAND,     /* Main operation mode */
-    
+
     GRH_MODIFIER,
     GRID_MODIFIER,    /* Operation modifiers */
 
     GRID_FILE_NAME,
-    
+
     GRH_OVERWRITE,
     GRID_OVERWRITE,   /* Overwrite control options */
-    
+
     GRH_OUTPUT,
     GRID_OUTPUT,      /* Output stream selection */
-    
+
     GRH_FATTR,
     GRID_FATTR,       /* File attributes (ownership and mode) */
-    
+
     GRH_XATTR,
     GRID_XATTR,       /* Extended file attributes */
-    
+
     GRH_DEVICE,
     GRID_DEVICE,      /* Device selection */
-    
+
     GRH_BLOCKING,
     GRID_BLOCKING,    /* Block and record length */
-    
+
     GRH_FORMAT,
     GRID_FORMAT,      /* Archive format options */
     GRDOC_FORMAT,
 
     GRID_FORMAT_OPT,
-    
+
     GRH_COMPRESS,
     GRID_COMPRESS,    /* Compression options */
 
@@ -845,10 +845,25 @@ static enum atime_preserve const atime_preserve_types[] =
 ARGMATCH_VERIFY (atime_preserve_args, atime_preserve_types);
 
 
+static char * ATTRIBUTE_FORMAT ((printf, 1, 2))
+easprintf (char const *format, ...)
+{
+  va_list args;
+
+  va_start (args, format);
+  char *result = xvasprintf (format, args);
+  int err = errno;
+  va_end (args);
+
+  if (!result)
+    FATAL_ERROR ((0, err, "vasprintf"));
+  return result;
+}
+
 static char *
 format_default_settings (void)
 {
-  return xasprintf (
+  return easprintf (
 	    "--format=%s -f%s -b%d --quoting-style=%s --rmt-command=%s"
 #ifdef REMOTE_SHELL
 	    " --rsh-command=%s"
@@ -944,6 +959,7 @@ option_set_in_cl (int id)
 static int
 optloc_eq (struct option_locus *a, struct option_locus *b)
 {
+  assume (a);  /* Pacify GCC bug 106436.  */
   if (a->source != b->source)
     return 0;
   if (a->source == OPTS_COMMAND_LINE)
@@ -1130,35 +1146,35 @@ tar_help_filter (int key, const char *text, void *input)
       break;
 
     case 'j':
-      s = xasprintf (_("filter the archive through %s"), BZIP2_PROGRAM);
+      s = easprintf (_("filter the archive through %s"), BZIP2_PROGRAM);
       break;
 
     case 'z':
-      s = xasprintf (_("filter the archive through %s"), GZIP_PROGRAM);
+      s = easprintf (_("filter the archive through %s"), GZIP_PROGRAM);
       break;
 
     case 'Z':
-      s = xasprintf (_("filter the archive through %s"), COMPRESS_PROGRAM);
+      s = easprintf (_("filter the archive through %s"), COMPRESS_PROGRAM);
       break;
 
     case LZIP_OPTION:
-      s = xasprintf (_("filter the archive through %s"), LZIP_PROGRAM);
+      s = easprintf (_("filter the archive through %s"), LZIP_PROGRAM);
       break;
 
     case LZMA_OPTION:
-      s = xasprintf (_("filter the archive through %s"), LZMA_PROGRAM);
+      s = easprintf (_("filter the archive through %s"), LZMA_PROGRAM);
       break;
 
     case LZOP_OPTION:
-      s = xasprintf (_("filter the archive through %s"), LZOP_PROGRAM);
+      s = easprintf (_("filter the archive through %s"), LZOP_PROGRAM);
       break;
 
     case 'J':
-      s = xasprintf (_("filter the archive through %s"), XZ_PROGRAM);
+      s = easprintf (_("filter the archive through %s"), XZ_PROGRAM);
       break;
 
     case ZSTD_OPTION:
-      s = xasprintf (_("filter the archive through %s"), ZSTD_PROGRAM);
+      s = easprintf (_("filter the archive through %s"), ZSTD_PROGRAM);
       break;
 
     case ARGP_KEY_HELP_EXTRA:
@@ -1354,12 +1370,12 @@ parse_opt (int key, char *arg, struct argp_state *state)
       if (state->root_argp->children)
 	{
 	  int i;
-	
+
 	  for (i = 0; state->root_argp->children[i].argp; i++)
 	    state->child_inputs[i] = state->input;
 	}
       break;
-      
+
     case ARGP_KEY_ARG:
       /* File name or non-parsed option, because of ARGP_IN_ORDER */
       name_add_name (arg);
@@ -1751,7 +1767,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
     case WARNING_OPTION:
       set_warning_option (arg);
       break;
-      
+
     case 'x':
       set_subcommand_option (EXTRACT_SUBCOMMAND);
       break;
@@ -2231,7 +2247,7 @@ parse_default_options (struct tar_args *args)
   struct wordsplit ws;
   struct option_locus loc = { OPTS_ENVIRON, "TAR_OPTIONS", 0, 0 };
   struct option_locus *save_loc_ptr;
-  
+
   if (!opts)
     return;
 
@@ -2252,7 +2268,7 @@ parse_default_options (struct tar_args *args)
 	abort (); /* shouldn't happen */
       args->loc = save_loc_ptr;
       if (name_more_files ())
-	USAGE_ERROR ((0, 0, _("non-option arguments in %s"), loc.name));     
+	USAGE_ERROR ((0, 0, _("non-option arguments in %s"), loc.name));
       /* Don't free consumed words */
       ws.ws_wordc = 0;
     }
@@ -2632,7 +2648,7 @@ decode_options (int argc, char **argv)
       if (optloc_eq (preserve_order_loc, listed_incremental_loc))
 	option_conflict_error ("--preserve-order", "--listed-incremental");
       else if (preserve_order_loc->source == OPTS_COMMAND_LINE)
-	listed_incremental_option = false;
+	listed_incremental_option = NULL;
       else
 	same_order_option = false;
     }
