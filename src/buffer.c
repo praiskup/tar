@@ -20,7 +20,6 @@
    Written by John Gilmore, on 1985-08-25.  */
 
 #include <system.h>
-#include <system-ioctl.h>
 
 #include <signal.h>
 
@@ -421,37 +420,6 @@ check_compressed_archive (bool *pshort)
   return ct_none;
 }
 
-/* Guess if the archive is seekable. */
-static void
-guess_seekable_archive (void)
-{
-  struct stat st;
-
-  if (subcommand_option == DELETE_SUBCOMMAND)
-    {
-      /* The current code in delete.c is based on the assumption that
-	 skip_member() reads all data from the archive. So, we should
-	 make sure it won't use seeks. On the other hand, the same code
-	 depends on the ability to backspace a record in the archive,
-	 so setting seekable_archive to false is technically incorrect.
-         However, it is tested only in skip_member(), so it's not a
-	 problem. */
-      seekable_archive = false;
-    }
-
-  if (seek_option != -1)
-    {
-      seekable_archive = !!seek_option;
-      return;
-    }
-
-  if (!multi_volume_option && !use_compress_program_option
-      && fstat (archive, &st) == 0)
-    seekable_archive = S_ISREG (st.st_mode);
-  else
-    seekable_archive = false;
-}
-
 /* Open an archive named archive_name_array[0]. Detect if it is
    a compressed archive of known type and use corresponding decompression
    program if so */
@@ -703,12 +671,41 @@ check_tty (enum access_mode mode)
     }
 }
 
+/* Fetch the status of the archive, accessed via WANTED_STATUS.  */
+
+static void
+get_archive_status (enum access_mode wanted_access, bool backed_up_flag)
+{
+  if (!sys_get_archive_stat ())
+    {
+      int saved_errno = errno;
+
+      if (backed_up_flag)
+        undo_last_backup ();
+      errno = saved_errno;
+      open_fatal (archive_name_array[0]);
+    }
+
+  seekable_archive
+    = (! (multi_volume_option || use_compress_program_option)
+       && (seek_option < 0
+	   ? (_isrmt (archive)
+	      || S_ISREG (archive_stat.st_mode)
+	      || S_ISBLK (archive_stat.st_mode))
+	   : seek_option));
+
+  if (wanted_access != ACCESS_READ)
+    sys_detect_dev_null_output ();
+
+  SET_BINARY_MODE (archive);
+}
+
 /* Open an archive file.  The argument specifies whether we are
    reading or writing, or both.  */
 static void
 _open_archive (enum access_mode wanted_access)
 {
-  int backed_up_flag = 0;
+  bool backed_up_flag = false;
 
   if (record_size == 0)
     FATAL_ERROR ((0, 0, _("Invalid value for record_size")));
@@ -797,15 +794,13 @@ _open_archive (enum access_mode wanted_access)
       {
       case ACCESS_READ:
         archive = open_compressed_archive ();
-	if (archive >= 0)
-	  guess_seekable_archive ();
         break;
 
       case ACCESS_WRITE:
         if (backup_option)
           {
             maybe_backup_file (archive_name_array[0], 1);
-            backed_up_flag = 1;
+            backed_up_flag = true;
           }
 	if (verify_option)
 	  archive = rmtopen (archive_name_array[0], O_RDWR | O_CREAT | O_BINARY,
@@ -833,20 +828,7 @@ _open_archive (enum access_mode wanted_access)
         break;
       }
 
-  if (archive < 0
-      || (! _isrmt (archive) && !sys_get_archive_stat ()))
-    {
-      int saved_errno = errno;
-
-      if (backed_up_flag)
-        undo_last_backup ();
-      errno = saved_errno;
-      open_fatal (archive_name_array[0]);
-    }
-
-  sys_detect_dev_null_output ();
-  sys_save_archive_dev_ino ();
-  SET_BINARY_MODE (archive);
+  get_archive_status (wanted_access, backed_up_flag);
 
   switch (wanted_access)
     {
@@ -1049,18 +1031,8 @@ flush_archive (void)
 static void
 backspace_output (void)
 {
-#ifdef MTIOCTOP
-  {
-    struct mtop operation;
-
-    operation.mt_op = MTBSR;
-    operation.mt_count = 1;
-    if (rmtioctl (archive, MTIOCTOP, (char *) &operation) >= 0)
-      return;
-    if (errno == EIO && rmtioctl (archive, MTIOCTOP, (char *) &operation) >= 0)
-      return;
-  }
-#endif
+  if (mtioseek (false, -1))
+    return;
 
   {
     off_t position = rmtlseek (archive, (off_t) 0, SEEK_CUR);
@@ -1373,7 +1345,6 @@ new_volume (enum access_mode mode)
       case ACCESS_READ:
         archive = rmtopen (*archive_name_cursor, O_RDONLY, MODE_RW,
                            rsh_command_option);
-	guess_seekable_archive ();
         break;
 
       case ACCESS_WRITE:
@@ -1398,7 +1369,7 @@ new_volume (enum access_mode mode)
       goto tryagain;
     }
 
-  SET_BINARY_MODE (archive);
+  get_archive_status (mode, false);
 
   return true;
 }

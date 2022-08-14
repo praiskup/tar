@@ -565,31 +565,12 @@ verify_volume (void)
   ioctl (archive, FDFLUSH);
 #endif
 
-#ifdef MTIOCTOP
-  {
-    struct mtop operation;
-    int status;
-
-    operation.mt_op = MTBSF;
-    operation.mt_count = 1;
-    if (status = rmtioctl (archive, MTIOCTOP, (char *) &operation), status < 0)
-      {
-	if (errno != EIO
-	    || (status = rmtioctl (archive, MTIOCTOP, (char *) &operation),
-		status < 0))
-	  {
-#endif
-	    if (rmtlseek (archive, (off_t) 0, SEEK_SET) != 0)
-	      {
-		/* Lseek failed.  Try a different method.  */
-		seek_warn (archive_name_array[0]);
-		return;
-	      }
-#ifdef MTIOCTOP
-	  }
-      }
-  }
-#endif
+  if (!mtioseek (true, -1) && rmtlseek (archive, 0, SEEK_SET) != 0)
+    {
+      /* Lseek failed.  Try a different method.  */
+      seek_warn (archive_name_array[0]);
+      return;
+    }
 
   access_mode = ACCESS_READ;
   now_verifying = 1;
