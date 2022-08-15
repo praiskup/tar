@@ -41,6 +41,21 @@ static mode_t current_umask;	/* current umask (which is set to 0 if -p) */
 # define fchown(fd, uid, gid) (errno = ENOSYS, -1)
 #endif
 
+#if (defined HAVE_STRUCT_STAT_ST_BIRTHTIMESPEC_TV_NSEC \
+     || defined HAVE_STRUCT_STAT_ST_BIRTHTIM_TV_NSEC \
+     || defined HAVE_STRUCT_STAT_ST_BIRTHTIMENSEC \
+     || (defined _WIN32 && ! defined __CYGWIN__))
+# define HAVE_BIRTHTIME 1
+#else
+# define HAVE_BIRTHTIME 0
+#endif
+
+#if HAVE_BIRTHTIME
+# define BIRTHTIME_EQ(a, b) (timespec_cmp (a, b) == 0)
+#else
+# define BIRTHTIME_EQ(a, b) true
+#endif
+
 /* Return true if an error number ERR means the system call is
    supported in this case.  */
 static bool
@@ -127,7 +142,9 @@ struct delayed_link
        when restoring hard-linked symlinks.  */
     dev_t dev;
     ino_t ino;
+#if HAVE_BIRTHTIME
     struct timespec birthtime;
+#endif
 
     /* True if the link is symbolic.  */
     bool is_symlink;
@@ -1434,7 +1451,9 @@ create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made,
 	}
       p->dev = st.st_dev;
       p->ino = st.st_ino;
+#if HAVE_BIRTHTIME
       p->birthtime = get_stat_birthtime (&st);
+#endif
       p->is_symlink = is_symlink;
       if (is_symlink)
 	{
@@ -1500,8 +1519,7 @@ extract_link (char *file_name, int typeflag)
 	      if (ds->change_dir == chdir_current
 		  && ds->dev == st1.st_dev
 		  && ds->ino == st1.st_ino
-		  && (timespec_cmp (ds->birthtime, get_stat_birthtime (&st1))
-		      == 0))
+		  && BIRTHTIME_EQ (ds->birthtime, get_stat_birthtime (&st1)))
 		{
 		  struct string_list *p =  xmalloc (offsetof (struct string_list, string)
 						    + strlen (file_name) + 1);
@@ -1859,7 +1877,7 @@ apply_delayed_links (void)
 	  if (fstatat (chdir_fd, source, &st, AT_SYMLINK_NOFOLLOW) == 0
 	      && st.st_dev == ds->dev
 	      && st.st_ino == ds->ino
-	      && timespec_cmp (get_stat_birthtime (&st), ds->birthtime) == 0)
+	      && BIRTHTIME_EQ (get_stat_birthtime (&st), ds->birthtime))
 	    {
 	      /* Unlink the placeholder, then create a hard link if possible,
 		 a symbolic link otherwise.  */
