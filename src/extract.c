@@ -22,6 +22,7 @@
 #include <system.h>
 #include <quotearg.h>
 #include <errno.h>
+#include <hash.h>
 #include <priv-set.h>
 #include <root-uid.h>
 #include <utimens.h>
@@ -39,6 +40,21 @@ static mode_t current_umask;	/* current umask (which is set to 0 if -p) */
 #endif
 #if ! HAVE_FCHOWN && ! defined fchown
 # define fchown(fd, uid, gid) (errno = ENOSYS, -1)
+#endif
+
+#if (defined HAVE_STRUCT_STAT_ST_BIRTHTIMESPEC_TV_NSEC \
+     || defined HAVE_STRUCT_STAT_ST_BIRTHTIM_TV_NSEC \
+     || defined HAVE_STRUCT_STAT_ST_BIRTHTIMENSEC \
+     || (defined _WIN32 && ! defined __CYGWIN__))
+# define HAVE_BIRTHTIME 1
+#else
+# define HAVE_BIRTHTIME 0
+#endif
+
+#if HAVE_BIRTHTIME
+# define BIRTHTIME_EQ(a, b) (timespec_cmp (a, b) == 0)
+#else
+# define BIRTHTIME_EQ(a, b) true
 #endif
 
 /* Return true if an error number ERR means the system call is
@@ -113,11 +129,15 @@ struct delayed_set_stat
 
 static struct delayed_set_stat *delayed_set_stat_head;
 
-/* List of links whose creation we have delayed.  */
+/* A link whose creation we have delayed.  */
 struct delayed_link
   {
-    /* The next delayed link in the list.  */
+    /* The next in a list of delayed links that should be made after
+       this delayed link.  */
     struct delayed_link *next;
+
+    /* Whether this delayed link has a predecessor in the NEXT list.  */
+    bool has_predecessor;
 
     /* The device, inode number and birthtime of the placeholder.
        birthtime.tv_nsec is negative if the birthtime is not available.
@@ -127,7 +147,9 @@ struct delayed_link
        when restoring hard-linked symlinks.  */
     dev_t dev;
     ino_t ino;
+#if HAVE_BIRTHTIME
     struct timespec birthtime;
+#endif
 
     /* True if the link is symbolic.  */
     bool is_symlink;
@@ -161,13 +183,32 @@ struct delayed_link
     char target[1];
   };
 
-static struct delayed_link *delayed_link_head;
+static Hash_table *delayed_link_table;
 
 struct string_list
   {
     struct string_list *next;
     char string[1];
   };
+
+static size_t
+dl_hash (void const *entry, size_t table_size)
+{
+  struct delayed_link const *dl = entry;
+  uintmax_t n = dl->dev;
+  int nshift = TYPE_WIDTH (n) - TYPE_WIDTH (dl->dev);
+  if (0 < nshift)
+    n <<= nshift;
+  n ^= dl->ino;
+  return n % table_size;
+}
+
+static bool
+dl_compare (void const *a, void const *b)
+{
+  struct delayed_link const *da = a, *db = b;
+  return (da->dev == db->dev) & (da->ino == db->ino);
+}
 
 /*  Set up to extract files.  */
 void
@@ -1332,23 +1373,21 @@ extract_file (char *file_name, int typeflag)
 }
 
 /* Find a delayed_link structure corresponding to the source NAME.
-   Such a structure exists in the delayed link list only if the link
+   Such a structure exists in the delayed link table only if the link
    placeholder file has been created. Therefore, try to stat the NAME
-   first. If it doesn't exist, there is no matching entry in the list.
-   Otherwise, look for the entry in list which has the matching dev
-   and ino numbers.
+   first. If it doesn't exist, there is no matching entry in the table.
+   Otherwise, look for the entry in the table that has the matching dev
+   and ino numbers.  Return a null pointer if not found.
 
-   This approach avoids scanning the singly-linked list in obvious cases
-   and does not rely on comparing file names, which may differ for
+   Do not rely on comparing file names, which may differ for
    various reasons (e.g. relative vs. absolute file names).
  */
 static struct delayed_link *
 find_delayed_link_source (char const *name)
 {
-  struct delayed_link *dl;
   struct stat st;
 
-  if (!delayed_link_head)
+  if (!delayed_link_table)
     return NULL;
 
   if (fstatat (chdir_fd, name, &st, AT_SYMLINK_NOFOLLOW))
@@ -1358,12 +1397,10 @@ find_delayed_link_source (char const *name)
       return NULL;
     }
 
-  for (dl = delayed_link_head; dl; dl = dl->next)
-    {
-      if (dl->dev == st.st_dev && dl->ino == st.st_ino)
-	break;
-    }
-  return dl;
+  struct delayed_link dl;
+  dl.dev = st.st_dev;
+  dl.ino = st.st_ino;
+  return hash_lookup (delayed_link_table, &dl);
 }
 
 /* Create a placeholder file with name FILE_NAME, which will be
@@ -1371,9 +1408,7 @@ find_delayed_link_source (char const *name)
    IS_SYMLINK is true, and by a hard link otherwise.  Set
    *INTERDIR_MADE if an intermediate directory is made in the
    process.
-   Install the created struct delayed_link after PREV, unless the
-   latter is NULL, in which case insert it at the head of the delayed
-   link list.
+   If PREV, install the created struct delayed_link after PREV.
 */
 
 static int
@@ -1426,15 +1461,19 @@ create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made,
 	{
 	  p->next = prev->next;
 	  prev->next = p;
+	  p->has_predecessor = true;
 	}
       else
 	{
-	  p->next = delayed_link_head;
-	  delayed_link_head = p;
+	  p->next = NULL;
+	  p->has_predecessor = false;
 	}
+
       p->dev = st.st_dev;
       p->ino = st.st_ino;
+#if HAVE_BIRTHTIME
       p->birthtime = get_stat_birthtime (&st);
+#endif
       p->is_symlink = is_symlink;
       if (is_symlink)
 	{
@@ -1458,6 +1497,12 @@ create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made,
       xattr_map_init (&p->xattr_map);
       xattr_map_copy (&p->xattr_map, &current_stat_info.xattr_map);
       strcpy (p->target, current_stat_info.link_name);
+
+      if (! ((delayed_link_table
+	      || (delayed_link_table = hash_initialize (0, 0, dl_hash,
+							dl_compare, free)))
+	     && hash_insert (delayed_link_table, p)))
+	xalloc_die ();
 
       if ((h = find_direct_ancestor (file_name)) != NULL)
 	mark_after_links (h);
@@ -1493,23 +1538,24 @@ extract_link (char *file_name, int typeflag)
 
       if (status == 0)
 	{
-	  struct delayed_link *ds = delayed_link_head;
-	  if (ds
+	  if (delayed_link_table
 	      && fstatat (chdir_fd, link_name, &st1, AT_SYMLINK_NOFOLLOW) == 0)
-	    for (; ds; ds = ds->next)
-	      if (ds->change_dir == chdir_current
-		  && ds->dev == st1.st_dev
-		  && ds->ino == st1.st_ino
-		  && (timespec_cmp (ds->birthtime, get_stat_birthtime (&st1))
-		      == 0))
+	    {
+	      struct delayed_link dl1;
+	      dl1.ino = st1.st_ino;
+	      dl1.dev = st1.st_dev;
+	      struct delayed_link *ds = hash_lookup (delayed_link_table, &dl1);
+	      if (ds && ds->change_dir == chdir_current
+		  && BIRTHTIME_EQ (ds->birthtime, get_stat_birthtime (&st1)))
 		{
 		  struct string_list *p =  xmalloc (offsetof (struct string_list, string)
 						    + strlen (file_name) + 1);
 		  strcpy (p->string, file_name);
 		  p->next = ds->sources;
 		  ds->sources = p;
-		  break;
 		}
+	    }
+
 	  return 0;
 	}
       else if ((e == EEXIST && strcmp (link_name, file_name) == 0)
@@ -1835,86 +1881,103 @@ extract_archive (void)
     undo_last_backup ();
 }
 
+/* Extract the link DS whose final extraction was delayed.  */
+static void
+apply_delayed_link (struct delayed_link *ds)
+{
+  struct string_list *sources = ds->sources;
+  char const *valid_source = 0;
+
+  chdir_do (ds->change_dir);
+
+  for (sources = ds->sources; sources; sources = sources->next)
+    {
+      char const *source = sources->string;
+      struct stat st;
+
+      /* Make sure the placeholder file is still there.  If not,
+	 don't create a link, as the placeholder was probably
+	 removed by a later extraction.  */
+      if (fstatat (chdir_fd, source, &st, AT_SYMLINK_NOFOLLOW) == 0
+	  && st.st_dev == ds->dev
+	  && st.st_ino == ds->ino
+	  && BIRTHTIME_EQ (get_stat_birthtime (&st), ds->birthtime))
+	{
+	  /* Unlink the placeholder, then create a hard link if possible,
+	     a symbolic link otherwise.  */
+	  if (unlinkat (chdir_fd, source, 0) != 0)
+	    unlink_error (source);
+	  else if (valid_source
+		   && (linkat (chdir_fd, valid_source, chdir_fd, source, 0)
+		       == 0))
+	    ;
+	  else if (!ds->is_symlink)
+	    {
+	      if (linkat (chdir_fd, ds->target, chdir_fd, source, 0) != 0)
+		link_error (ds->target, source);
+	    }
+	  else if (symlinkat (ds->target, chdir_fd, source) != 0)
+	    symlink_error (ds->target, source);
+	  else
+	    {
+	      struct tar_stat_info st1;
+	      st1.stat.st_mode = ds->mode;
+	      st1.stat.st_uid = ds->uid;
+	      st1.stat.st_gid = ds->gid;
+	      st1.atime = ds->atime;
+	      st1.mtime = ds->mtime;
+	      st1.cntx_name = ds->cntx_name;
+	      st1.acls_a_ptr = ds->acls_a_ptr;
+	      st1.acls_a_len = ds->acls_a_len;
+	      st1.acls_d_ptr = ds->acls_d_ptr;
+	      st1.acls_d_len = ds->acls_d_len;
+	      st1.xattr_map = ds->xattr_map;
+	      set_stat (source, &st1, -1, 0, 0, SYMTYPE,
+			false, AT_SYMLINK_NOFOLLOW);
+	      valid_source = source;
+	    }
+	}
+    }
+
+  for (sources = ds->sources; sources; )
+    {
+      struct string_list *next = sources->next;
+      free (sources);
+      sources = next;
+    }
+
+  xattr_map_free (&ds->xattr_map);
+  free (ds->cntx_name);
+}
+
 /* Extract the links whose final extraction were delayed.  */
 static void
 apply_delayed_links (void)
 {
-  struct delayed_link *ds;
+  if (!delayed_link_table)
+    return;
 
-  for (ds = delayed_link_head; ds; )
-    {
-      struct string_list *sources = ds->sources;
-      char const *valid_source = 0;
-
-      chdir_do (ds->change_dir);
-
-      for (sources = ds->sources; sources; sources = sources->next)
-	{
-	  char const *source = sources->string;
-	  struct stat st;
-
-	  /* Make sure the placeholder file is still there.  If not,
-	     don't create a link, as the placeholder was probably
-	     removed by a later extraction.  */
-	  if (fstatat (chdir_fd, source, &st, AT_SYMLINK_NOFOLLOW) == 0
-	      && st.st_dev == ds->dev
-	      && st.st_ino == ds->ino
-	      && timespec_cmp (get_stat_birthtime (&st), ds->birthtime) == 0)
-	    {
-	      /* Unlink the placeholder, then create a hard link if possible,
-		 a symbolic link otherwise.  */
-	      if (unlinkat (chdir_fd, source, 0) != 0)
-		unlink_error (source);
-	      else if (valid_source
-		       && (linkat (chdir_fd, valid_source, chdir_fd, source, 0)
-			   == 0))
-		;
-	      else if (!ds->is_symlink)
-		{
-		  if (linkat (chdir_fd, ds->target, chdir_fd, source, 0) != 0)
-		    link_error (ds->target, source);
-		}
-	      else if (symlinkat (ds->target, chdir_fd, source) != 0)
-		symlink_error (ds->target, source);
-	      else
-		{
-		  struct tar_stat_info st1;
-		  st1.stat.st_mode = ds->mode;
-		  st1.stat.st_uid = ds->uid;
-		  st1.stat.st_gid = ds->gid;
-		  st1.atime = ds->atime;
-		  st1.mtime = ds->mtime;
-                  st1.cntx_name = ds->cntx_name;
-                  st1.acls_a_ptr = ds->acls_a_ptr;
-                  st1.acls_a_len = ds->acls_a_len;
-                  st1.acls_d_ptr = ds->acls_d_ptr;
-                  st1.acls_d_len = ds->acls_d_len;
-                  st1.xattr_map = ds->xattr_map;
-		  set_stat (source, &st1, -1, 0, 0, SYMTYPE,
-			    false, AT_SYMLINK_NOFOLLOW);
-		  valid_source = source;
-		}
-	    }
-	}
-
-      for (sources = ds->sources; sources; )
-	{
-	  struct string_list *next = sources->next;
-	  free (sources);
-	  sources = next;
-	}
-
-      xattr_map_free (&ds->xattr_map);
-      free (ds->cntx_name);
-
+  for (struct delayed_link *dl = hash_get_first (delayed_link_table);
+       dl;
+       dl = dl->next ? dl->next : hash_get_next (delayed_link_table, dl))
+    if (!dl->has_predecessor)
       {
-	struct delayed_link *next = ds->next;
-	free (ds);
-	ds = next;
+	struct delayed_link *ds = dl;
+	do
+	  {
+	    apply_delayed_link (ds);
+	    ds = ds->next;
+	  }
+	while (ds);
       }
-    }
 
-  delayed_link_head = 0;
+  if (false)
+    {
+      /* There is little point to freeing, as we are about to exit,
+	 and freeing is more likely to cause than cure trouble.  */
+      hash_free (delayed_link_table);
+      delayed_link_table = NULL;
+    }
 }
 
 /* Finish the extraction of an archive.  */

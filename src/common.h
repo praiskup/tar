@@ -392,9 +392,8 @@ struct name
     char *caname;               /* canonical name */
   };
 
-/* Obnoxious test to see if dimwit is trying to dump the archive.  */
-GLOBAL dev_t ar_dev;
-GLOBAL ino_t ar_ino;
+/* Status of archive file, or all zeros if remote.  */
+GLOBAL struct stat archive_stat;
 
 /* Flags for reading, searching, and fstatatting files.  */
 GLOBAL int open_read_flags;
@@ -402,6 +401,9 @@ GLOBAL int open_searchdir_flags;
 GLOBAL int fstatat_flags;
 
 GLOBAL int seek_option;
+
+/* true if archive if lseek should be used on the archive, 0 if it
+   should not be used.  */
 GLOBAL bool seekable_archive;
 
 GLOBAL dev_t root_device;
@@ -896,7 +898,6 @@ void xattr_map_free (struct xattr_map *xattr_map);
 /* Module system.c */
 
 void sys_detect_dev_null_output (void);
-void sys_save_archive_dev_ino (void);
 void sys_wait_for_child (pid_t, bool);
 void sys_spawn_shell (void);
 bool sys_compare_uid (struct stat *a, struct stat *b);
@@ -914,6 +915,7 @@ int sys_exec_info_script (const char **archive_name, int volume_number);
 void sys_exec_checkpoint_script (const char *script_name,
 				 const char *archive_name,
 				 int checkpoint_number);
+bool mtioseek (bool count_files, off_t count);
 
 /* Module compare.c */
 void report_difference (struct tar_stat_info *st, const char *message, ...)

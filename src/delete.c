@@ -18,7 +18,6 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include <system.h>
-#include <system-ioctl.h>
 
 #include "common.h"
 #include <rmt.h>
@@ -50,41 +49,25 @@ move_archive (off_t count)
   if (count == 0)
     return;
 
-#ifdef MTIOCTOP
-  {
-    struct mtop operation;
-
-    if (count < 0
-	? (operation.mt_op = MTBSR,
-	   operation.mt_count = -count,
-	   operation.mt_count == -count)
-	: (operation.mt_op = MTFSR,
-	   operation.mt_count = count,
-	   operation.mt_count == count))
-      {
-	if (0 <= rmtioctl (archive, MTIOCTOP, (char *) &operation))
-	  return;
-
-	if (errno == EIO
-	    && 0 <= rmtioctl (archive, MTIOCTOP, (char *) &operation))
-	  return;
-      }
-  }
-#endif /* MTIOCTOP */
-
-  {
-    off_t position0 = rmtlseek (archive, (off_t) 0, SEEK_CUR);
-    off_t increment = record_size * (off_t) count;
-    off_t position = position0 + increment;
-
-    if (increment / count != record_size
-	|| (position < position0) != (increment < 0)
-	|| (position = position < 0 ? 0 : position,
-	    rmtlseek (archive, position, SEEK_SET) != position))
-      seek_error_details (archive_name_array[0], position);
-
+  if (mtioseek (false, count))
     return;
-  }
+
+  off_t position0 = rmtlseek (archive, 0, SEEK_CUR), position = 0;
+  if (0 <= position0)
+    {
+      off_t increment;
+      if (INT_MULTIPLY_WRAPV (record_size, count, &increment)
+	  || INT_ADD_WRAPV (position0, increment, &position)
+	  || position < 0)
+	{
+	  ERROR ((0, EOVERFLOW, "lseek: %s", archive_name_array[0]));
+	  return;
+	}
+      else if (rmtlseek (archive, position, SEEK_SET) == position)
+	return;
+    }
+  if (!_isrmt (archive))
+    seek_error_details (archive_name_array[0], position);
 }
 
 /* Write out the record which has been filled.  If MOVE_BACK_FLAG,
