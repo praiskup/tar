@@ -62,8 +62,6 @@ user.test="OurFileValue2"
 user.test="OurFileValue2"
 ], [tar: dir: skipping existing file
 tar: dir/file: skipping existing file
-tar: dir/file: skipping existing file
-tar: dir/file2: skipping existing file
 tar: dir/file2: skipping existing file
 tar: dir/file: Cannot open: File exists
 tar: dir/file2: Cannot open: File exists
