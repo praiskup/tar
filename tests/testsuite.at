@@ -502,6 +502,7 @@ m4_include([xattr04.at])
 m4_include([xattr05.at])
 m4_include([xattr06.at])
 m4_include([xattr07.at])
+m4_include([xattr08.at])
 
 m4_include([acls01.at])
 m4_include([acls02.at])

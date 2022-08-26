@@ -1189,14 +1189,12 @@ open_output_file (char const *file_name, int typeflag, mode_t mode,
   int fd;
   bool overwriting_old_files = old_files_option == OVERWRITE_OLD_FILES;
   int openflag = (O_WRONLY | O_BINARY | O_CLOEXEC | O_NOCTTY | O_NONBLOCK
-		  | O_CREAT
-		  | (overwriting_old_files
-		     ? O_TRUNC | (dereference_option ? 0 : O_NOFOLLOW)
-		     : O_EXCL));
-
-  /* File might be created in set_xattr. So clear O_EXCL to avoid open() fail */
-  if (file_created)
-    openflag = openflag & ~O_EXCL;
+		  | (file_created
+		     ? O_NOFOLLOW
+		     : (O_CREAT
+			| (overwriting_old_files
+			   ? O_TRUNC | (dereference_option ? 0 : O_NOFOLLOW)
+			   : O_EXCL))));
 
   if (typeflag == CONTTYPE)
     {
@@ -1227,7 +1225,12 @@ open_output_file (char const *file_name, int typeflag, mode_t mode,
   fd = openat (chdir_fd, file_name, openflag, mode);
   if (0 <= fd)
     {
-      if (overwriting_old_files)
+      if (openflag & O_EXCL)
+	{
+	  *current_mode = mode & ~ current_umask;
+	  *current_mode_mask = MODE_RWX;
+	}
+      else
 	{
 	  struct stat st;
 	  if (fstat (fd, &st) != 0)
@@ -1246,11 +1249,6 @@ open_output_file (char const *file_name, int typeflag, mode_t mode,
 	  *current_mode = st.st_mode;
 	  *current_mode_mask = ALL_MODE_BITS;
 	}
-      else
-	{
-	  *current_mode = mode & ~ current_umask;
-	  *current_mode_mask = MODE_RWX;
-	}
     }
 
   return fd;
@@ -1268,8 +1266,9 @@ extract_file (char *file_name, int typeflag)
   bool interdir_made = false;
   mode_t mode = (current_stat_info.stat.st_mode & MODE_RWX
 		 & ~ (0 < same_owner_option ? S_IRWXG | S_IRWXO : 0));
-  mode_t invert_permissions = 0 < same_owner_option ? mode & (S_IRWXG | S_IRWXO)
-                                                    : 0;
+  mode_t invert_permissions
+    = ((0 < same_owner_option ? mode & (S_IRWXG | S_IRWXO) : 0)
+       | ((mode & S_IWUSR) ^ S_IWUSR));
   mode_t current_mode = 0;
   mode_t current_mode_mask = 0;
 
