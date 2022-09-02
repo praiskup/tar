@@ -55,9 +55,15 @@ move_archive (off_t count)
   off_t position0 = rmtlseek (archive, 0, SEEK_CUR), position = 0;
   if (0 <= position0)
     {
-      off_t increment;
+      /* Pretend the starting position is at the first record
+	 boundary after POSITION0.  This is useful at EOF after
+	 a short read.  */
+      idx_t short_size = position0 % record_size;
+      idx_t start_offset = short_size ? record_size - short_size : 0;
+      off_t increment, move_start;
       if (INT_MULTIPLY_WRAPV (record_size, count, &increment)
-	  || INT_ADD_WRAPV (position0, increment, &position)
+	  || INT_ADD_WRAPV (position0, start_offset, &move_start)
+	  || INT_ADD_WRAPV (move_start, increment, &position)
 	  || position < 0)
 	{
 	  ERROR ((0, EOVERFLOW, "lseek: %s", archive_name_array[0]));

@@ -54,6 +54,7 @@ gettime
 gitlog-to-changelog
 hash
 human
+idx
 inttostr
 inttypes
 lchown

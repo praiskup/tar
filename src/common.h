@@ -53,6 +53,7 @@
 #include <backupfile.h>
 #include <exclude.h>
 #include <full-write.h>
+#include <idx.h>
 #include <modechange.h>
 #include <quote.h>
 #include <safe-read.h>
