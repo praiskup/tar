@@ -183,13 +183,13 @@ delete_archive_members (void)
 	case HEADER_SUCCESS:
 	  if ((name = name_scan (current_stat_info.file_name)) == NULL)
 	    {
-	      skip_member ();
+	      skim_member (acting_as_filter);
 	      break;
 	    }
 	  name->found_count++;
 	  if (!ISFOUND (name))
 	    {
-	      skip_member ();
+	      skim_member (acting_as_filter);
 	      break;
 	    }
 	  FALLTHROUGH;

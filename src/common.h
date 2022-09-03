@@ -623,8 +623,9 @@ enum read_header read_header (union block **return_block,
 			      struct tar_stat_info *info,
 			      enum read_header_mode m);
 enum read_header tar_checksum (union block *header, bool silent);
-void skip_file (off_t size);
+void skim_file (off_t size, bool must_copy);
 void skip_member (void);
+void skim_member (bool must_copy);
 
 /* Module misc.c.  */
 
@@ -928,7 +929,7 @@ bool sparse_fixup_header (struct tar_stat_info *st);
 enum dump_status sparse_dump_file (int, struct tar_stat_info *st);
 enum dump_status sparse_extract_file (int fd, struct tar_stat_info *st,
 				      off_t *size);
-enum dump_status sparse_skip_file (struct tar_stat_info *st);
+enum dump_status sparse_skim_file (struct tar_stat_info *st, bool must_copy);
 bool sparse_diff_file (int, struct tar_stat_info *st);
 
 /* Module utf8.c */

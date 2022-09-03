@@ -586,7 +586,7 @@ sparse_extract_file (int fd, struct tar_stat_info *st, off_t *size)
 }
 
 enum dump_status
-sparse_skip_file (struct tar_stat_info *st)
+sparse_skim_file (struct tar_stat_info *st, bool must_copy)
 {
   bool rc = true;
   struct tar_sparse_file file;
@@ -598,7 +598,7 @@ sparse_skip_file (struct tar_stat_info *st)
   file.fd = -1;
 
   rc = tar_sparse_decode_header (&file);
-  skip_file (file.stat_info->archive_file_size - file.dumped_size);
+  skim_file (file.stat_info->archive_file_size - file.dumped_size, must_copy);
   return (tar_sparse_done (&file) && rc) ? dump_status_ok : dump_status_short;
 }
 
@@ -721,7 +721,7 @@ sparse_diff_file (int fd, struct tar_stat_info *st)
     }
 
   if (!rc)
-    skip_file (file.stat_info->archive_file_size - file.dumped_size);
+    skim_file (file.stat_info->archive_file_size - file.dumped_size, false);
   mv_end ();
 
   tar_sparse_done (&file);
