@@ -1320,7 +1320,7 @@ extract_file (char *file_name, int typeflag)
 	  }
       }
 
-  skip_file (size);
+  skim_file (size, false);
 
   mv_end ();
 

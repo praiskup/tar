@@ -31,7 +31,9 @@ tar cf archive 1 2 3
 tar tf archive
 cat archive | tar f - --delete 2 > archive2
 echo separator
-tar tf archive2],
+tar tf archive2
+tar f - --delete 2 < archive > archive3
+cmp archive2 archive3],
 [0],
 [1
 2

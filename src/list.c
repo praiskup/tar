@@ -416,7 +416,7 @@ read_header (union block **return_block, struct tar_stat_info *info,
   size_t next_long_name_blocks = 0;
   size_t next_long_link_blocks = 0;
   enum read_header status = HEADER_SUCCESS;
-  
+
   while (1)
     {
       header = find_next_block ();
@@ -1391,15 +1391,17 @@ print_for_mkdir (char *dirname, int length, mode_t mode)
     }
 }
 
-/* Skip over SIZE bytes of data in blocks in the archive.  */
+/* Skip over SIZE bytes of data in blocks in the archive.
+   This may involve copying the data.
+   If MUST_COPY, always copy instead of skipping.  */
 void
-skip_file (off_t size)
+skim_file (off_t size, bool must_copy)
 {
   union block *x;
 
   /* FIXME: Make sure mv_begin_read is always called before it */
 
-  if (seekable_archive)
+  if (seekable_archive && !must_copy)
     {
       off_t nblk = seek_archive (size);
       if (nblk >= 0)
@@ -1427,6 +1429,14 @@ skip_file (off_t size)
 void
 skip_member (void)
 {
+  skim_member (false);
+}
+
+/* Skip the current member in the archive.
+   If MUST_COPY, always copy instead of skipping.  */
+void
+skim_member (bool must_copy)
+{
   if (!current_stat_info.skipped)
     {
       char save_typeflag = current_header->header.typeflag;
@@ -1435,9 +1445,9 @@ skip_member (void)
       mv_begin_read (&current_stat_info);
 
       if (current_stat_info.is_sparse)
-	sparse_skip_file (&current_stat_info);
+	sparse_skim_file (&current_stat_info, must_copy);
       else if (save_typeflag != DIRTYPE)
-	skip_file (current_stat_info.stat.st_size);
+	skim_file (current_stat_info.stat.st_size, must_copy);
 
       mv_end ();
     }

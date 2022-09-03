@@ -27,8 +27,10 @@ AT_TAR_CHECK([
 genfile -l 50000 --file file1
 genfile -l 1024 --file file2
 tar cf archive file1 file2
+tar -f - --delete file2 <archive >archout
+tar tf archout
 tar f archive --delete file2
-tar tf archive],
+cmp archive archout],
 [0],
 [file1
 ])
