@@ -203,6 +203,7 @@ cvs_addfn (struct exclude *ex, char const *pattern, int options, void *data)
   struct wordsplit ws;
   size_t i;
 
+  options |= EXCLUDE_ALLOC;
   if (wordsplit (pattern, &ws,
 		 WRDSF_NOVAR | WRDSF_NOCMD | WRDSF_SQUEEZE_DELIMS))
     return;
