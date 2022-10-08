@@ -1,4 +1,4 @@
-GNU tar NEWS - User visible changes. 2022-07-24
+GNU tar NEWS - User visible changes. 2022-10-07
 Please send GNU tar bug reports to <bug-tar@gnu.org>
 
 version 1.34.90 (git)
@@ -45,6 +45,8 @@ version 1.34.90 (git)
 ** Fix crash on 'tar --checkpoint-action exec=\"'.
 
 ** Fix low-memory crash when reading incremental dumps.
+
+** Fix --exclude-vcs-ignores memory allocation misuse.
 
 
 version 1.34 - Sergey Poznyakoff, 2021-02-13

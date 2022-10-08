@@ -312,6 +312,7 @@ m4_include([exclude13.at])
 m4_include([exclude14.at])
 m4_include([exclude15.at])
 m4_include([exclude16.at])
+m4_include([exclude17.at])
 
 AT_BANNER([Deletions])
 m4_include([delete01.at])
