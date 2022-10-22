@@ -308,6 +308,7 @@ static struct zip_magic const magic[] = {
   { ct_bzip2,    3, "BZh" },
   { ct_lzip,     4, "LZIP" },
   { ct_lzma,     6, "\xFFLZMA" },
+  { ct_lzma,     3, "\x5d\x00\x00" },
   { ct_lzop,     4, "\211LZO" },
   { ct_xz,       6, "\xFD" "7zXZ" },
   { ct_zstd,     4, "\x28\xB5\x2F\xFD" },
