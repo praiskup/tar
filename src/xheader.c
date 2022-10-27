@@ -561,7 +561,7 @@ locate_handler (char const *keyword)
     if (p->prefix)
       {
 	size_t kwlen = strlen (p->keyword);
-        if (keyword[kwlen] == '.' && strncmp (p->keyword, keyword, kwlen) == 0)
+	if (strncmp (p->keyword, keyword, kwlen) == 0 && keyword[kwlen] == '.')
           return p;
       }
     else
@@ -1636,7 +1636,7 @@ xattr_decoder (struct tar_stat_info *st,
                char const *keyword, char const *arg, size_t size)
 {
   char *xkey;
-  
+
   /* copy keyword */
   xkey = xstrdup (keyword);
 
