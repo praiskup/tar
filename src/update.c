@@ -50,7 +50,6 @@ static void
 append_file (char *file_name)
 {
   int handle = openat (chdir_fd, file_name, O_RDONLY | O_BINARY);
-  struct stat stat_data;
 
   if (handle < 0)
     {
@@ -58,43 +57,19 @@ append_file (char *file_name)
       return;
     }
 
-  if (fstat (handle, &stat_data) != 0)
-    stat_error (file_name);
-  else
+  while (true)
     {
-      off_t bytes_left = stat_data.st_size;
-
-      while (bytes_left > 0)
-	{
-	  union block *start = find_next_block ();
-	  size_t buffer_size = available_space_after (start);
-	  size_t status;
-	  char buf[UINTMAX_STRSIZE_BOUND];
-
-	  if (bytes_left < buffer_size)
-	    {
-	      buffer_size = bytes_left;
-	      status = buffer_size % BLOCKSIZE;
-	      if (status)
-		memset (start->buffer + bytes_left, 0, BLOCKSIZE - status);
-	    }
-
-	  status = safe_read (handle, start->buffer, buffer_size);
-	  if (status == SAFE_READ_ERROR)
-	    read_fatal_details (file_name, stat_data.st_size - bytes_left,
-				buffer_size);
-	  if (status == 0)
-	    FATAL_ERROR ((0, 0,
-			  ngettext ("%s: File shrank by %s byte",
-				    "%s: File shrank by %s bytes",
-				    bytes_left),
-			  quotearg_colon (file_name),
-			  STRINGIFY_BIGINT (bytes_left, buf)));
-
-	  bytes_left -= status;
-
-	  set_next_block_after (start + (status - 1) / BLOCKSIZE);
-	}
+      union block *start = find_next_block ();
+      size_t status = safe_read (handle, start->buffer,
+				 available_space_after (start));
+      if (status == 0)
+	break;
+      if (status == SAFE_READ_ERROR)
+	read_fatal (file_name);
+      if (status % BLOCKSIZE)
+	memset (start->buffer + status - status % BLOCKSIZE, 0,
+		BLOCKSIZE - status % BLOCKSIZE);
+      set_next_block_after (start + (status - 1) / BLOCKSIZE);
     }
 
   if (close (handle) != 0)
