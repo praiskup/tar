@@ -8,15 +8,22 @@ tar.  We do not make any efforts to accommodate older versions of
 these packages, so please make sure that you have the latest stable
 version.
 
-- Automake <http://www.gnu.org/software/automake/>
 - Autoconf <http://www.gnu.org/software/autoconf/>
+- Automake <http://www.gnu.org/software/automake/>
+- Bison <http://www.gnu.org/software/bison/>
 - M4 <http://www.gnu.org/software/m4/>
-- Texinfo <http://www.gnu.org/software/texinfo>
+- Gettext <http://www.gnu.org/software/gettext/>
 - Git <http://git.or.cz>
+- Gzip <http://www.gnu.org/software/gzip/>
+- Texinfo <http://www.gnu.org/software/texinfo>
+- Wget <http://www.gnu.org/software/wget/>
 
 Up-to-date compilers and libraries are also recommended, for better
 static checking.  You may be able to use an older compiler by building
 with 'make WERROR_CFLAGS='; if so, don't worry about its false alarms.
+
+Valgrind <http://valgrind.org/> is also highly recommended, if
+Valgrind supports your architecture.
 
 * Bootstrapping
 
@@ -38,7 +45,17 @@ INSTALLATION).
 Normally you will have to run bootstrap only once. However, if you
 intend to hack on GNU tar, you might need to run it again later.
 There are lots of options that you may find useful in this case.
-See 'bootstrap --help' for a detailed list.
+See './bootstrap --help' for a detailed list.
+
+Bootstrapping obtains Gnulib and Paxutils files from their Git
+repositories on Savannah.  Then, it fetches translations from the
+Translation Project, and, finally, it builds files useful for
+configuration.  Simply running ./bootstrap without arguments should do
+in most cases.
+
+The file bootstrap.conf contains bootstrapping configuration.
+Several options are provided that modify its behavior.
+Run './bootstrap --help' for a list.
 
 To only fetch auxiliary files from the network, run ./autopull.sh.
 To only generate files such as 'configure', without accessing the
