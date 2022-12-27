@@ -7717,7 +7717,11 @@ command.
 Any number of @option{-T} options can be given in the command line.
 
 The following example shows how to use @command{find} to generate a list of
-files smaller than 400K in length and put that list into a file
+files smaller than 400 blocks in length@footnote{A file system block
+is usually 512 bytes, so this amounts to 200K.  Use the @samp{c}
+suffix to specify size in @emph{bytes}.  Also, when using
+GNU find, you can specify other size units, such as @samp{k},
+@samp{m}, etc.  @xref{Size,,,find.info,GNU Findutils}, for details.} and put that list into a file
 called @file{small-files}.  You can then use the @option{-T} option to
 @command{tar} to specify the files from that file, @file{small-files}, to
 create the archive @file{little.tgz}.  (The @option{-z} option to
@@ -7843,7 +7847,7 @@ file names that begin with dash (similar to
 @option{--verbatim-files-from} option).
 
 This example shows how to use @command{find} to generate a list of files
-larger than 800K in length and put that list into a file called
+larger than 800 blocks in length and put that list into a file called
 @file{long-files}.  The @option{-print0} option to @command{find} is just
 like @option{-print}, except that it separates files with a @code{NUL}
 rather than with a newline.  You can then run @command{tar} with both the
