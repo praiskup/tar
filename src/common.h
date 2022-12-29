@@ -987,12 +987,13 @@ void checkpoint_flush_actions (void);
 #define WARN_XATTR_WRITE         0x00200000
 #define WARN_RECORD_SIZE         0x00400000
 #define WARN_FAILED_READ         0x00800000
+#define WARN_MISSING_ZERO_BLOCKS 0x01000000
 
 /* These warnings are enabled by default in verbose mode: */
 #define WARN_VERBOSE_WARNINGS    (WARN_RENAME_DIRECTORY|WARN_NEW_DIRECTORY|\
 				  WARN_DECOMPRESS_PROGRAM|WARN_EXISTING_FILE|\
 		                  WARN_RECORD_SIZE)
-#define WARN_ALL                 (~WARN_VERBOSE_WARNINGS)
+#define WARN_ALL                 0xffffffff
 
 void set_warning_option (const char *arg);
 

@@ -185,13 +185,14 @@ Invoking @GNUTAR{}
 * Synopsis::
 * using tar options::
 * Styles::
-* All Options::
-* help::
-* defaults::
-* verbose::
-* checkpoints::
-* warnings::
-* interactive::
+* All Options::           All @command{tar} Options.
+* help::                  Where to Get Help.
+* defaults::              What are the Default Values.
+* verbose::               Checking @command{tar} progress.
+* checkpoints::           Checkpoints.
+* warnings::              Controlling Warning Messages.
+* interactive::           Asking for Confirmation During Operations.
+* external::              Running External Commands.
 
 The Three Option Styles
 
@@ -206,6 +207,15 @@ All @command{tar} Options
 * Option Summary::
 * Short Option Summary::
 * Position-Sensitive Options::
+
+Controlling Warning Messages
+
+* General Warnings::  Keywords applicable for @command{tar --create}.
+* Archive Creation Warnings:: Keywords applicable for @command{tar --create}.
+* Archive Extraction Warnings:: Keywords applicable for @command{tar --extract}.
+* Incremental Extraction Warnings:: Keywords controlling incremental extraction.
+* Warning Classes:: Convenience keywords control multiple warnings.
+* Warning Defaults:: Default settings for warnings.
 
 @GNUTAR{} Operations
 
@@ -319,16 +329,17 @@ Crossing File System Boundaries
 
 Date input formats
 
-* General date syntax::            Common rules.
-* Calendar date items::            19 Dec 1994.
-* Time of day items::              9:20pm.
-* Time zone items::                @sc{est}, @sc{pdt}, @sc{gmt}.
-* Day of week items::              Monday and others.
-* Relative items in date strings:: next tuesday, 2 years ago.
-* Pure numbers in date strings::   19931219, 1440.
-* Seconds since the Epoch::        @@1078100502.
-* Specifying time zone rules::     TZ="America/New_York", TZ="UTC0".
-* Authors of parse_datetime::      Bellovin, Eggert, Salz, Berets, et al.
+* General date syntax::          Common rules
+* Calendar date items::          21 Jul 2020
+* Time of day items::            9:20pm
+* Time zone items::              UTC, -0700, +0900, @dots{}
+* Combined date and time of day items:: 2020-07-21T20:02:00,000000-0400
+* Day of week items::            Monday and others
+* Relative items in date strings:: next tuesday, 2 years ago
+* Pure numbers in date strings:: 20200721, 1440
+* Seconds since the Epoch::      @@1595289600
+* Specifying time zone rules::   TZ="America/New_York", TZ="UTC0"
+* Authors of parse_datetime::    Bellovin, Eggert, Salz, Berets, et al.
 
 Controlling the Archive Format
 
@@ -398,6 +409,29 @@ Using Multiple Tapes
 * Tarcat::                      Concatenate Volumes into a Single Archive
 
 
+Reliability and Security
+
+* Reliability::
+* Security::
+
+Reliability
+
+* Permissions problems::
+* Data corruption and repair::
+* Race conditions::
+
+Security
+
+* Privacy::
+* Integrity::
+* Live untrusted data::
+* Security rules of thumb::
+
+Recipes
+
+* copy directory hierarchy::
+* intermediate directories::
+
 Tar Internals
 
 * Standard::           Basic Tar Format
@@ -420,7 +454,7 @@ Genfile
 
 Copying This Manual
 
-* GNU Free Documentation License::  License for copying this manual
+* GNU Free Documentation License::  License for copying this manual.
 
 @end detailmenu
 @end menu
@@ -964,6 +998,19 @@ Note that you must double the hyphens properly each time.
 Later in the tutorial, we will give examples using @w{@option{--verbose
 --verbose}}.
 
+The @option{--verbose} option also enables several @dfn{warning
+messages}, that tar does not issue otherwise, such as the
+warning about record size being used (@pxref{Blocking Factor}), selecting
+the decompress program and the like.  If these are of no interest to
+you, you can suppress them using the @option{--warning} option
+@emph{after} @option{--verbose}, e.g.:
+
+@example
+$ @kbd{tar -c -v --warning=no-verbose -f afiles.tar apple angst aspic}
+@end example
+
+@xref{Warning Classes, verbose}, for details.
+
 @anchor{verbose member listing}
 The full output consists of six fields:
 
@@ -1039,9 +1086,6 @@ lrwxrwxrwx gray/staff        0 2006-06-09 13:01 angst -> apple
 -rw-r--r-- gray/staff    35793 2006-06-09 12:06 blues
 hrw-r--r-- gray/staff        0 2006-06-09 12:06 music link to blues
 @end group
-@end smallexample
-
-@smallexample
 @end smallexample
 
 @node help tutorial
@@ -2867,7 +2911,9 @@ Do not exit unsuccessfully merely because reading failed.
 @itemx -i
 
 With this option, @command{tar} will ignore zeroed blocks in the
-archive, which normally signals EOF.  @xref{Reading}.
+archive, which normally signals EOF.  This option also suppresses
+warnings about missing or incomplete zero blocks at the end of the
+archive.  @xref{Ignore Zeros}.
 
 @opsummary{incremental}
 @item --incremental
@@ -4578,109 +4624,154 @@ Control display of the warning messages identified by @var{keyword}.
 If @var{keyword} starts with the prefix @samp{no-}, such messages are
 suppressed.  Otherwise, they are enabled.
 
-Multiple @option{--warning} messages accumulate.
+Multiple @option{--warning} options accumulate.
+@end table
 
-The tables below list allowed values for @var{keyword} along with the
+By default, @GNUTAR enables all messages, except those that are
+enabled in verbose mode (@pxref{verbose tutorial}).  @xref{Warning
+Defaults}, for details.
+
+The subsections below discuss allowed values for @var{keyword} along with the
 warning messages they control.
-@end table
 
-@subheading Keywords controlling @command{tar} operation
-@table @asis
-@kwindex all
-@item all
-Enable all warning messages.  This is the default.
-@kwindex none
-@item none
-Disable all warning messages.
-@kwindex filename-with-nuls
+@menu
+* General Warnings::  Keywords applicable for @command{tar --create}.
+* Archive Creation Warnings:: Keywords applicable for @command{tar --create}.
+* Archive Extraction Warnings:: Keywords applicable for @command{tar --extract}.
+* Incremental Extraction Warnings:: Keywords controlling incremental extraction.
+* Warning Classes:: Convenience keywords control multiple warnings.
+* Warning Defaults:: Default settings for warnings.
+@end menu
+
+@node General Warnings
+@subsection Keywords controlling @command{tar} operation
+
+These keywords control warnings that may appear in any @GNUTAR{}
+operation mode:
+
+@defvr {warning} filename-with-nuls
 @cindex @samp{file name read contains nul character}, warning message
-@item filename-with-nuls
-@samp{%s: file name read contains nul character}
-@kwindex alone-zero-block
-@cindex @samp{A lone zero block at}, warning message
-@item alone-zero-block
-@samp{A lone zero block at %s}
-@end table
+@samp{file name read contains nul character}
+@end defvr
 
-@subheading Keywords applicable for @command{tar --create}
-@table @asis
-@kwindex cachedir
+@defvr {warning} filename-with-nuls
+@cindex @samp{file name read contains nul character}, warning message
+@samp{%s: file name read contains nul character}
+@end defvr
+
+@defvr {warning} alone-zero-block
+@cindex @samp{A lone zero block at}, warning message
+@samp{A lone zero block at %s}.  Notice, that this warning is
+suppressed if @option{--ignore-zeros} is in effect (@pxref{Ignore
+Zeros}).
+@end defvr
+
+@defvr {warning} missing-zero-blocks
+@cindex @samp{Terminating zero blocks missing}, warning message.
+@samp{Terminating zero blocks missing at %s}.  This warning is
+suppressed if @option{--ignore-zeros} is in effect (@pxref{Ignore
+Zeros}).
+@end defvr
+
+@node Archive Creation Warnings
+@subsection Keywords applicable for @command{tar --create}
+
+The following keywords control messages that can be issued while
+creating archives.
+
+@defvr {warning} cachedir
 @cindex @samp{contains a cache directory tag}, warning message
-@item cachedir
 @samp{%s: contains a cache directory tag %s; %s}
-@kwindex file-shrank
+@end defvr
+
+@defvr {warning} file-shrank
 @cindex @samp{File shrank by %s bytes}, warning message
-@item file-shrank
 @samp{%s: File shrank by %s bytes; padding with zeros}
-@kwindex xdev
+@end defvr
+
+@defvr {warning} xdev
 @cindex @samp{file is on a different filesystem}, warning message
-@item xdev
 @samp{%s: file is on a different filesystem; not dumped}
-@kwindex file-ignored
+@end defvr
+
+@defvr {warning} file-ignored
 @cindex @samp{Unknown file type; file ignored}, warning message
 @cindex @samp{socket ignored}, warning message
 @cindex @samp{door ignored}, warning message
-@item file-ignored
 @samp{%s: Unknown file type; file ignored}
 @*@samp{%s: socket ignored}
 @*@samp{%s: door ignored}
-@kwindex file-unchanged
+@end defvr
+
+@defvr {warning} file-unchanged
 @cindex @samp{file is unchanged; not dumped}, warning message
-@item file-unchanged
 @samp{%s: file is unchanged; not dumped}
-@kwindex ignore-archive
+@end defvr
+
+@defvr {warning} ignore-archive
 @cindex @samp{archive cannot contain itself; not dumped}, warning message
-@item ignore-archive
 @samp{%s: archive cannot contain itself; not dumped}
-@kwindex file-removed
+@end defvr
+
+@defvr {warning} file-removed
 @cindex @samp{File removed before we read it}, warning message
-@item file-removed
 @samp{%s: File removed before we read it}
-@kwindex file-changed
+@end defvr
+
+@defvr {warning} file-changed
 @cindex @samp{file changed as we read it}, warning message
-@item file-changed
 @samp{%s: file changed as we read it}
-@item failed-read
+
 Suppresses warnings about read failures, which can occur if files
 or directories are unreadable, or if they change while being read.  This
 keyword applies only if used together with the @option{--ignore-failed-read}
 option. @xref{Ignore Failed Read}.
-@end table
+@end defvr
 
-@subheading Keywords applicable for @command{tar --extract}
-@table @asis
-@kwindex existing-file
+@node Archive Extraction Warnings
+@subsection Keywords applicable for @command{tar --extract}
+
+The following keywords control warnings that can be issued during
+archive extraction.
+
+@defvr {warning} existing-file
 @cindex @samp{%s: skipping existing file}, warning message
-@item existing-file
 @samp{%s: skipping existing file}
-@kwindex timestamp
+@end defvr
+
+@defvr {warning} timestamp
 @cindex @samp{implausibly old time stamp %s}, warning message
 @cindex @samp{time stamp %s is %s s in the future}, warning message
-@item timestamp
 @samp{%s: implausibly old time stamp %s}
 @*@samp{%s: time stamp %s is %s s in the future}
-@kwindex contiguous-cast
+@end defvr
+
+@defvr {warning} contiguous-cast
 @cindex @samp{Extracting contiguous files as regular files}, warning message
-@item contiguous-cast
 @samp{Extracting contiguous files as regular files}
-@kwindex symlink-cast
-@cindex @samp{Attempting extraction of symbolic links as hard links}, warning message
-@item symlink-cast
+@end defvr
+
+@defvr {warning} symlink-cast
+@samp{Attempting extraction of symbolic links as hard links}, warning message
 @samp{Attempting extraction of symbolic links as hard links}
-@kwindex unknown-cast
+@end defvr
+
+@defvr {warning} unknown-cast
 @cindex @samp{Unknown file type '%c', extracted as normal file}, warning message
-@item unknown-cast
 @samp{%s: Unknown file type '%c', extracted as normal file}
-@kwindex ignore-newer
+@end defvr
+
+@defvr {warning} ignore-newer
 @cindex @samp{Current %s is newer or same age}, warning message
-@item ignore-newer
 @samp{Current %s is newer or same age}
-@kwindex unknown-keyword
+@end defvr
+
+@defvr {warning} unknown-keyword
 @cindex @samp{Ignoring unknown extended header keyword '%s'}, warning message
-@item unknown-keyword
 @samp{Ignoring unknown extended header keyword '%s'}
-@kwindex decompress-program
-@item decompress-program
+@end defvr
+
+@defvr {warning} decompress-program
 Controls verbose description of failures occurring when trying to run
 alternative decompressor programs (@pxref{alternative decompression
 programs}).  This warning is disabled by default (unless
@@ -4696,33 +4787,69 @@ tar (child): trying gzip
 This means that @command{tar} first tried to decompress
 @file{archive.Z} using @command{compress}, and, when that
 failed, switched to @command{gzip}.
-@kwindex record-size
-@cindex @samp{Record size = %lu blocks}, warning message
-@item record-size
-@samp{Record size = %lu blocks}
-@end table
+@end defvr
 
-@subheading Keywords controlling incremental extraction:
-@table @asis
-@kwindex rename-directory
+@defvr {warning} record-size
+@cindex @samp{Record size = %lu blocks}, warning message
+@samp{Record size = %lu blocks}
+@end defvr
+
+@node Incremental Extraction Warnings
+@subsection Keywords controlling incremental extraction
+
+These keywords control warnings that may appear when extracting from
+incremental archives.
+
+@defvr {warning} rename-directory
 @cindex @samp{%s: Directory has been renamed from %s}, warning message
 @cindex @samp{%s: Directory has been renamed}, warning message
-@item rename-directory
 @samp{%s: Directory has been renamed from %s}
 @*@samp{%s: Directory has been renamed}
-@kwindex new-directory
+@end defvr
+
+@defvr {warning} new-directory
 @cindex @samp{%s: Directory is new}, warning message
-@item new-directory
 @samp{%s: Directory is new}
-@kwindex xdev
+@end defvr
+
+@defvr {warning} xdev
 @cindex @samp{%s: directory is on a different device: not purging}, warning message
-@item xdev
 @samp{%s: directory is on a different device: not purging}
-@kwindex bad-dumpdir
+@end defvr
+
+@defvr {warning} bad-dumpdir
 @cindex @samp{Malformed dumpdir: 'X' never used}, warning message
-@item bad-dumpdir
 @samp{Malformed dumpdir: 'X' never used}
-@end table
+@end defvr
+
+@node Warning Classes
+@subsection Warning Classes
+
+These convenience keywords define @dfn{warning classes}.  When used,
+they affect several warnings at once.
+
+@defvr {warning} all
+Enable all warning messages.
+@end defvr
+
+@defvr {warning} none
+Disable all warning messages.
+@end defvr
+
+@defvr {warning} verbose
+A shorthand for all messages enabled when @option{--verbose}
+(@pxref{verbose tutorial}) is in effect.  These are:
+@code{decompress-program}, @code{existing-file}, @code{new-directory},
+@code{record-size}, @code{rename-directory}.
+@end defvr
+
+@node Warning Defaults
+@subsection Default Warning Settings
+@GNUTAR default settings correspond to:
+
+@example
+--warning=all --warning=no-verbose --warning=no-missing-zero-blocks
+@end example
 
 @node interactive
 @section Asking for Confirmation During Operations
@@ -5857,7 +5984,11 @@ between file entries (which usually indicates the end of the archive).
 @option{--ignore-zeros} (@option{-i}) allows @command{tar} to
 completely read an archive which contains a block of zeros before the
 end (i.e., a damaged archive, or one that was created by concatenating
-several archives together).
+several archives together).  This option also suppresses warnings
+about missing or incomplete zero blocks at the end of the archive.
+This can be turned on, if the need be, using the
+@option{--warning=alone-zero-block --warning=missing-zero-blocks}
+options (@pxref{warnings}).
 
 The @option{--ignore-zeros} (@option{-i}) option is turned off by default because many
 versions of @command{tar} write garbage after the end-of-archive entry,
