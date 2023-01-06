@@ -47,6 +47,7 @@
 #include <wordsplit.h>
 #include <sysexits.h>
 #include <quotearg.h>
+#include <verify.h>
 #include <version-etc.h>
 #include <xstrtol.h>
 #include <stdopen.h>
