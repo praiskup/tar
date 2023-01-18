@@ -1,6 +1,6 @@
 # Makefile for GNU tar regression tests.
 
-# Copyright 1996-2022 Free Software Foundation, Inc.
+# Copyright 1996-2023 Free Software Foundation, Inc.
 
 # This file is part of GNU tar.
 
@@ -331,5 +331,5 @@ AM_CPPFLAGS = \
 
 LDADD = ../gnu/libgnu.a\
  $(LIB_ACL) $(LIB_CLOCK_GETTIME) $(LIB_EACCESS)\
- $(LIB_GETRANDOM) $(LIB_HARD_LOCALE) $(LIB_HAS_ACL) $(LIB_MBRTOWC)\
+ $(LIB_GETRANDOM) $(LIB_HARD_LOCALE) $(FILE_HAS_ACL_LIB) $(LIB_MBRTOWC)\
  $(LIB_SELINUX) $(LIB_SETLOCALE_NULL)

@@ -1,6 +1,6 @@
 /* List a tar archive, with support routines for reading a tar archive.
 
-   Copyright 1988-2022 Free Software Foundation, Inc.
+   Copyright 1988-2023 Free Software Foundation, Inc.
 
    This file is part of GNU tar.
 
@@ -256,6 +256,13 @@ read_and (void (*do_something) (void))
 	  continue;
 
 	case HEADER_END_OF_FILE:
+	  if (!ignore_zeros_option)
+	    {
+	      char buf[UINTMAX_STRSIZE_BOUND];
+	      WARNOPT (WARN_MISSING_ZERO_BLOCKS,
+		       (0, 0, _("Terminating zero blocks missing at %s"),
+			STRINGIFY_BIGINT (current_block_ordinal (), buf)));
+	    }
 	  if (block_number_option)
 	    {
 	      char buf[UINTMAX_STRSIZE_BOUND];

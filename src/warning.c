@@ -1,6 +1,6 @@
 /* Warnings for GNU tar.
 
-   Copyright 2009-2022 Free Software Foundation, Inc.
+   Copyright 2009-2023 Free Software Foundation, Inc.
 
    This file is part of GNU tar.
 
@@ -48,6 +48,8 @@ static char const *const warning_args[] = {
   "xattr-write",
   "record-size",
   "failed-read",
+  "missing-zero-blocks",
+  "verbose",
   NULL
 };
 
@@ -76,12 +78,14 @@ static int warning_types[] = {
   WARN_EXISTING_FILE,
   WARN_XATTR_WRITE,
   WARN_RECORD_SIZE,
-  WARN_FAILED_READ
+  WARN_FAILED_READ,
+  WARN_MISSING_ZERO_BLOCKS,
+  WARN_VERBOSE_WARNINGS,
 };
 
 ARGMATCH_VERIFY (warning_args, warning_types);
 
-int warning_option = WARN_ALL;
+int warning_option = WARN_ALL & ~(WARN_VERBOSE_WARNINGS|WARN_MISSING_ZERO_BLOCKS);
 
 void
 set_warning_option (const char *arg)

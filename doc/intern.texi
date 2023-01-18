@@ -1,5 +1,5 @@
 @c This is part of the paxutils manual.
-@c Copyright (C) 2006--2022 Free Software Foundation, Inc.
+@c Copyright (C) 2006--2023 Free Software Foundation, Inc.
 @c This file is distributed under GFDL 1.1 or any later version
 @c published by the Free Software Foundation.
 
@@ -51,7 +51,10 @@ of the file.  At the end of the archive file there are two 512-byte blocks
 filled with binary zeros as an end-of-file marker.  A reasonable system
 should write such end-of-file marker at the end of an archive, but
 must not assume that such a block exists when reading an archive.  In
-particular @GNUTAR{} always issues a warning if it does not encounter it.
+particular, @GNUTAR{} does not treat missing end-of-file marker as an
+error and silently ignores the fact.  You can instruct it to issue
+a warning, however, by using the @option{--warning=missing-zero-blocks}
+option (@pxref{General Warnings, missing-zero-blocks}).
 
 The blocks may be @dfn{blocked} for physical I/O operations.
 Each record of @var{n} blocks (where @var{n} is set by the

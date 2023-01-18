@@ -57,14 +57,14 @@ The file bootstrap.conf contains bootstrapping configuration.
 Several options are provided that modify its behavior.
 Run './bootstrap --help' for a list.
 
-To only fetch auxiliary files from the network, run ./autopull.sh.
+To only fetch auxiliary files from the network, run './bootstrap --pull'.
 To only generate files such as 'configure', without accessing the
-network, run ./autogen.sh.  The 'bootstrap' script does both.
+network, run './bootstrap --gen'.
 
 
 * Copyright information
 
-Copyright 2007-2022 Free Software Foundation, Inc.
+Copyright 2007-2023 Free Software Foundation, Inc.
 
 This file is part of GNU tar.
 

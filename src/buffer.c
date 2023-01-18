@@ -1,6 +1,6 @@
 /* Buffer management for tar.
 
-   Copyright 1988-2022 Free Software Foundation, Inc.
+   Copyright 1988-2023 Free Software Foundation, Inc.
 
    This file is part of GNU tar.
 
@@ -982,7 +982,8 @@ short_read (size_t status)
     }
 
   record_end = record_start + (record_size - left) / BLOCKSIZE;
-  records_read++;
+  if (left == 0)
+    records_read++;
 }
 
 /*  Flush the current buffer to/from the archive.  */
