@@ -1059,6 +1059,12 @@ decode_time (struct timespec *ts, char const *arg, char const *keyword)
 		keyword, arg));
       return false;
     }
+  if (*arg_lim)
+    {
+      ERROR ((0, 0, _("Malformed extended header: invalid %s=%s"),
+	      keyword, arg));
+      return false;
+    }
 
   *ts = t;
   return true;
@@ -1247,9 +1253,12 @@ path_coder (struct tar_stat_info const *st, char const *keyword,
 static void
 raw_path_decoder (struct tar_stat_info *st, char const *arg)
 {
-  decode_string (&st->orig_file_name, arg);
-  decode_string (&st->file_name, arg);
-  st->had_trailing_slash = strip_trailing_slashes (st->file_name);
+  if (*arg)
+    {
+      decode_string (&st->orig_file_name, arg);
+      decode_string (&st->file_name, arg);
+      st->had_trailing_slash = strip_trailing_slashes (st->file_name);
+    }
 }
 
 
