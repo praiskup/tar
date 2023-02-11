@@ -881,8 +881,9 @@ from_header (char const *where0, size_t digs, char const *type,
 	  where++;
 	}
     }
-  else if (*where == '\200' /* positive base-256 */
-	   || *where == '\377' /* negative base-256 */)
+  else if (where <= lim - 2
+	   && (*where == '\200' /* positive base-256 */
+	       || *where == '\377' /* negative base-256 */))
     {
       /* Parse base-256 output.  A nonnegative number N is
 	 represented as (256**DIGS)/2 + N; a negative number -N is
