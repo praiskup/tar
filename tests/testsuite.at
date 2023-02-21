@@ -320,6 +320,7 @@ m4_include([delete02.at])
 m4_include([delete03.at])
 m4_include([delete04.at])
 m4_include([delete05.at])
+m4_include([delete06.at])
 
 AT_BANNER([Extracting])
 m4_include([extrac01.at])
