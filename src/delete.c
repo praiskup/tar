@@ -149,6 +149,9 @@ flush_file (void)
     {
       blocks_to_skip -= (record_end - current_block);
       flush_archive ();
+      if (record_end == current_block)
+	/* Hit EOF */
+	break;
     }
   current_block += blocks_to_skip;
 }
