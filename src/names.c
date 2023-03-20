@@ -348,7 +348,7 @@ handle_file_selection_option (int key, const char *arg)
       break;
 
     case EXCLUDE_VCS_OPTION:
-      add_exclude_array (vcs_file_table, 0);
+      add_exclude_array (vcs_file_table, FNM_LEADING_DIR);
       break;
 
     case EXCLUDE_VCS_IGNORES_OPTION:
