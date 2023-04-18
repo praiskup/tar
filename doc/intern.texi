@@ -114,8 +114,9 @@ The @code{uid} and @code{gid} fields are the numeric user and group
 not support numeric user or group @acronym{ID}s, these fields should
 be ignored.
 
-The @code{size} field is the size of the file in bytes; linked files
-are archived with this field specified as zero.
+The @code{size} field is the size of the file in bytes; for archive
+members that are symbolic or hard links to another file, this field
+is specified as zero.
 
 The @code{mtime} field represents the data modification time of the file at
 the time it was archived.  It represents the integer number of
@@ -126,7 +127,7 @@ the simple sum of all bytes in the header block.  Each 8-bit
 byte in the header is added to an unsigned integer, initialized to
 zero, the precision of which shall be no less than seventeen bits.
 When calculating the checksum, the @code{chksum} field is treated as
-if it were all blanks.
+if it were filled with spaces (ASCII 32).
 
 The @code{typeflag} field specifies the type of file archived.  If a
 particular implementation does not recognize or permit the specified
