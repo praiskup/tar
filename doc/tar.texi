@@ -2411,7 +2411,7 @@ tape!  @xref{delete}.
 @item --diff
 @itemx -d
 
-Same @option{--compare}.  @xref{compare}.
+Same as @option{--compare}.  @xref{compare}.
 
 @opsummary{extract}
 @item --extract
@@ -5402,7 +5402,7 @@ jazz
 @end smallexample
 
 @noindent
-If you like, You can run @samp{tar --list} to make sure the archives
+If you like, you can run @samp{tar --list} to make sure the archives
 contain what they are supposed to:
 
 @smallexample

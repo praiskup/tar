@@ -22,22 +22,22 @@ tar \- an archiving utility
 [\fBGnSkUWOmpsMBiajJzZhPlRvwo\fR] [\fIARG\fR...]
 .SS UNIX-style usage
 .sp
-\fBtar\fR \fB\-A\fR [\fIOPTIONS\fR] \fIARCHIVE\fR \fIARCHIVE\fR
+\fBtar\fR \fB\-A\fR [\fIOPTIONS\fR] \fB\-f\fR \fIARCHIVE\fR \fIARCHIVE\fR
 .sp
 \fBtar\fR \fB\-c\fR [\fB\-f\fR \fIARCHIVE\fR] [\fIOPTIONS\fR] [\fIFILE\fR...]
 .sp
 \fBtar\fR \fB\-d\fR [\fB\-f\fR \fIARCHIVE\fR] [\fIOPTIONS\fR] [\fIFILE\fR...]
 .sp
-\fBtar\fR \fB\-t\fR [\fB\-f\fR \fIARCHIVE\fR] [\fIOPTIONS\fR] [\fIMEMBER\fR...]
-.sp
 \fBtar\fR \fB\-r\fR [\fB\-f\fR \fIARCHIVE\fR] [\fIOPTIONS\fR] [\fIFILE\fR...]
+.sp
+\fBtar\fR \fB\-t\fR [\fB\-f\fR \fIARCHIVE\fR] [\fIOPTIONS\fR] [\fIMEMBER\fR...]
 .sp
 \fBtar\fR \fB\-u\fR [\fB\-f\fR \fIARCHIVE\fR] [\fIOPTIONS\fR] [\fIFILE\fR...]
 .sp
 \fBtar\fR \fB\-x\fR [\fB\-f\fR \fIARCHIVE\fR] [\fIOPTIONS\fR] [\fIMEMBER\fR...]
 .SS GNU-style usage
 .sp
-\fBtar\fR {\fB\-\-catenate\fR|\fB\-\-concatenate\fR} [\fIOPTIONS\fR] \fIARCHIVE\fR \fIARCHIVE\fR
+\fBtar\fR {\fB\-\-catenate\fR|\fB\-\-concatenate\fR} [\fIOPTIONS\fR] \fB\-\-file\fR \fIARCHIVE\fR \fIARCHIVE\fR
 .sp
 \fBtar\fR \fB\-\-create\fR [\fB\-\-file\fR \fIARCHIVE\fR] [\fIOPTIONS\fR] [\fIFILE\fR...]
 .sp
@@ -45,17 +45,15 @@ tar \- an archiving utility
 .sp
 \fBtar\fR \fB\-\-delete\fR [\fB\-\-file\fR \fIARCHIVE\fR] [\fIOPTIONS\fR] [\fIMEMBER\fR...]
 .sp
-\fBtar\fR \fB\-\-append\fR [\fB\-f\fR \fIARCHIVE\fR] [\fIOPTIONS\fR] [\fIFILE\fR...]
+\fBtar\fR \fB\-\-append\fR [\fB\-\-file\fR \fIARCHIVE\fR] [\fIOPTIONS\fR] [\fIFILE\fR...]
 .sp
-\fBtar\fR \fB\-\-list\fR [\fB\-f\fR \fIARCHIVE\fR] [\fIOPTIONS\fR] [\fIMEMBER\fR...]
+\fBtar\fR \fB\-\-list\fR [\fB\-\-file\fR \fIARCHIVE\fR] [\fIOPTIONS\fR] [\fIMEMBER\fR...]
 .sp
 \fBtar\fR \fB\-\-test\-label\fR [\fB\-\-file\fR \fIARCHIVE\fR] [\fIOPTIONS\fR] [\fILABEL\fR...]
 .sp
 \fBtar\fR \fB\-\-update\fR [\fB\-\-file\fR \fIARCHIVE\fR] [\fIOPTIONS\fR] [\fIFILE\fR...]
 .sp
-\fBtar\fR \fB\-\-update\fR [\fB\-f\fR \fIARCHIVE\fR] [\fIOPTIONS\fR] [\fIFILE\fR...]
-.sp
-\fBtar\fR {\fB\-\-extract\fR|\fB\-\-get\fR} [\fB\-f\fR \fIARCHIVE\fR] [\fIOPTIONS\fR] [\fIMEMBER\fR...]
+\fBtar\fR {\fB\-\-extract\fR|\fB\-\-get\fR} [\fB\-\-file\fR \fIARCHIVE\fR] [\fIOPTIONS\fR] [\fIMEMBER\fR...]
 .SH NOTE
 This manpage is a short description of GNU \fBtar\fR.  For a detailed
 discussion, including examples and usage recommendations, refer to the
