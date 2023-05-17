@@ -6,7 +6,7 @@ Name: tar
 Epoch: 2
 Version: <GENERATED>
 Release: <GENERATED>
-License: GPLv3+
+License: GPL-3.0-or-later
 Group: Applications/Archiving
 URL: https://www.gnu.org/software/tar/
 
