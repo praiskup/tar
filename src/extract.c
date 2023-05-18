@@ -902,11 +902,10 @@ maybe_recoverable (char *file_name, bool regular, bool *interdir_made)
    (e.g. on Lustre distributed parallel filesystem - setting info about how many
    servers is this file striped over, stripe size, mirror copies, etc.
    in advance dramatically improves the following  performance of reading and
-   writing a file).  If not restoring permissions, invert the INVERT_PERMISSIONS
-   bits from the file's current permissions.  TYPEFLAG specifies the type of the
-   file.  Return a negative number (setting errno) on failure, zero if
-   successful but FILE_NAME was not created (e.g., xattrs not
-   available), and a positive number if FILE_NAME was created.  */
+   writing a file).  TYPEFLAG specifies the type of the file.  Return a negative
+   number (setting errno) on failure, zero if successful but FILE_NAME was not
+   created (e.g., xattrs not available), and a positive number if FILE_NAME was
+   created.  */
 static int
 set_xattr (char const *file_name, struct tar_stat_info const *st,
            mode_t mode, char typeflag)
@@ -1271,6 +1270,10 @@ extract_file (char *file_name, int typeflag)
   else
     {
       int file_created;
+      /* Either we pre-create the file in set_xattr(), or we just directly open
+         the file in open_output_file() with O_CREAT.  If pre-creating, we need
+         to use S_IWUSR so we can open the file O_WRONLY in open_output_file().
+         The additional mode bit is cleared later by set_stat()->set_mode().  */
       while (((file_created = set_xattr (file_name, &current_stat_info,
 					 mode | S_IWUSR, typeflag))
 	      < 0)
