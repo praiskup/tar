@@ -130,6 +130,10 @@ static struct
 #ifdef HAVE_POSIX_ACLS
 # include "acl.h"
 # include <sys/acl.h>
+# ifdef HAVE_ACL_LIBACL_H
+#  /* needed for numeric-owner support */
+#  include <acl/libacl.h>
+# endif
 #endif
 
 #ifdef HAVE_POSIX_ACLS
@@ -348,21 +352,35 @@ xattrs_acls_cleanup (char *val, size_t *plen)
 }
 
 static void
-xattrs__acls_get_a (int parentfd, const char *file_name,
-                    struct tar_stat_info *st,
-                    char **ret_ptr, size_t * ret_len)
+acls_get_text (int parentfd, const char *file_name, acl_type_t type,
+	       char **ret_ptr, size_t * ret_len)
 {
   char *val = NULL;
   acl_t acl;
 
-  if (!(acl = acl_get_file_at (parentfd, file_name, ACL_TYPE_ACCESS)))
+  if (!(acl = acl_get_file_at (parentfd, file_name, type)))
     {
       if (errno != ENOTSUP)
         call_arg_warn ("acl_get_file_at", file_name);
       return;
     }
 
-  val = acl_to_text (acl, NULL);
+  if (numeric_owner_option)
+    {
+#ifdef HAVE_ACL_LIBACL_H
+      val = acl_to_any_text (acl, NULL, '\n',
+			     TEXT_SOME_EFFECTIVE | TEXT_NUMERIC_IDS);
+#else
+      static int warned;
+      if (!warned)
+	{
+	  WARN ((0, 0, _("--numeric-owner is ignored for ACLs: libacl is not available")));
+	  warned = 1;
+	}
+#endif
+    }
+  else
+    val = acl_to_text (acl, NULL);
   acl_free (acl);
 
   if (!val)
@@ -376,34 +394,21 @@ xattrs__acls_get_a (int parentfd, const char *file_name,
   acl_free (val);
 }
 
+static void
+xattrs__acls_get_a (int parentfd, const char *file_name,
+                    struct tar_stat_info *st,
+                    char **ret_ptr, size_t *ret_len)
+{
+  acls_get_text (parentfd, file_name, ACL_TYPE_ACCESS, ret_ptr, ret_len);
+}
+
 /* "system.posix_acl_default" */
 static void
 xattrs__acls_get_d (int parentfd, char const *file_name,
                     struct tar_stat_info *st,
                     char **ret_ptr, size_t * ret_len)
 {
-  char *val = NULL;
-  acl_t acl;
-
-  if (!(acl = acl_get_file_at (parentfd, file_name, ACL_TYPE_DEFAULT)))
-    {
-      if (errno != ENOTSUP)
-        call_arg_warn ("acl_get_file_at", file_name);
-      return;
-    }
-
-  val = acl_to_text (acl, NULL);
-  acl_free (acl);
-
-  if (!val)
-    {
-      call_arg_warn ("acl_to_text", file_name);
-      return;
-    }
-
-  *ret_ptr = xstrdup (val);
-  xattrs_acls_cleanup (*ret_ptr, ret_len);
-  acl_free (val);
+  acls_get_text (parentfd, file_name, ACL_TYPE_DEFAULT, ret_ptr, ret_len);
 }
 #endif /* HAVE_POSIX_ACLS */
 
