@@ -5777,10 +5777,15 @@ Disable extended attributes support.  This is the default.
 
 Attribute names are strings prefixed by a @dfn{namespace} name and a dot.
 Currently, four namespaces exist: @samp{user}, @samp{trusted},
-@samp{security} and @samp{system}.  By default, when @option{--xattr}
-is used, all names are stored in the archive (or extracted, if using
-@option{--extract}).  This can be controlled using the following
-options:
+@samp{security} and @samp{system}.  By default, when @option{--xattrs}
+is used, all names are stored in the archive (with @option{--create}),
+but only @samp{user} namespace is extracted (if using @option{--extract}).
+The reason for this behavior is that any other, system defined attributes
+don't provide us sufficient compatibility promise.  Storing all attributes
+is safe operation for the archiving purposes.  Though extracting those
+(often security related) attributes on a different system than originally
+archived can lead to extraction failures, or even misinterpretations.
+This behavior can be controlled using the following options:
 
 @table @option
 @item --xattrs-exclude=@var{pattern}
@@ -5799,6 +5804,10 @@ $ @kbd{tar --xattrs --xattrs-exclude='user.*' -cf a.tar .}
 
 will include in the archive @file{a.tar} all attributes, except those
 from the @samp{user} namespace.
+
+Users shall check the attributes are binary compatible with the target system
+before any other namespace is extracted with an explicit
+@option{--xattrs-include} option.
 
 Any number of these options can be given, thereby creating lists of
 include and exclude patterns.
