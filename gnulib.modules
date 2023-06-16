@@ -42,6 +42,7 @@ file-has-acl
 fileblocks
 fnmatch-gnu
 fprintftime
+free-posix
 fseeko
 fstatat
 full-write

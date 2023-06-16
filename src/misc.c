@@ -695,13 +695,11 @@ remove_any_file (const char *file_name, enum remove_option option)
 		char *file_name_buffer = make_file_name (file_name, entry);
 		int r = remove_any_file (file_name_buffer,
                                          RECURSIVE_REMOVE_OPTION);
-		int e = errno;
 		free (file_name_buffer);
 
 		if (! r)
 		  {
 		    free (directory);
-		    errno = e;
 		    return 0;
 		  }
 	      }
