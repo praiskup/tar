@@ -28,6 +28,7 @@ backupfile
 closeout
 configmake
 dirname
+dup2
 error
 exclude
 extern-inline
