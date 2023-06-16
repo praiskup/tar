@@ -22,6 +22,7 @@
 #include <system.h>
 #include <quotearg.h>
 #include <errno.h>
+#include <flexmember.h>
 #include <hash.h>
 #include <priv-set.h>
 #include <root-uid.h>
@@ -180,7 +181,7 @@ struct delayed_link
     struct xattr_map xattr_map;
 
     /* The desired target of the desired link.  */
-    char target[1];
+    char target[FLEXIBLE_ARRAY_MEMBER];
   };
 
 static Hash_table *delayed_link_table;
@@ -188,7 +189,7 @@ static Hash_table *delayed_link_table;
 struct string_list
   {
     struct string_list *next;
-    char string[1];
+    char string[FLEXIBLE_ARRAY_MEMBER];
   };
 
 static size_t
@@ -1134,7 +1135,7 @@ extract_dir (char *file_name, int typeflag)
 	      status = 0;
 	      break;
 	    }
-	  
+
 	  errno = EEXIST;
 	}
 
@@ -1470,8 +1471,8 @@ create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made,
 	  p->mtime = current_stat_info.mtime;
 	}
       p->change_dir = chdir_current;
-      p->sources = xmalloc (offsetof (struct string_list, string)
-			     + strlen (file_name) + 1);
+      p->sources = xmalloc (FLEXNSIZEOF (struct string_list, string,
+					 strlen (file_name) + 1));
       p->sources->next = 0;
       strcpy (p->sources->string, file_name);
       p->cntx_name = NULL;
@@ -1534,8 +1535,9 @@ extract_link (char *file_name, int typeflag)
 	      if (ds && ds->change_dir == chdir_current
 		  && BIRTHTIME_EQ (ds->birthtime, get_stat_birthtime (&st1)))
 		{
-		  struct string_list *p =  xmalloc (offsetof (struct string_list, string)
-						    + strlen (file_name) + 1);
+		  struct string_list *p
+		    = xmalloc (FLEXNSIZEOF (struct string_list,
+					    string, strlen (file_name) + 1));
 		  strcpy (p->string, file_name);
 		  p->next = ds->sources;
 		  ds->sources = p;

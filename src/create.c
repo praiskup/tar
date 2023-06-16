@@ -22,6 +22,7 @@
 #include <system.h>
 
 #include <areadlink.h>
+#include <flexmember.h>
 #include <quotearg.h>
 
 #include "common.h"
@@ -36,7 +37,7 @@ struct link
     dev_t dev;
     ino_t ino;
     nlink_t nlink;
-    char name[1];
+    char name[FLEXIBLE_ARRAY_MEMBER];
   };
 
 struct exclusion_tag
@@ -1518,8 +1519,7 @@ file_count_links (struct tar_stat_info *st)
 						   absolute_names_option));
       transform_name (&linkname, XFORM_LINK);
 
-      lp = xmalloc (offsetof (struct link, name)
-				 + strlen (linkname) + 1);
+      lp = xmalloc (FLEXNSIZEOF (struct link, name, strlen (linkname) + 1));
       lp->ino = st->stat.st_ino;
       lp->dev = st->stat.st_dev;
       lp->nlink = st->stat.st_nlink;

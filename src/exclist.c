@@ -19,6 +19,7 @@
 */
 #include <system.h>
 #include <quotearg.h>
+#include <flexmember.h>
 #include <fnmatch.h>
 #include <wordsplit.h>
 #include "common.h"
@@ -40,7 +41,7 @@ struct excfile
 {
   struct excfile *next;
   int flags;
-  char name[1];
+  char name[FLEXIBLE_ARRAY_MEMBER];
 };
 
 static struct excfile *excfile_head, *excfile_tail;
@@ -48,7 +49,8 @@ static struct excfile *excfile_head, *excfile_tail;
 void
 excfile_add (const char *name, int flags)
 {
-  struct excfile *p = xmalloc (sizeof (*p) + strlen (name));
+  struct excfile *p = xmalloc (FLEXNSIZEOF (struct excfile, name,
+					    strlen (name) + 1));
   p->next = NULL;
   p->flags = flags;
   strcpy (p->name, name);

@@ -41,6 +41,7 @@ fdopendir
 fdutimensat
 file-has-acl
 fileblocks
+flexmember
 fnmatch-gnu
 fprintftime
 free-posix
