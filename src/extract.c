@@ -1927,15 +1927,20 @@ apply_delayed_link (struct delayed_link *ds)
 	}
     }
 
-  for (sources = ds->sources; sources; )
+  /* There is little point to freeing, as we are about to exit,
+     and freeing is more likely to cause than cure trouble.  */
+  if (false)
     {
-      struct string_list *next = sources->next;
-      free (sources);
-      sources = next;
-    }
+      for (sources = ds->sources; sources; )
+	{
+	  struct string_list *next = sources->next;
+	  free (sources);
+	  sources = next;
+	}
 
-  xattr_map_free (&ds->xattr_map);
-  free (ds->cntx_name);
+      xattr_map_free (&ds->xattr_map);
+      free (ds->cntx_name);
+    }
 }
 
 /* Extract the links whose final extraction were delayed.  */
