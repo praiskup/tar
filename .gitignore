@@ -20,7 +20,7 @@
 /INSTALL
 /Make.rules
 /aclocal.m4
-/build-aux
+/build-aux/
 /conf*
 !/configure.ac
 /gnu/

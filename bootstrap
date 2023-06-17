@@ -37,7 +37,7 @@ medir=`dirname "$me"`
 
 # A library of shell functions for autopull.sh, autogen.sh, and bootstrap.
 
-scriptlibversion=2023-01-06.19; # UTC
+scriptlibversion=2023-06-06.21; # UTC
 
 # Copyright (C) 2003-2023 Free Software Foundation, Inc.
 #
@@ -340,7 +340,7 @@ check_versions() {
     # Handle the still-experimental Automake-NG programs specially.
     # They remain named as the mainstream Automake programs ("automake",
     # and "aclocal") to avoid gratuitous incompatibilities with
-    # pre-existing usages (by, say, autoreconf, or custom autogen.sh
+    # preexisting usages (by, say, autoreconf, or custom autogen.sh
     # scripts), but correctly identify themselves (as being part of
     # "GNU automake-ng") when asked their version.
     case $app in
@@ -978,7 +978,7 @@ symlink_to_dir()
       for dot_ig in x $vc_ignore; do
         test $dot_ig = x && continue
         ig=$parent/$dot_ig
-        insert_vc_ignore $ig "${dst_dir##*/}"
+        insert_vc_ignore $ig "${dst_dir##*/}/"
       done
     fi
 
@@ -1104,7 +1104,7 @@ autogen()
     mkdir $build_aux
     for dot_ig in x $vc_ignore; do
       test $dot_ig = x && continue
-      insert_vc_ignore $dot_ig $build_aux
+      insert_vc_ignore $dot_ig $build_aux/
     done
   fi
 
@@ -1236,14 +1236,7 @@ autogen()
   # Invoke autoreconf with --force --install to ensure upgrades of tools
   # such as ylwrap.
   AUTORECONFFLAGS="--verbose --install --force -I $m4_base $ACLOCAL_FLAGS"
-
-  # Some systems (RHEL 5) are using ancient autotools, for which the
-  # --no-recursive option had not been invented.  Detect that lack and
-  # omit the option when it's not supported.  FIXME in 2017: remove this
-  # hack when RHEL 5 autotools are updated, or when they become irrelevant.
-  case $($AUTORECONF --help) in
-    *--no-recursive*) AUTORECONFFLAGS="$AUTORECONFFLAGS --no-recursive";;
-  esac
+  AUTORECONFFLAGS="$AUTORECONFFLAGS --no-recursive"
 
   # Tell autoreconf not to invoke autopoint or libtoolize; they were run above.
   echo "running: AUTOPOINT=true LIBTOOLIZE=true $AUTORECONF $AUTORECONFFLAGS"

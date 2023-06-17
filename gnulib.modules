@@ -28,6 +28,7 @@ backupfile
 closeout
 configmake
 dirname
+dup2
 error
 exclude
 extern-inline
@@ -40,8 +41,10 @@ fdopendir
 fdutimensat
 file-has-acl
 fileblocks
+flexmember
 fnmatch-gnu
 fprintftime
+free-posix
 fseeko
 fstatat
 full-write
@@ -106,4 +109,4 @@ xalloc-die
 xgetcwd
 xstrtoumax
 xvasprintf
-year2038
+year2038-recommended

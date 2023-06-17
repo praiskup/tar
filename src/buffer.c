@@ -32,6 +32,11 @@
 #include "common.h"
 #include <rmt.h>
 
+/* Work around GCC bug 109856.  */
+# if 13 <= __GNUC__
+#  pragma GCC diagnostic ignored "-Wnull-dereference"
+# endif
+
 /* Number of retries before giving up on read.  */
 #define READ_ERROR_MAX 10
 

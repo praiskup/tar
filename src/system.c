@@ -299,6 +299,11 @@ sys_write_archive_buffer (void)
 #define	PREAD 0			/* read file descriptor from pipe() */
 #define	PWRITE 1		/* write file descriptor from pipe() */
 
+/* Work around GCC bug 109839.  */
+#if 13 <= __GNUC__
+# pragma GCC diagnostic ignored "-Wanalyzer-fd-leak"
+#endif
+
 /* Duplicate file descriptor FROM into becoming INTO.
    INTO is closed first and has to be the next available slot.  */
 static void
@@ -306,22 +311,10 @@ xdup2 (int from, int into)
 {
   if (from != into)
     {
-      int status = close (into);
-
-      if (status != 0 && errno != EBADF)
+      if (dup2 (from, into) < 0)
 	{
 	  int e = errno;
-	  FATAL_ERROR ((0, e, _("Cannot close")));
-	}
-      status = dup (from);
-      if (status != into)
-	{
-	  if (status < 0)
-	    {
-	      int e = errno;
-	      FATAL_ERROR ((0, e, _("Cannot dup")));
-	    }
-	  abort ();
+	  FATAL_ERROR ((0, e, _("Cannot dup2")));
 	}
       xclose (from);
     }
