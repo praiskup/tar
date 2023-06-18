@@ -1441,9 +1441,8 @@ create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made,
     {
       struct delayed_set_stat *h;
       struct delayed_link *p =
-	xmalloc (offsetof (struct delayed_link, target)
-		 + strlen (current_stat_info.link_name)
-		 + 1);
+	xmalloc (FLEXNSIZEOF (struct delayed_link, target,
+			      strlen (current_stat_info.link_name) + 1));
       if (prev)
 	{
 	  p->next = prev->next;
@@ -1950,19 +1949,25 @@ apply_delayed_links (void)
   if (!delayed_link_table)
     return;
 
-  for (struct delayed_link *dl = hash_get_first (delayed_link_table);
-       dl;
-       dl = dl->next ? dl->next : hash_get_next (delayed_link_table, dl))
-    if (!dl->has_predecessor)
-      {
-	struct delayed_link *ds = dl;
-	do
-	  {
-	    apply_delayed_link (ds);
-	    ds = ds->next;
-	  }
-	while (ds);
-      }
+  for (struct delayed_link *dl = hash_get_first (delayed_link_table); dl;)
+    {
+      struct delayed_link *ds = dl;
+      if (!ds->has_predecessor)
+	{
+	  do
+	    {
+	      apply_delayed_link (ds);
+	      ds = ds->next;
+	    }
+	  while (ds);
+	}
+      else if (dl->next)
+	{
+	  dl = dl->next;
+	  continue;
+	}
+      dl = hash_get_next (delayed_link_table, dl);
+    }
 
   if (false)
     {
