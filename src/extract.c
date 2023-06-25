@@ -726,7 +726,7 @@ make_directories (char *file_name)
 			  0, mode & ~ current_umask, MODE_RWX,
 			  desired_mode, AT_SYMLINK_NOFOLLOW);
 
-	  print_for_mkdir (file_name, cursor - file_name, desired_mode);
+	  print_for_mkdir (file_name, desired_mode);
 	  parent_end = NULL;
 	}
       else
@@ -1400,7 +1400,7 @@ find_delayed_link_source (char const *name)
 
 static int
 create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made,
-			 struct delayed_link *prev)
+			 MAYBE_UNUSED struct delayed_link *prev)
 {
   int fd;
   struct stat st;
@@ -1500,7 +1500,7 @@ create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made,
 }
 
 static int
-extract_link (char *file_name, int typeflag)
+extract_link (char *file_name, MAYBE_UNUSED int typeflag)
 {
   bool interdir_made = false;
   char const *link_name;
@@ -1570,7 +1570,7 @@ extract_link (char *file_name, int typeflag)
 }
 
 static int
-extract_symlink (char *file_name, int typeflag)
+extract_symlink (char *file_name, MAYBE_UNUSED int typeflag)
 {
 #ifdef HAVE_SYMLINK
   bool interdir_made = false;

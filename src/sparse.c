@@ -755,7 +755,7 @@ enum oldgnu_add_status
   };
 
 static bool
-oldgnu_sparse_member_p (struct tar_sparse_file *file MAYBE_UNUSED)
+oldgnu_sparse_member_p (MAYBE_UNUSED struct tar_sparse_file *file)
 {
   return current_header->header.typeflag == GNUTYPE_SPARSE;
 }
@@ -899,7 +899,7 @@ static struct tar_sparse_optab const oldgnu_optab = {
 /* Star */
 
 static bool
-star_sparse_member_p (struct tar_sparse_file *file MAYBE_UNUSED)
+star_sparse_member_p (MAYBE_UNUSED struct tar_sparse_file *file)
 {
   return current_header->header.typeflag == GNUTYPE_SPARSE;
 }

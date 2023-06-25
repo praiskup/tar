@@ -1376,7 +1376,7 @@ print_header (struct tar_stat_info *st, union block *blk,
 
 /* Print a similar line when we make a directory automatically.  */
 void
-print_for_mkdir (char *dirname, int length, mode_t mode)
+print_for_mkdir (char *dirname, mode_t mode)
 {
   char modes[11];
 

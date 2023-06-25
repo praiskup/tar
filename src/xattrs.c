@@ -69,7 +69,7 @@ xattr_map_add (struct xattr_map *map,
 	       const char *key, const char *val, size_t len)
 {
   struct xattr_array *p;
-  
+
   if (map->xm_size == map->xm_max)
     map->xm_map = x2nrealloc (map->xm_map, &map->xm_max,
 			      sizeof (map->xm_map[0]));
@@ -285,13 +285,12 @@ fixup_extra_acl_fields (char *ptr)
 static void
 xattrs__acls_set (struct tar_stat_info const *st,
                   char const *file_name, int type,
-                  char *ptr, size_t len, bool def)
+		  char *ptr, bool def)
 {
   acl_t acl;
 
   if (ptr)
     {
-      /* assert (strlen (ptr) == len); */
       ptr = fixup_extra_acl_fields (ptr);
       acl = acl_from_text (ptr);
     }
@@ -396,7 +395,6 @@ acls_get_text (int parentfd, const char *file_name, acl_type_t type,
 
 static void
 xattrs__acls_get_a (int parentfd, const char *file_name,
-                    struct tar_stat_info *st,
                     char **ret_ptr, size_t *ret_len)
 {
   acls_get_text (parentfd, file_name, ACL_TYPE_ACCESS, ret_ptr, ret_len);
@@ -405,7 +403,6 @@ xattrs__acls_get_a (int parentfd, const char *file_name,
 /* "system.posix_acl_default" */
 static void
 xattrs__acls_get_d (int parentfd, char const *file_name,
-                    struct tar_stat_info *st,
                     char **ret_ptr, size_t * ret_len)
 {
   acls_get_text (parentfd, file_name, ACL_TYPE_DEFAULT, ret_ptr, ret_len);
@@ -451,7 +448,7 @@ acls_one_line (const char *prefix, char delim,
 
 void
 xattrs_acls_get (int parentfd, char const *file_name,
-                 struct tar_stat_info *st, int fd, int xisfile)
+		 struct tar_stat_info *st, int xisfile)
 {
   if (acls_option > 0)
     {
@@ -470,10 +467,10 @@ xattrs_acls_get (int parentfd, char const *file_name,
           return;
         }
 
-      xattrs__acls_get_a (parentfd, file_name, st,
+      xattrs__acls_get_a (parentfd, file_name,
                           &st->acls_a_ptr, &st->acls_a_len);
       if (!xisfile)
-        xattrs__acls_get_d (parentfd, file_name, st,
+	xattrs__acls_get_d (parentfd, file_name,
                             &st->acls_d_ptr, &st->acls_d_len);
 #endif
     }
@@ -492,10 +489,10 @@ xattrs_acls_set (struct tar_stat_info const *st,
       done = 1;
 #else
       xattrs__acls_set (st, file_name, ACL_TYPE_ACCESS,
-                        st->acls_a_ptr, st->acls_a_len, false);
+			st->acls_a_ptr, false);
       if (typeflag == DIRTYPE || typeflag == GNUTYPE_DUMPDIR)
         xattrs__acls_set (st, file_name, ACL_TYPE_DEFAULT,
-                          st->acls_d_ptr, st->acls_d_len, true);
+			  st->acls_d_ptr, true);
 #endif
     }
 }
@@ -615,8 +612,7 @@ xattrs_xattrs_get (int parentfd, char const *file_name,
 
 #ifdef HAVE_XATTRS
 static void
-xattrs__fd_set (struct tar_stat_info const *st,
-                char const *file_name, char typeflag,
+xattrs__fd_set (char const *file_name, char typeflag,
                 const char *attr, const char *ptr, size_t len)
 {
   if (ptr)
@@ -732,7 +728,7 @@ xattrs_kw_included (const char *kw, bool archiving)
 }
 
 static bool
-xattrs_kw_excluded (const char *kw, bool archiving)
+xattrs_kw_excluded (const char *kw)
 {
   return xattrs_setup.excl.size ?
     xattrs_matches_mask (kw, &xattrs_setup.excl) : false;
@@ -744,8 +740,7 @@ xattrs_kw_excluded (const char *kw, bool archiving)
 static bool
 xattrs_masked_out (const char *kw, bool archiving)
 {
-  return xattrs_kw_included (kw, archiving) ?
-    xattrs_kw_excluded (kw, archiving) : true;
+  return xattrs_kw_included (kw, archiving) ? xattrs_kw_excluded (kw) : true;
 }
 
 void
@@ -783,7 +778,7 @@ xattrs_xattrs_set (struct tar_stat_info const *st,
             /* we don't want to restore this keyword */
             continue;
 
-          xattrs__fd_set (st, file_name, typeflag, keyword,
+	  xattrs__fd_set (file_name, typeflag, keyword,
                           st->xattr_map.xm_map[i].xval_ptr,
                           st->xattr_map.xm_map[i].xval_len);
         }

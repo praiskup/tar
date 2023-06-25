@@ -1737,7 +1737,7 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
       bool ok;
       struct stat st2;
 
-      xattrs_acls_get (parentfd, name, st, 0, !is_dir);
+      xattrs_acls_get (parentfd, name, st, !is_dir);
       xattrs_selinux_get (parentfd, name, st, fd);
       xattrs_xattrs_get (parentfd, name, st, fd);
 
@@ -1900,21 +1900,21 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
   else if (S_ISCHR (st->stat.st_mode))
     {
       type = CHRTYPE;
-      xattrs_acls_get (parentfd, name, st, 0, true);
+      xattrs_acls_get (parentfd, name, st, true);
       xattrs_selinux_get (parentfd, name, st, 0);
       xattrs_xattrs_get (parentfd, name, st, 0);
     }
   else if (S_ISBLK (st->stat.st_mode))
     {
       type = BLKTYPE;
-      xattrs_acls_get (parentfd, name, st, 0, true);
+      xattrs_acls_get (parentfd, name, st, true);
       xattrs_selinux_get (parentfd, name, st, 0);
       xattrs_xattrs_get (parentfd, name, st, 0);
     }
   else if (S_ISFIFO (st->stat.st_mode))
     {
       type = FIFOTYPE;
-      xattrs_acls_get (parentfd, name, st, 0, true);
+      xattrs_acls_get (parentfd, name, st, true);
       xattrs_selinux_get (parentfd, name, st, 0);
       xattrs_xattrs_get (parentfd, name, st, 0);
     }

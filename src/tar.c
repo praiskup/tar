@@ -1135,7 +1135,7 @@ report_textual_dates (struct tar_args *args)
 
 
 static char *
-tar_help_filter (int key, const char *text, void *input)
+tar_help_filter (int key, const char *text, MAYBE_UNUSED void *input)
 {
   struct obstack stk;
   char *s;

@@ -1269,10 +1269,9 @@ add_starting_file (char const *file_name)
   starting_file_option = true;
 }
 
-/* Find a match for FILE_NAME (whose string length is LENGTH) in the name
-   list.  */
+/* Find a match for FILE_NAME in the name list.  */
 static struct name *
-namelist_match (char const *file_name, size_t length)
+namelist_match (char const *file_name)
 {
   struct name *p;
 
@@ -1307,8 +1306,6 @@ remname (struct name *name)
 bool
 name_match (const char *file_name)
 {
-  size_t length = strlen (file_name);
-
   while (1)
     {
       struct name *cursor = namelist;
@@ -1324,7 +1321,7 @@ name_match (const char *file_name)
 	  return true;
 	}
 
-      cursor = namelist_match (file_name, length);
+      cursor = namelist_match (file_name);
       if (starting_file_option)
 	{
 	  /* If starting_file_option is set, the head of the list is the name
@@ -1877,11 +1874,9 @@ collect_and_sort_names (void)
 struct name *
 name_scan (const char *file_name)
 {
-  size_t length = strlen (file_name);
-
   while (1)
     {
-      struct name *cursor = namelist_match (file_name, length);
+      struct name *cursor = namelist_match (file_name);
       if (cursor)
 	return cursor;
 
