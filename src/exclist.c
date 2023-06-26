@@ -200,7 +200,8 @@ excluded_name (char const *name, struct tar_stat_info *st)
 }
 
 static void
-cvs_addfn (struct exclude *ex, char const *pattern, int options, void *data)
+cvs_addfn (struct exclude *ex, char const *pattern, int options,
+	   MAYBE_UNUSED void *data)
 {
   struct wordsplit ws;
   size_t i;
@@ -215,7 +216,8 @@ cvs_addfn (struct exclude *ex, char const *pattern, int options, void *data)
 }
 
 static void
-git_addfn (struct exclude *ex, char const *pattern, int options, void *data)
+git_addfn (struct exclude *ex, char const *pattern, int options,
+	   MAYBE_UNUSED void *data)
 {
   while (isspace (*pattern))
     ++pattern;
@@ -227,7 +229,8 @@ git_addfn (struct exclude *ex, char const *pattern, int options, void *data)
 }
 
 static void
-bzr_addfn (struct exclude *ex, char const *pattern, int options, void *data)
+bzr_addfn (struct exclude *ex, char const *pattern, int options,
+	   MAYBE_UNUSED void *data)
 {
   while (isspace (*pattern))
     ++pattern;

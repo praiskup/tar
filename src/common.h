@@ -616,7 +616,7 @@ uintmax_t uintmax_from_header (const char *buf, size_t size);
 
 void list_archive (void);
 void test_archive_label (void);
-void print_for_mkdir (char *dirname, int length, mode_t mode);
+void print_for_mkdir (char *dirname, mode_t mode);
 void print_header (struct tar_stat_info *st, union block *blk,
 	           off_t block_ordinal);
 void read_and (void (*do_something) (void));

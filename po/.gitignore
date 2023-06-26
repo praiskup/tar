@@ -1,7 +1,3 @@
-/remove-potcdate.sin~
-/insert-header.sin~
-/en@quot.header~
-/en@boldquot.header~
 /Makefile.in.in
 /Makevars.template
 /Rules-quot
