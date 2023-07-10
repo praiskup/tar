@@ -76,6 +76,25 @@ append_file (char *file_name)
     close_error (file_name);
 }
 
+/* If NAME is not a pattern, remove it from the namelist.  Otherwise,
+   remove the FILE_NAME that matched it.  Take care to look for exact
+   match when removing it. */
+static void
+remove_exact_name (struct name *name, char const *file_name)
+{
+  if (name->is_wildcard)
+    {
+      struct name *match = name_scan (file_name, true);
+      name->found_count++;
+      if (match)
+	name = match;
+      else
+	return;
+    }
+
+  remname (name);
+}
+
 /* Implement the 'r' (add files to end of archive), and 'u' (add files
    to end of archive if they aren't there, or are more up to date than
    the version in the archive) commands.  */
@@ -113,7 +132,7 @@ update_archive (void)
 	    archive_format = current_format;
 
 	    if (subcommand_option == UPDATE_SUBCOMMAND
-		&& (name = name_scan (current_stat_info.file_name)) != NULL)
+		&& (name = name_scan (current_stat_info.file_name, false)) != NULL)
 	      {
 		struct stat s;
 
@@ -122,10 +141,10 @@ update_archive (void)
 		  {
 		    if (S_ISDIR (s.st_mode))
 		      {
-			char *p, *dirp = tar_savedir (name->name, 1);
+			char *p, *dirp = tar_savedir (current_stat_info.file_name, 1);
 			if (dirp)
 			  {
-			    namebuf_t nbuf = namebuf_create (name->name);
+			    namebuf_t nbuf = namebuf_create (current_stat_info.file_name);
 
 			    for (p = dirp; *p; p += strlen (p) + 1)
 			      addname (namebuf_name (nbuf, p),
@@ -134,13 +153,18 @@ update_archive (void)
 			    namebuf_free (nbuf);
 			    free (dirp);
 
-			    remname (name);
+			    remove_exact_name (name, current_stat_info.file_name);
 			  }
 		      }
 		    else if (tar_timespec_cmp (get_stat_mtime (&s),
 					       current_stat_info.mtime)
 			     <= 0)
-		      remname (name);
+		      {
+			remove_exact_name (name, current_stat_info.file_name);
+		      }
+		    else if (name->is_wildcard)
+		      addname (current_stat_info.file_name,
+			       name->change_dir, false, NULL);
 		  }
 	      }
 
