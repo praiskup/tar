@@ -37,7 +37,7 @@ tar -vcf ../a.tar --exclude '*.b' . -C dir --exclude '*.c' | sort
 ./dir/A.a
 ./dir/B.a
 ],
-[tar: The following options were used after any non-optional arguments in archive create or update mode.  These options are positional and affect only arguments that follow them.  Please, rearrange them properly.
+[tar: The following options were used after non-option arguments.  These options are positional and affect only arguments that follow them.  Please, rearrange them properly.
 tar: -C 'dir' has no effect
 tar: --exclude '*.c' has no effect
 tar: Exiting with failure status due to previous errors

@@ -675,7 +675,7 @@ For version 1.12, Daniel Hagerty contributed a great deal of technical
 consulting.  In particular, he is the primary author of @ref{Backups}.
 
 In July, 2003 @GNUTAR{} was put on CVS at savannah.gnu.org
-(see @url{http://savannah.gnu.org/projects/tar}), and
+(see @url{https://savannah.gnu.org/projects/tar}), and
 active development and maintenance work has started
 again.  Currently @GNUTAR{} is being maintained by Paul Eggert, Sergey
 Poznyakoff and Jeff Bailey.
@@ -3337,7 +3337,7 @@ Same as @option{--format=posix}.
 @opsummary{preserve-order}
 @item --preserve-order
 
-(See @option{--same-order}; @pxref{Reading}.)
+(See @option{--same-order}; @pxref{Same Order}.)
 
 @opsummary{preserve-permissions}
 @opsummary{same-permissions}
@@ -3427,7 +3427,7 @@ devices.  @xref{Device}.
 This option is an optimization for @command{tar} when running on machines with
 small amounts of memory.  It informs @command{tar} that the list of file
 arguments has already been sorted to match the order of files in the
-archive.  @xref{Reading}.
+archive.  @xref{Same Order}.
 
 @opsummary{same-owner}
 @item --same-owner
@@ -4043,16 +4043,16 @@ itself, containing possibly many programs.  The package is currently
 named @samp{tar}, after the name of the main program it
 contains@footnote{There are plans to merge the @command{cpio} and
 @command{tar} packages into a single one which would be called
-@code{paxutils}.  So, who knows if, one of this days, the
-@option{--version} would not output @w{@samp{tar (@acronym{GNU}
+@code{paxutils}.  So, who knows, one of these days
+@option{--version} might output @w{@samp{tar (@acronym{GNU}
 paxutils) 3.2}}.}.
 
 @cindex Obtaining help
 @cindex Listing all @command{tar} options
 @xopindex{help, introduction}
-Another thing you might want to do is checking the spelling or meaning
+Another thing you might want to do is check the spelling or meaning
 of some particular @command{tar} option, without resorting to this
-manual, for once you have carefully read it.  @GNUTAR{}
+manual, once you have carefully read it.  @GNUTAR{}
 has a short help feature, triggerable through the
 @option{--help} option.  By using this option, @command{tar} will
 print a usage message listing all available options on standard
@@ -4092,7 +4092,7 @@ The short help output is quite succinct, and you might have to get
 back to the full documentation for precise points.  If you are reading
 this paragraph, you already have the @command{tar} manual in some
 form.  This manual is available in a variety of forms from
-@url{http://www.gnu.org/software/tar/manual}.  It may be printed out of the @GNUTAR{}
+@url{https://www.gnu.org/software/tar/manual}.  It may be printed out of the @GNUTAR{}
 distribution, provided you have @TeX{} already installed somewhere,
 and a laser printer around.  Just configure the distribution, execute
 the command @w{@samp{make dvi}}, then print @file{doc/tar.dvi} the
@@ -4103,12 +4103,10 @@ file.  Just call @w{@samp{info tar}} or, if you do not have the
 @command{info} program handy, use the Info reader provided within
 @acronym{GNU} Emacs, calling @samp{tar} from the main Info menu.
 
-There is currently no @code{man} page for @GNUTAR{}.
-If you observe such a @code{man} page on the system you are running,
-either it does not belong to @GNUTAR{}, or it has not
-been produced by @acronym{GNU}.  Some package maintainers convert
-@kbd{tar --help} output to a man page, using @command{help2man}.  In
-any case, please bear in mind that the authoritative source of
+Since 2014, @GNUTAR{} also has a @code{man} page.
+It briefly explains all the options and operations.
+This might be preferable when you don't need any background.
+But bear in mind that the authoritative source of
 information about @GNUTAR{} is this Texinfo documentation.
 
 @node defaults
@@ -5417,7 +5415,6 @@ $ @kbd{tar -tvf jazzfolk.tar}
 We can concatenate these two archives with @command{tar}:
 
 @smallexample
-$ @kbd{cd ..}
 $ @kbd{tar --concatenate --file=bluesrock.tar jazzfolk.tar}
 @end smallexample
 
@@ -7101,8 +7098,8 @@ mainly variable assignments.  However, any valid shell construct
 is allowed in this file.  Particularly, you may wish to define
 functions within that script (e.g., see @code{RESTORE_BEGIN} below).
 For more information about shell script syntax, please refer to
-@url{http://www.opengroup.org/onlinepubs/009695399/utilities/xcu_chap02.html#ta
-g_02, the definition of the Shell Command Language}.  See also
+@url{https://pubs.opengroup.org/onlinepubs/009695399/utilities/xcu_chap02.html,
+the definition of the Shell Command Language}.  See also
 @ref{Top,,Bash Features,bashref,Bash Reference Manual}.
 
 The shell variables controlling behavior of @code{backup} and

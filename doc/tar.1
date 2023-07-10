@@ -22,7 +22,7 @@ tar \- an archiving utility
 [\fBGnSkUWOmpsMBiajJzZhPlRvwo\fR] [\fIARG\fR...]
 .SS UNIX-style usage
 .sp
-\fBtar\fR \fB\-A\fR [\fIOPTIONS\fR] \fB\-f\fR \fIARCHIVE\fR \fIARCHIVE\fR
+\fBtar\fR \fB\-A\fR [\fIOPTIONS\fR] \fB\-f\fR \fIARCHIVE\fR \fIARCHIVE\fR...
 .sp
 \fBtar\fR \fB\-c\fR [\fB\-f\fR \fIARCHIVE\fR] [\fIOPTIONS\fR] [\fIFILE\fR...]
 .sp
@@ -37,7 +37,7 @@ tar \- an archiving utility
 \fBtar\fR \fB\-x\fR [\fB\-f\fR \fIARCHIVE\fR] [\fIOPTIONS\fR] [\fIMEMBER\fR...]
 .SS GNU-style usage
 .sp
-\fBtar\fR {\fB\-\-catenate\fR|\fB\-\-concatenate\fR} [\fIOPTIONS\fR] \fB\-\-file\fR \fIARCHIVE\fR \fIARCHIVE\fR
+\fBtar\fR {\fB\-\-catenate\fR|\fB\-\-concatenate\fR} [\fIOPTIONS\fR] \fB\-\-file\fR \fIARCHIVE\fR \fIARCHIVE\fR...
 .sp
 \fBtar\fR \fB\-\-create\fR [\fB\-\-file\fR \fIARCHIVE\fR] [\fIOPTIONS\fR] [\fIFILE\fR...]
 .sp
@@ -72,7 +72,7 @@ You can also view the manual using the info mode in
 or find it in various formats online at
 .PP
 .RS +4
-.B http://www.gnu.org/software/tar/manual
+.B https://www.gnu.org/software/tar/manual
 .RE
 .PP
 If any discrepancies occur between this manpage and the
@@ -95,8 +95,8 @@ In
 the first argument is a cluster of option letters and all subsequent
 arguments supply arguments to those options that require them.  The
 arguments are read in the same order as the option letters.  Any
-command line words that remain after all options has been processed
-are treated as non-optional arguments: file or archive member names.
+command line words that remain after all options have been processed
+are treated as non-option arguments: file or archive member names.
 .PP
 For example, the \fBc\fR option requires creating the archive, the
 \fBv\fR option requests the verbose operation, and the \fBf\fR option
@@ -105,7 +105,7 @@ The following command, written in the traditional style, instructs tar
 to store all files from the directory
 .B /etc
 into the archive file
-.B etc.tar
+.BR etc.tar ,
 verbosely listing the files being archived:
 .PP
 .EX
@@ -115,15 +115,15 @@ tar cfv etc.tar /etc
 In
 .BR "UNIX " or " short-option style" ,
 each option letter is prefixed with a single dash, as in other command
-line utilities.  If an option takes argument, the argument follows it,
+line utilities.  If an option takes an argument, the argument follows it,
 either as a separate command line word, or immediately following the
 option.  However, if the option takes an \fBoptional\fR argument, the
 argument must follow the option letter without any intervening
 whitespace, as in \fB\-g/tmp/snar.db\fR.
 .PP
 Any number of options not taking arguments can be
-clustered together after a single dash, e.g. \fB\-vkp\fR.  Options
-that take arguments (whether mandatory or optional), can appear at
+clustered together after a single dash, e.g. \fB\-vkp\fR.  An option
+that takes an argument (whether mandatory or optional) can appear at
 the end of such a cluster, e.g. \fB\-vkpf a.tar\fR.
 .PP
 The example command above written in the
@@ -164,17 +164,17 @@ with old options is not encouraged.
 .SS Operation mode
 The options listed in the table below tell GNU \fBtar\fR what
 operation it is to perform.  Exactly one of them must be given.
-Meaning of non-optional arguments depends on the operation mode
+The meaning of non-option arguments depends on the operation mode
 requested.
 .TP
 \fB\-A\fR, \fB\-\-catenate\fR, \fB\-\-concatenate\fR
-Append archive to the end of another archive.  The arguments are
+Append archives to the end of another archive.  The arguments are
 treated as the names of archives to append.  All archives must be of
 the same format as the archive they are appended to, otherwise the
 resulting archive might be unusable with non-GNU implementations of
 \fBtar\fR.  Notice also that when more than one archive is given, the
 members from archives other than the first one will be accessible in
-the resulting archive only if using the \fB\-i\fR
+the resulting archive only when using the \fB\-i\fR
 (\fB\-\-ignore\-zeros\fR) option.
 
 Compressed archives cannot be concatenated.
@@ -218,7 +218,7 @@ There is no short option equivalent for this option.
 .TP
 \fB\-u\fR, \fB\-\-update\fR
 Append files which are newer than the corresponding copy in the
-archive.  Arguments have the same meaning as with \fB\-c\fR and
+archive.  Arguments have the same meaning as with the \fB\-c\fR and
 \fB\-r\fR options.  Notice, that newer files don't replace their
 old archive copies, but instead are appended to the end of archive.
 The resulting archive can thus contain several members of the
@@ -230,14 +230,13 @@ they specify names of the archive members to be extracted.
 .TP
 .TP
 \fB\-\-show\-defaults\fR
-Show built-in defaults for various \fBtar\fR options and exit.  No
-arguments are allowed.
+Show built-in defaults for various \fBtar\fR options and exit.
 .TP
 \fB\-?\fR, \fB\-\-help
-Display a short option summary and exit.  No arguments allowed.
+Display a short option summary and exit.
 .TP
 \fB\-\-usage\fR
-Display a list of available options and exit.  No arguments allowed.
+Display a list of available options and exit.
 .TP
 \fB\-\-version\fR
 Print program version and copyright information and exit.
@@ -249,16 +248,15 @@ Check device numbers when creating incremental archives (default).
 .TP
 \fB\-g\fR, \fB\-\-listed\-incremental\fR=\fIFILE\fR
 Handle new GNU-format incremental backups.  \fIFILE\fR is the name of
-a \fBsnapshot file\fR, where tar stores additional information which
+a \fBsnapshot file\fR, where \fBtar\fR stores additional information which
 is used to decide which files changed since the previous incremental
 dump and, consequently, must be dumped again.  If \fIFILE\fR does not
 exist when creating an archive, it will be created and all files will
 be added to the resulting archive (the \fBlevel 0\fR dump).  To create
-incremental archives of non-zero level \fBN\fR, create a copy of the
-snapshot file created during the level \fBN-1\fR, and use it as
-\fIFILE\fR.
+incremental archives of non-zero level \fBN\fR, you need a copy of the
+snapshot file created for level \fBN-1\fR, and use it as \fIFILE\fR.
 
-When listing or extracting, the actual contents of \fIFILE\fR is not
+When listing or extracting, the actual content of \fIFILE\fR is not
 inspected, it is needed only due to syntactical requirements.  It is
 therefore common practice to use \fB/dev/null\fR in its place.
 .TP
@@ -275,7 +273,7 @@ Handle old GNU-format incremental backups.
 Do not exit with nonzero on unreadable files.
 .TP
 \fB\-\-level\fR=\fINUMBER\fR
-Set dump level for created listed-incremental archive.  Currently only
+Set dump level for a created listed-incremental archive.  Currently only
 \fB\-\-level=0\fR is meaningful: it instructs \fBtar\fR to truncate
 the snapshot file before dumping, thereby forcing a level 0 dump.
 .TP
@@ -307,7 +305,7 @@ either on the command line or via the \fB\-T\fR option.  The default
 Disable the use of some potentially harmful options.
 .TP
 \fB\-\-sparse\-version\fR=\fIMAJOR\fR[.\fIMINOR\fR]
-Set version of the sparse format to use (implies \fB\-\-sparse\fR).
+Set which version of the sparse format to use.
 This option implies
 .BR \-\-sparse .
 Valid argument values are
@@ -315,7 +313,7 @@ Valid argument values are
 .BR 0.1 ", and"
 .BR 1.0 .
 For a detailed discussion of sparse formats, refer to the \fBGNU Tar
-Manual\fR, appendix \fBD\fR, "\fBSparse Formats\fR".  Using \fBinfo\fR
+Manual\fR, appendix \fBD\fR, "\fBSparse Formats\fR".  Using the \fBinfo\fR
 reader, it can be accessed running the following command:
 .BR "info tar 'Sparse Formats'" .
 .TP
@@ -370,7 +368,6 @@ Verify the archive after writing it.
 .SS Output stream selection
 .TP
 \fB\-\-ignore\-command\-error\fR
-.TP
 Ignore subprocess exit codes.
 .TP
 \fB\-\-no\-ignore\-command\-error\fR
@@ -473,7 +470,7 @@ executing.
 \fB\-\-atime\-preserve\fR[=\fIMETHOD\fR]
 Preserve access times on dumped files, either by restoring the times
 after reading (\fIMETHOD\fR=\fBreplace\fR, this is the default) or by
-not setting the times in the first place (\fIMETHOD\fR=\fBsystem\fR)
+not setting the times in the first place (\fIMETHOD\fR=\fBsystem\fR).
 .TP
 \fB\-\-delay\-directory\-restore\fR
 Delay setting modification times and permissions of extracted
@@ -561,14 +558,16 @@ As a result, each input file owned by \fIOLDUSR\fR will be
 stored in archive with owner name \fINEWUSR\fR and UID \fINEWUID\fR.
 .TP
 \fB\-p\fR, \fB\-\-preserve\-permissions\fR, \fB\-\-same\-permissions\fR
-extract information about file permissions (default for superuser)
+Set permissions of extracted files to those recorded in the archive
+(default for superuser).
 .TP
 \fB\-\-same\-owner\fR
 Try extracting files with the same ownership as exists in the archive
 (default for superuser).
 .TP
 \fB\-s\fR, \fB\-\-preserve\-order\fR, \fB\-\-same\-order\fR
-Sort names to extract to match archive
+Tell \fBtar\fR that the list of file names to process is sorted in the
+same order as the files in the archive.
 .TP
 \fB\-\-sort=\fIORDER\fR
 When creating an archive, sort directory entries according to
@@ -742,7 +741,7 @@ end-of-file marker.
 .TP
 \fB\-i\fR, \fB\-\-ignore\-zeros\fR
 Ignore zeroed blocks in archive.  Normally two consecutive 512-blocks
-filled with zeroes mean EOF and tar stops reading after encountering
+filled with zeroes mean EOF and \fBtar\fR stops reading after encountering
 them.  This option instructs it to read further and is useful when
 reading archives created with the \fB\-A\fR option.
 .TP
@@ -1011,7 +1010,7 @@ disables this behavior.
 
 This option affects all \fB\-\-files\-from\fR options that occur after
 it in the command line.  Its effect is reverted by the
-\fB\-\-no\-verbatim\-files\-from} option.
+\fB\-\-no\-verbatim\-files\-from\fR option.
 
 This option is implied by the \fB\-\-null\fR option.
 
@@ -1061,7 +1060,8 @@ Display progress messages every \fIN\fRth record (default 10).
 Run \fIACTION\fR on each checkpoint.
 .TP
 \fB\-\-clamp\-mtime\fR
-Only set time when the file is more recent than what was given with \-\-mtime.
+Only set time when the file is more recent than what was given with
+\fB\-\-mtime\fR.
 .TP
 \fB\-\-full\-time\fR
 Print file time to its full resolution.
@@ -1120,14 +1120,14 @@ Verbosely list files processed.  Each instance of this option on the
 command line increases the verbosity level by one.  The maximum
 verbosity level is 3.  For a detailed discussion of how various
 verbosity levels affect tar's output, please refer to \fBGNU Tar
-Manual\fR, subsection 2.5.1 "\fBThe \-\-verbose Option\fR".
+Manual\fR, subsection 2.5.2 "\fBThe '\-\-verbose' Option\fR".
 .TP
 \fB\-\-warning\fR=\fIKEYWORD\fR
 Enable or disable warning messages identified by \fIKEYWORD\fR.  The
 messages are suppressed if \fIKEYWORD\fR is prefixed with \fBno\-\fR
 and enabled otherwise.
 
-Multiple \fB\-\-warning\fR messages accumulate.
+Multiple \fB\-\-warning\fR options accumulate.
 
 Keywords controlling general \fBtar\fR operation:
 .RS
@@ -1267,7 +1267,7 @@ as \fB\-\-no\-same\-owner\fR.
 .fi
 .PP
 .SH "RETURN VALUE"
-Tar exit code indicates whether it was able to successfully perform
+Tar's exit code indicates whether it was able to successfully perform
 the requested operation, and if not, what kind of error occurred.
 .TP
 .B 0
@@ -1275,9 +1275,9 @@ Successful termination.
 .TP
 .B 1
 .I Some files differ.
-If tar was invoked with the \fB\-\-compare\fR (\fB\-\-diff\fR, \fB\-d\fR)
+If \fBtar\fR was invoked with the \fB\-\-compare\fR (\fB\-\-diff\fR, \fB\-d\fR)
 command line option, this means that some files in the archive differ
-from their disk counterparts.  If tar was given one of the \fB\-\-create\fR,
+from their disk counterparts.  If \fBtar\fR was given one of the \fB\-\-create\fR,
 \fB\-\-append\fR or \fB\-\-update\fR options, this exit code means
 that some files were changed while being archived and so the resulting
 archive does not contain the exact copy of the file set.
@@ -1316,11 +1316,11 @@ Online copies of \fBGNU tar\fR documentation in various formats can be
 found at:
 .PP
 .in +4
-.B http://www.gnu.org/software/tar/manual
+.B https://www.gnu.org/software/tar/manual
 .SH "BUG REPORTS"
 Report bugs to <bug\-tar@gnu.org>.
 .SH COPYRIGHT
-Copyright \(co 2013-2019 Free Software Foundation, Inc.
+Copyright \(co 2023 Free Software Foundation, Inc.
 .br
 .na
 License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>

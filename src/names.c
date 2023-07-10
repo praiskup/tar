@@ -744,7 +744,7 @@ unconsumed_option_report (void)
     {
       struct name_elt *elt;
 
-      ERROR ((0, 0, _("The following options were used after any non-optional arguments in archive create or update mode.  These options are positional and affect only arguments that follow them.  Please, rearrange them properly.")));
+      ERROR ((0, 0, _("The following options were used after non-option arguments.  These options are positional and affect only arguments that follow them.  Please, rearrange them properly.")));
 
       elt = unconsumed_option_tail;
       while (elt->prev)
