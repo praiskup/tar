@@ -1279,7 +1279,7 @@ add_starting_file (char const *file_name)
   starting_file_option = true;
 }
 
-/* Find a match for FILE_NAME in the name list.  If EXPECT is true,
+/* Find a match for FILE_NAME in the name list.  If EXACT is true,
    look for exact match (no wildcards). */
 static struct name *
 namelist_match (char const *file_name, bool exact)
@@ -1883,7 +1883,7 @@ collect_and_sort_names (void)
     in structure. The caller will have to do that if it wants to.
     2. If the namelist is empty, it returns null, unlike name_match, which
     returns TRUE.
-    3. If EXPECT is true, it looks for exact matches only (no wildcards). */
+    3. If EXACT is true, it looks for exact matches only (no wildcards). */
 struct name *
 name_scan (const char *file_name, bool exact)
 {
