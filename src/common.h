@@ -376,6 +376,7 @@ struct name
     char *name;                 /* File name or globbing pattern */
     size_t length;		/* cached strlen (name) */
     int matching_flags;         /* wildcard flags if name is a pattern */
+    bool is_wildcard;           /* true if this is a wildcard pattern */
     bool cmdline;               /* true if this name was given in the
 				   command line */
 
@@ -783,7 +784,7 @@ bool name_match (const char *name);
 void names_notfound (void);
 void label_notfound (void);
 void collect_and_sort_names (void);
-struct name *name_scan (const char *name);
+struct name *name_scan (const char *name, bool exact);
 struct name const *name_from_list (void);
 void blank_name_list (void);
 char *make_file_name (const char *dir_name, const char *name);
