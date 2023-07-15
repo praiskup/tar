@@ -821,7 +821,7 @@ deref_stat (char const *name, struct stat *buf)
 size_t
 blocking_read (int fd, void *buf, size_t count)
 {
-  size_t bytes = safe_read (fd, buf, count);
+  size_t bytes = full_read (fd, buf, count);
 
 #if defined F_SETFL && O_NONBLOCK
   if (bytes == SAFE_READ_ERROR && errno == EAGAIN)
@@ -829,10 +829,12 @@ blocking_read (int fd, void *buf, size_t count)
       int flags = fcntl (fd, F_GETFL);
       if (0 <= flags && flags & O_NONBLOCK
 	  && fcntl (fd, F_SETFL, flags & ~O_NONBLOCK) != -1)
-	bytes = safe_read (fd, buf, count);
+	bytes = full_read (fd, buf, count);
     }
 #endif
 
+  if (bytes == 0 && errno != 0)
+    bytes = SAFE_READ_ERROR;
   return bytes;
 }
 
