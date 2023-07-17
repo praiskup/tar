@@ -60,10 +60,14 @@ append_file (char *file_name)
   while (true)
     {
       union block *start = find_next_block ();
-      size_t status = safe_read (handle, start->buffer,
+      size_t status = full_read (handle, start->buffer,
 				 available_space_after (start));
       if (status == 0)
-	break;
+	{
+	  if (errno == 0)
+	    break;
+	  read_fatal (file_name);
+	}
       if (status == SAFE_READ_ERROR)
 	read_fatal (file_name);
       if (status % BLOCKSIZE)

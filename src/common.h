@@ -58,6 +58,7 @@
 #include <modechange.h>
 #include <quote.h>
 #include <safe-read.h>
+#include <full-read.h>
 #include <stat-time.h>
 #include <timespec.h>
 #define obstack_chunk_alloc xmalloc

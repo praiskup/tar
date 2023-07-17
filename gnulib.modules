@@ -79,7 +79,7 @@ readlinkat
 renameat
 root-uid
 rpmatch
-safe-read
+full-read
 savedir
 selinux-at
 setenv
