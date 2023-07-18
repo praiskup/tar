@@ -133,7 +133,7 @@ m4_if([$2],,,&& genfile --file [$1]/[$2]) || AT_SKIP_TEST])
 
 dnl Skip test when utility does not return expected return value
 m4_define([AT_CHECK_UTIL],[
-  $1 &> /dev/null
+  $1 > /dev/null 2>&1
   if test "$?" != $2; then
     AT_SKIP_TEST
   fi

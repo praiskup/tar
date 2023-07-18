@@ -26,6 +26,8 @@ AT_KEYWORDS([compression compress-$1 $1])
 AT_CHECK([
 AT_GZIP_PREREQ($1)
 unset TAR_OPTIONS
+unset XZ_OPT
+unset XZ_DEFAULTS
 
 touch empty
 set -e
