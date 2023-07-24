@@ -346,6 +346,7 @@ Controlling the Archive Format
 * Compression::                 Using Less Space through Compression
 * Attributes::                  Handling File Attributes
 * Portability::                 Making @command{tar} Archives More Portable
+* Reproducibility::             Making @command{tar} Archives More Reproducible
 * cpio::                        Comparison of @command{tar} and @command{cpio}
 
 Using Less Space through Compression
@@ -2806,7 +2807,7 @@ numeric fields.
 Creates a @acronym{POSIX.1-1988} compatible archive.
 
 @item posix
-Creates a @acronym{POSIX.1-2001 archive}.
+Creates a @acronym{POSIX.1-2001} archive.
 
 @end table
 
@@ -3048,8 +3049,8 @@ latter case, the modification time of that file is used. @xref{override}.
 
 When @command{--clamp-mtime} is also specified, files with
 modification times earlier than @var{date} will retain their actual
-modification times, and @var{date} will only be used for files whose
-modification times are later than @var{date}.
+modification times, and @var{date} will be used only for files with
+modification times later than @var{date}.
 
 @opsummary{multi-volume}
 @item --multi-volume
@@ -3525,7 +3526,7 @@ No directory sorting is performed. This is the default.
 @item name
 Sort the directory entries on name. The operating system may deliver
 directory entries in a more or less random order, and sorting them
-makes archive creation reproducible.
+makes archive creation more reproducible.  @xref{Reproducibility}.
 
 @item inode
 Sort the directory entries on inode number. Sorting directories on
@@ -5592,28 +5593,27 @@ $ @kbd{tar -c -f archive.tar --mode='a+rw' .}
 @item --mtime=@var{date}
 @opindex mtime
 
-When adding files to an archive, @command{tar} will use @var{date} as
+When adding files to an archive, @command{tar} uses @var{date} as
 the modification time of members when creating archives, instead of
 their actual modification times.  The argument @var{date} can be
 either a textual date representation in almost arbitrary format
 (@pxref{Date input formats}) or a name of an existing file, starting
 with @samp{/} or @samp{.}.  In the latter case, the modification time
-of that file will be used.
+of that file is used.
 
-The following example will set the modification date to 00:00:00,
+The following example sets the modification date to 00:00:00 @sc{utc} on
 January 1, 1970:
 
 @smallexample
-$ @kbd{tar -c -f archive.tar --mtime='1970-01-01' .}
+$ @kbd{tar -c -f archive.tar --mtime='@@0' .}
 @end smallexample
 
 @noindent
 When used with @option{--verbose} (@pxref{verbose tutorial}) @GNUTAR{}
-will try to convert the specified date back to its textual
-representation and compare it with the one given with
-@option{--mtime} options.  If the two dates differ, @command{tar} will
-print a warning saying what date it will use.  This is to help user
-ensure he is using the right date.
+converts the specified date back to a textual form and compares it
+with the one given with @option{--mtime}.
+If the two forms differ, @command{tar} prints both forms in a message,
+to help the user check that the right date is being used.
 
 For example:
 
@@ -5625,14 +5625,15 @@ tar: Option --mtime: Treating date 'yesterday' as 2006-06-20
 @end smallexample
 
 @noindent
-When used with @option{--clamp-mtime} @GNUTAR{} will only set the
-modification date to @var{date} on files whose actual modification
-date is later than @var{date}.  This is to make it easy to build
+When used with @option{--clamp-mtime} @GNUTAR{} sets the
+modification date to @var{date} only on files whose actual modification
+date is later than @var{date}.  This makes it easier to build
 reproducible archives given a common timestamp for generated files
 while still retaining the original timestamps of untouched files.
+@xref{Reproducibility}.
 
 @smallexample
-$ @kbd{tar -c -f archive.tar --clamp-mtime --mtime=@@$SOURCE_DATE_EPOCH .}
+$ @kbd{tar -c -f archive.tar --clamp-mtime --mtime="$SOURCE_EPOCH" .}
 @end smallexample
 
 @item --owner=@var{user}
@@ -8123,7 +8124,7 @@ Contains shell globbing-patterns and regular expressions (if prefixed
 with @samp{RE:}@footnote{According to the Bazaar docs,
 globbing-patterns are Korn-shell style and regular expressions are
 perl-style.  As of @GNUTAR{} version @value{VERSION}, these are
-treated as shell-style globs and posix extended regexps.  This will be
+treated as shell-style globs and POSIX extended regexps.  This will be
 fixed in future releases.}.  Patterns affect the directory and all its
 subdirectories.
 
@@ -8131,7 +8132,7 @@ Any line beginning with a @samp{#} is a comment.
 
 @findex .hgignore
 @item .hgignore
-Contains posix regular expressions@footnote{Support for perl-style
+Contains POSIX regular expressions@footnote{Support for perl-style
 regexps will appear in future releases.}.  The line @samp{syntax:
 glob} switches to shell globbing patterns.  The line @samp{syntax:
 regexp} switches back.  Comments begin with a @samp{#}.  Patterns
@@ -9163,7 +9164,7 @@ to an archive, the archive will only include new files.  If you use
 @option{--after-date} when extracting an archive, @command{tar} will
 only extract files newer than the @var{date} you specify.
 
-If you only want @command{tar} to make the date comparison based on
+If you want @command{tar} to make the date comparison based only on
 modification of the file's data (rather than status
 changes), then use the @option{--newer-mtime=@var{date}} option.
 
@@ -9190,7 +9191,7 @@ name; the data modification time of that file is used as the date.
 
 @opindex newer-mtime
 @item --newer-mtime=@var{date}
-Acts like @option{--after-date}, but only looks at data modification times.
+Act like @option{--after-date}, but look only at data modification times.
 @end table
 
 These options limit @command{tar} to operate only on files which have
@@ -9209,8 +9210,8 @@ field.
 
 To be precise, @option{--after-date} checks @emph{both} @code{mtime} and
 @code{ctime} and processes the file if either one is more recent than
-@var{date}, while @option{--newer-mtime} only checks @code{mtime} and
-disregards @code{ctime}.  Neither does it use @code{atime} (the last time the
+@var{date}, while @option{--newer-mtime} checks only @code{mtime} and
+disregards @code{ctime}.  Neither option uses @code{atime} (the last time the
 contents of the file were looked at).
 
 Date specifiers can have embedded spaces.  Because of this, you may need
@@ -9223,11 +9224,11 @@ $ @kbd{tar -cf foo.tar --newer-mtime '2 days ago'}
 @end smallexample
 
 When any of these options is used with the option @option{--verbose}
-(@pxref{verbose tutorial}) @GNUTAR{} will try to convert the specified
-date back to its textual representation and compare that with the
-one given with the option.  If the two dates differ, @command{tar} will
-print a warning saying what date it will use.  This is to help user
-ensure he is using the right date.  For example:
+(@pxref{verbose tutorial}) @GNUTAR{} converts the specified
+date back to a textual form and compares that with the
+one given with the option.  If the two forms differ, @command{tar}
+prints both forms in a message, to help the user check that the right
+date is being used.  For example:
 
 @smallexample
 @group
@@ -9596,56 +9597,61 @@ format imposes a number of limitations.  The most important of them
 are:
 
 @enumerate
-@item The maximum length of a file name is limited to 99 characters.
-@item The maximum length of a symbolic link is limited to 99 characters.
-@item It is impossible to store special files (block and character
+@item
+File names and symbolic links can contain at most 100 bytes.
+@item
+File sizes must be less than 8 GiB (@math{2^33} bytes = 8,589,934,592 bytes).
+@item
+It is impossible to store special files (block and character
 devices, fifos etc.)
-@item Maximum value of user or group @acronym{ID} is limited to 2097151 (7777777
-octal)
-@item V7 archives do not contain symbolic ownership information (user
+@item
+UIDs and GIDs must be less than @math{2^21} (2,097,152).
+@item
+V7 archives do not contain symbolic ownership information (user
 and group name of the file owner).
 @end enumerate
 
 This format has traditionally been used by Automake when producing
 Makefiles.  This practice will change in the future, in the meantime,
-however this means that projects containing file names more than 99
-characters long will not be able to use @GNUTAR{} @value{VERSION} and
+however this means that projects containing file names more than 100
+bytes long will not be able to use @GNUTAR{} @value{VERSION} and
 Automake prior to 1.9.
 
 @item ustar
-Archive format defined by @acronym{POSIX.1-1988} specification.  It stores
+Archive format defined by @acronym{POSIX.1-1988} and later.  It stores
 symbolic ownership information.  It is also able to store
 special files.  However, it imposes several restrictions as well:
 
 @enumerate
-@item The maximum length of a file name is limited to 256 characters,
-provided that the file name can be split at a directory separator in
-two parts, first of them being at most 155 bytes long.  So, in most
-cases the maximum file name length will be shorter than 256
-characters.
-@item The maximum length of a symbolic link name is limited to
-100 characters.
-@item Maximum size of a file the archive is able to accommodate
-is 8GB
-@item Maximum value of UID/GID is 2097151.
-@item Maximum number of bits in device major and minor numbers is 21.
+@item
+File names can contain at most 255 bytes.
+@item
+File names longer than 100 bytes must be split at a directory separator in
+two parts, the first being at most 155 bytes long.
+So, in most cases file names must be a bit shorter than 255 bytes.
+@item
+Symbolic links can contain at most 100 bytes.
+@item
+Files can contain at most 8 GiB (@math{2^33} bytes = 8,589,934,592 bytes).
+@item
+UIDs, GIDs, device major numbers, and device minor numbers
+must be less than @math{2^21} (2,097,152).
 @end enumerate
 
 @item star
-Format used by J@"org Schilling @command{star}
+The format used by the late J@"org Schilling's @command{star}
 implementation.  @GNUTAR{} is able to read @samp{star} archives but
 currently does not produce them.
 
 @item posix
-Archive format defined by @acronym{POSIX.1-2001} specification.  This is the
-most flexible and feature-rich format.  It does not impose any
-restrictions on file sizes or file name lengths.  This format is quite
-recent, so not all tar implementations are able to handle it properly.
-However, this format is designed in such a way that any tar
-implementation able to read @samp{ustar} archives will be able to read
-most @samp{posix} archives as well, with the only exception that any
-additional information (such as long file names etc.)@: will in such
-case be extracted as plain text files along with the files it refers to.
+The format defined by @acronym{POSIX.1-2001} and later.  This is the
+most flexible and feature-rich format.  It does not impose arbitrary
+restrictions on file sizes or file name lengths.  This format is more
+recent, so some @command{tar} implementations cannot handle it properly.
+However, any @command{tar} implementation able to read @samp{ustar}
+archives should be able to read most @samp{posix} archives as well,
+except that it will extract any additional information (such as long
+file names) as extra plain text files.
 
 This archive format will be the default format for future versions
 of @GNUTAR{}.
@@ -9659,21 +9665,22 @@ formats:
 @headitem Format @tab UID @tab File Size @tab File Name @tab Devn
 @item gnu    @tab 1.8e19 @tab Unlimited @tab Unlimited @tab 63
 @item oldgnu @tab 1.8e19 @tab Unlimited @tab Unlimited @tab 63
-@item v7     @tab 2097151 @tab 8GB @tab 99 @tab n/a
-@item ustar  @tab 2097151 @tab 8GB @tab 256 @tab 21
+@item v7     @tab 2097151 @tab 8 GiB @minus{} 1 @tab 99 @tab n/a
+@item ustar  @tab 2097151 @tab 8 GiB @minus{} 1 @tab 255 @tab 21
 @item posix  @tab Unlimited @tab Unlimited @tab Unlimited @tab Unlimited
 @end multitable
 
 The default format for @GNUTAR{} is defined at compilation
 time.  You may check it by running @command{tar --help}, and examining
 the last lines of its output.  Usually, @GNUTAR{} is configured
-to create archives in @samp{gnu} format, however, future version will
+to create archives in @samp{gnu} format, however, a future version will
 switch to @samp{posix}.
 
 @menu
 * Compression::                 Using Less Space through Compression
 * Attributes::                  Handling File Attributes
 * Portability::                 Making @command{tar} Archives More Portable
+* Reproducibility::             Making @command{tar} Archives More Reproducible
 * cpio::                        Comparison of @command{tar} and @command{cpio}
 @end menu
 
@@ -10610,8 +10617,8 @@ will use the following default value:
 %d/PaxHeaders/%f
 @end smallexample
 
-This default is selected to ensure the reproducibility of the
-archive. @acronym{POSIX} standard recommends to use
+This default helps make the archive more reproducible.
+@xref{Reproducibility}.  @acronym{POSIX} recommends using
 @samp{%d/PaxHeaders.%p/%f} instead, which means the two archives
 created with the same set of options and containing the same set
 of files will be byte-to-byte different. This default will be used
@@ -10712,9 +10719,8 @@ use the following option:
 
 @cindex archives, binary equivalent
 @cindex binary equivalent archives, creating
-As another example, here is the option that ensures that any two
-archives created using it, will be binary equivalent if they have the
-same contents:
+As another example, the following option helps make the archive
+more reproducible.  @xref{Reproducibility}
 
 @smallexample
 --pax-option delete=atime
@@ -10800,7 +10806,7 @@ file.  You will than have to switch to a format that is able to
 handle such values.  The format summary table (@pxref{Formats}) will
 help you to do so.
 
-In particular, when trying to archive files larger than 8GB or with
+In particular, when trying to archive files 8 GiB or larger, or with
 timestamps not in the range 1970-01-01 00:00:00 through 2242-03-16
 12:56:31 @sc{utc}, you will have to chose between @acronym{GNU} and
 @acronym{POSIX} archive formats.  When considering which format to
@@ -10816,7 +10822,9 @@ representations.
 
 On the other hand, @acronym{POSIX} archives, generally speaking, can
 be extracted by any tar implementation that understands older
-@acronym{ustar} format.  The only exception are files larger than 8GB.
+@acronym{ustar} format.  The exceptions are files 8 GiB or larger,
+or files dated before 1970-01-01 00:00:00 or after 2242-03-16
+12:56:31 @sc{utc}
 
 @FIXME{Describe how @acronym{POSIX} archives are extracted by non
 POSIX-aware tars.}
@@ -11170,6 +11178,99 @@ Expanding file 'GNUSparseFile.28124/sparsefile' to 'sparsefile'
 Done
 @end group
 @end smallexample
+
+@node Reproducibility
+@section Making @command{tar} Archives More Reproducible
+
+Sometimes it is important for an archive to be reproducible,
+so that one can be easily verify it to have been derived solely from its input.
+However, two archives created by @GNUTAR{} from two sets of input
+files normally might differ even if the input files have the same
+contents and @GNUTAR{} was invoked the same way on both sets of input.
+This can happen if the inputs have different modification dates or
+other metadata, or if the input directories' entries are in different orders.
+
+To avoid this problem when creating an archive, and thus make the
+archive reproducible, you can run @GNUTAR{} in the C locale with
+some or all of the following options:
+
+@table @option
+@item --sort=name
+Omit irrelevant information about directory entry order.
+
+@item --format=posix
+Avoid problems with large files or files with unusual timestamps.
+This also enables @option{--pax-option} options mentioned below.
+
+@item --pax-option='exthdr.name=%d/PaxHeaders/%f'
+Omit the process ID of @command{tar}.
+This option is needed only if @env{POSIXLY_CORRECT} is set in the environment.
+
+@item --pax-option='delete=atime,delete=ctime'
+Omit irrelevant information about file access or status change time.
+
+@item --clamp-mtime --mtime="$SOURCE_EPOCH"
+Omit irrelevant information about file timestamps after
+@samp{$SOURCE_EPOCH}, which should be a time no less than any
+timestamp of any source file.
+
+@item --numeric-owner
+Omit irrelevant information about user and group names.
+
+@item --owner=0
+@itemx --group=0
+Omit irrelevant information about file ownership and group.
+
+@item --mode='go+u,go-w'
+Omit irrelevant information about file permissions.
+@end table
+
+When creating a reproducible archive from version-controlled source files,
+it can be useful to set each file's modification time
+to be that of its last commit, so that the timestamps
+are reproducible from the version-control repository.
+If these timestamps are all on integer second boundaries, and if you use
+@option{--format=posix --pax-option='delete=atime,delete=ctime'
+--clamp-mtime --mtime="$SOURCE_EPOCH"}
+where @code{$SOURCE_EPOCH} is the the time of the most recent commit,
+and if all non-source files have timestamps greater than @code{$SOURCE_EPOCH},
+then @GNUTAR{} should generate an archive in @acronym{ustar} format,
+since no POSIX features will be needed and the archive will be in the
+@acronym{ustar} subset of @acronym{posix} format.
+
+Also, if compressing, use a reproducible compression format; e.g.,
+with @command{gzip} you should use the @option{--no-name} (@option{-n}) option.
+
+Here is an example set of shell commands to produce a reproducible
+tarball with @command{git} and @command{gzip}, which you can tailor to
+your project's needs.
+
+@example
+function get_commit_time() @{
+  TZ=UTC0 git log -1 \
+    --format=tformat:%cd \
+    --date=format:%Y-%m-%dT%H:%M:%SZ \
+    "$@@"
+@}
+SOURCE_EPOCH=$(get_commit_time)
+git ls-files | while read -r file; do
+  commit_time=$(get_commit_time -- "$file") &&
+  touch -cmd $commit_time -- "$file"
+done
+TARFLAGS="
+  --sort=name --format=posix
+  --pax-option=exthdr.name=%d/PaxHeaders/%f
+  --pax-option=delete=atime,delete=ctime
+  --clamp-mtime --mtime=$SOURCE_EPOCH
+  --numeric-owner --owner=0 --group=0
+  --mode=go+u,go-w
+"
+GZIPFLAGS="
+  --no-name --best
+"
+LC_ALL=C tar $TARFLAGS -cf - FILES |
+  gzip $GZIPFLAGS > ARCHIVE.tgz
+@end example
 
 @node cpio
 @section Comparison of @command{tar} and @command{cpio}

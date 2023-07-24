@@ -1,5 +1,10 @@
-GNU tar NEWS - User visible changes. 2023-07-18
+GNU tar NEWS - User visible changes. 2023-07-24
 Please send GNU tar bug reports to <bug-tar@gnu.org>
+
+version TBD
+
+* New manual section "Reproducibility", for reproducible tarballs.
+
 
 version 1.35 - Sergey Poznyakoff, 2023-07-18
 
@@ -14,7 +19,7 @@ version 1.35 - Sergey Poznyakoff, 2023-07-18
 ** Fix interaction of --update with --wildcards.
 
 ** When extracting archives into an empty directory, do not create
-   hard links to files outside that directory. 
+   hard links to files outside that directory.
 
 ** Handle partial reads from regular files.
 
