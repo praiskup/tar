@@ -10721,7 +10721,7 @@ use the following option:
 @cindex archives, binary equivalent
 @cindex binary equivalent archives, creating
 As another example, the following option helps make the archive
-more reproducible.  @xref{Reproducibility}
+more reproducible.  @xref{Reproducibility}.
 
 @smallexample
 --pax-option delete=atime
@@ -11185,7 +11185,7 @@ Done
 
 @cindex reproducible archives
 Sometimes it is important for an archive to be @dfn{reproducible},
-so that one can be easily verify it to have been derived solely from
+so that one can easily verify it to have been derived solely from
 its input.  We call an archive reproducible, if an archive
 created from the same set of input files with the same command line
 options is byte-to-byte equivalent to the original one.
