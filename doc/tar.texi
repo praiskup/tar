@@ -11182,8 +11182,12 @@ Done
 @node Reproducibility
 @section Making @command{tar} Archives More Reproducible
 
-Sometimes it is important for an archive to be reproducible,
-so that one can be easily verify it to have been derived solely from its input.
+Sometimes it is important for an archive to be @dfn{reproducible},
+so that one can be easily verify it to have been derived solely from
+its input.  We call an archive reproducible, if an archive
+created from the same set of input files with the same command line
+options is byte-to-byte equivalent to the original one.
+
 However, two archives created by @GNUTAR{} from two sets of input
 files normally might differ even if the input files have the same
 contents and @GNUTAR{} was invoked the same way on both sets of input.
