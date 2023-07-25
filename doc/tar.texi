@@ -10307,6 +10307,7 @@ This option is meaningless with @option{--list} (@option{-t}).
 @node Portability
 @section Making @command{tar} Archives More Portable
 
+@cindex portable archives
 Creating a @command{tar} archive on a particular system that is meant to be
 useful later on many other machines and with other versions of @command{tar}
 is more challenging than you might think.  @command{tar} archive formats
@@ -11182,6 +11183,7 @@ Done
 @node Reproducibility
 @section Making @command{tar} Archives More Reproducible
 
+@cindex reproducible archives
 Sometimes it is important for an archive to be @dfn{reproducible},
 so that one can be easily verify it to have been derived solely from
 its input.  We call an archive reproducible, if an archive
@@ -11256,11 +11258,23 @@ function get_commit_time() @{
     --date=format:%Y-%m-%dT%H:%M:%SZ \
     "$@@"
 @}
-SOURCE_EPOCH=$(get_commit_time)
+#
+# Set each source file timestamp to that of its latest commit.
 git ls-files | while read -r file; do
-  commit_time=$(get_commit_time -- "$file") &&
-  touch -cmd $commit_time -- "$file"
+  commit_time=$(get_commit_time "$file") &&
+  touch -md $commit_time "$file"
 done
+#
+# Set timestamp of each directory under $FILES
+# to the latest timestamp of any descendant.
+find $FILES -depth -type d -exec sh -c \
+  'touch -r "$0/$(ls -At "$0" | head -n 1)" "$0"' \
+  @{@} ';'
+#
+# Create $ARCHIVE.tgz from $FILES, pretending that
+# the modification time for each newer file
+# is that of the most recent commit of any source file.
+SOURCE_EPOCH=$(get_commit_time)
 TARFLAGS="
   --sort=name --format=posix
   --pax-option=exthdr.name=%d/PaxHeaders/%f
@@ -11269,11 +11283,9 @@ TARFLAGS="
   --numeric-owner --owner=0 --group=0
   --mode=go+u,go-w
 "
-GZIPFLAGS="
-  --no-name --best
-"
-LC_ALL=C tar $TARFLAGS -cf - FILES |
-  gzip $GZIPFLAGS > ARCHIVE.tgz
+GZIPFLAGS="--no-name --best"
+LC_ALL=C tar $TARFLAGS -cf - $FILES |
+  gzip $GZIPFLAGS > $ARCHIVE.tgz
 @end example
 
 @node cpio
