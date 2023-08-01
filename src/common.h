@@ -219,12 +219,20 @@ enum set_mtime_option_mode
   USE_FILE_MTIME,
   FORCE_MTIME,
   CLAMP_MTIME,
+  COMMAND_MTIME,
 };
 
 /* Override actual mtime if set to FORCE_MTIME or CLAMP_MTIME */
 GLOBAL enum set_mtime_option_mode set_mtime_option;
 /* Value to use when forcing or clamping the mtime header field. */
 GLOBAL struct timespec mtime_option;
+
+/* Command to use to set mtime when archiving. */
+GLOBAL char *set_mtime_command;
+
+/* Format (as per strptime(3)) of the output of the above command.  If
+   not set, parse_datetime will be used. */
+GLOBAL char *set_mtime_format;
 
 /* Return true if mtime_option or newer_mtime_option is initialized.  */
 #define TIME_OPTION_INITIALIZED(opt) (0 <= (opt).tv_nsec)
@@ -923,6 +931,11 @@ void sys_exec_checkpoint_script (const char *script_name,
 				 const char *archive_name,
 				 int checkpoint_number);
 bool mtioseek (bool count_files, off_t count);
+int sys_exec_setmtime_script (const char *script_name,
+			      int dirfd,
+			      const char *file_name,
+			      const char *fmt,
+			      struct timespec *ts);
 
 /* Module compare.c */
 void report_difference (struct tar_stat_info *st, const char *message, ...)

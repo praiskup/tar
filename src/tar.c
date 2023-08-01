@@ -350,6 +350,8 @@ enum
   XATTR_EXCLUDE,
   XATTR_INCLUDE,
   ZSTD_OPTION,
+  SET_MTIME_COMMAND_OPTION,
+  SET_MTIME_FORMAT_OPTION,
 };
 
 static char const doc[] = N_("\
@@ -563,6 +565,11 @@ static struct argp_option options[] = {
    N_("set mtime for added files from DATE-OR-FILE"), GRID_FATTR },
   {"clamp-mtime", CLAMP_MTIME_OPTION, 0, 0,
    N_("only set time when the file is more recent than what was given with --mtime"), GRID_FATTR },
+  {"set-mtime-command", SET_MTIME_COMMAND_OPTION, N_("COMMAND"), 0,
+   N_("use output of the COMMAND to set mtime of the stored archive members"),
+   GRID_FATTR },
+  {"set-mtime-format", SET_MTIME_FORMAT_OPTION, N_("FORMAT"), 0,
+   N_("set output format (in the sense of strptime(3)) of the --set-mtime-command command"), GRID_FATTR },
   {"mode", MODE_OPTION, N_("CHANGES"), 0,
    N_("force (symbolic) mode CHANGES for added files"), GRID_FATTR },
   {"atime-preserve", ATIME_PRESERVE_OPTION,
@@ -1706,6 +1713,14 @@ parse_opt (int key, char *arg, struct argp_state *state)
       sparse_option = true;
       break;
 
+    case SET_MTIME_COMMAND_OPTION:
+      set_mtime_command = arg;
+      break;
+
+    case SET_MTIME_FORMAT_OPTION:
+      set_mtime_format = arg;
+      break;
+      
     case SPARSE_VERSION_OPTION:
       sparse_option = true;
       {
@@ -2525,7 +2540,16 @@ decode_options (int argc, char **argv)
 	USAGE_ERROR ((0, 0, _("Cannot concatenate compressed archives")));
     }
 
-  if (set_mtime_option == CLAMP_MTIME)
+  if (set_mtime_command)
+    {
+      if (set_mtime_option != USE_FILE_MTIME)
+	{
+	  USAGE_ERROR ((0, 0,
+			_("--mtime conflicts with --set-mtime-command")));
+	}
+      set_mtime_option = COMMAND_MTIME;
+    }
+  else if (set_mtime_option == CLAMP_MTIME)
     {
       if (!TIME_OPTION_INITIALIZED (mtime_option))
 	USAGE_ERROR ((0, 0,

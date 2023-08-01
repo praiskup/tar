@@ -1,9 +1,28 @@
-GNU tar NEWS - User visible changes. 2023-07-24
+GNU tar NEWS - User visible changes. 2023-08-01
 Please send GNU tar bug reports to <bug-tar@gnu.org>
 
 version TBD
 
 * New manual section "Reproducibility", for reproducible tarballs.
+
+* New options: --set-mtime-command and --set-mtime-format
+
+Both options are valid when archiving files.
+
+** --set-mtime-command=COMMAND
+
+For each FILE being archived, run "COMMAND FILE", parse its
+output as time string and set mtime value of the archive member
+from the result.
+
+Unless --set-mtime-format is also used, the output is parsed
+as argument to --mtime option (see GNU tar manual, chapter 4
+"Date input formats".
+
+** --set-mtime-format=FMT
+
+Defines output format for the COMMAND set by the above option.  If
+used, command output will be parsed using strptime(3).
 
 
 version 1.35 - Sergey Poznyakoff, 2023-07-18
