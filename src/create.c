@@ -843,6 +843,15 @@ start_header (struct tar_stat_info *st)
 	mtime = timespec_cmp (st->mtime, mtime_option) > 0
 	           ? mtime_option : st->mtime;
 	break;
+
+      case COMMAND_MTIME:
+	if (sys_exec_setmtime_script (set_mtime_command,
+				      chdir_fd,
+				      st->orig_file_name,
+				      set_mtime_format,
+				      &mtime))
+	  mtime = st->mtime;
+	break;
       }
 
     if (archive_format == POSIX_FORMAT)

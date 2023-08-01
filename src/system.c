@@ -23,6 +23,8 @@
 #include <rmt.h>
 #include <signal.h>
 #include <wordsplit.h>
+#include <poll.h>
+#include <parse-datetime.h>
 
 static _Noreturn void
 xexec (const char *cmd)
@@ -149,6 +151,15 @@ sys_child_open_for_uncompress (void)
   FATAL_ERROR ((0, 0, _("Cannot use compressed or remote archives")));
 }
 
+int
+sys_exec_setmtime_script (const char *script_name,
+			  int dirfd,
+			  const char *file_name,
+			  const char *fmt,
+			  struct timespec *ts)
+{
+  FATAL_ERROR ((0, 0, _("--set-mtime-command not implemented on this platform")));
+}
 #else
 
 extern union block *record_start; /* FIXME */
@@ -183,11 +194,12 @@ sys_file_is_archive (struct tar_stat_info *p)
 	  && p->stat.st_ino == archive_stat.st_ino);
 }
 
+static char const dev_null[] = "/dev/null";
+
 /* Detect if outputting to "/dev/null".  */
 void
 sys_detect_dev_null_output (void)
 {
-  static char const dev_null[] = "/dev/null";
   static struct stat dev_null_stat;
 
   dev_null_output = (strcmp (archive_name_array[0], dev_null) == 0
@@ -914,6 +926,168 @@ sys_exec_checkpoint_script (const char *script_name,
 				 archive_format : current_format), 1);
   priv_set_restore_linkdir ();
   xexec (script_name);
+}
+
+int
+sys_exec_setmtime_script (const char *script_name,
+			  int dirfd,
+			  const char *file_name,
+			  const char *fmt,
+			  struct timespec *ts)
+{
+  pid_t pid;
+  int p[2];
+  int stop = 0;
+  struct pollfd pfd;
+
+  char *buffer = NULL;
+  size_t buflen = 0;
+  size_t bufsize = 0;
+  char *cp;
+  int rc = 0;
+
+  if (pipe (p))
+    FATAL_ERROR ((0, errno, _("pipe failed")));
+
+  if ((pid = xfork ()) == 0)
+    {
+      char *command = xmalloc (strlen (script_name) + strlen (file_name) + 2);
+
+      strcpy (command, script_name);
+      strcat (command, " ");
+      strcat (command, file_name);
+
+      if (dirfd != AT_FDCWD)
+	{
+	  if (fchdir (dirfd))
+	    FATAL_ERROR ((0, errno, _("chdir failed")));
+	}
+
+      close (0);
+      close (1);
+
+      if (open (dev_null, O_RDONLY) == -1)
+	open_error (dev_null);
+
+      if (dup2 (p[1], 1) == -1)
+	FATAL_ERROR ((0, errno, _("dup2 failed")));
+      close (p[0]);
+
+      priv_set_restore_linkdir ();
+      xexec (command);
+    }
+  close (p[1]);
+
+  pfd.fd = p[0];
+  pfd.events = POLLIN;
+
+  while (1)
+    {
+      int n = poll (&pfd, 1, -1);
+      if (n == -1)
+	{
+	  if (errno != EINTR)
+	    {
+	      ERROR ((0, errno, _("poll failed")));
+	      stop = 1;
+	      break;
+	    }
+	}
+      if (n == 0)
+	break;
+      if (pfd.revents & POLLIN)
+	{
+	  if (buflen == bufsize)
+	    {
+	      if (bufsize == 0)
+		bufsize = BUFSIZ;
+	      buffer = x2nrealloc (buffer, &bufsize, 1);
+	    }
+	  n = read (pfd.fd, buffer + buflen, bufsize - buflen);
+	  if (n == -1)
+	    {
+	      ERROR ((0, errno, _("error reading output of %s"), script_name));
+	      stop = 1;
+	      break;
+	    }
+	  if (n == 0)
+	    break;
+	  buflen += n;
+	}
+      else if (pfd.revents & POLLHUP)
+	break;
+    }
+  close (pfd.fd);
+
+  if (stop)
+    kill (SIGKILL, pid);
+
+  sys_wait_for_child (pid, false);
+
+  if (stop)
+    {
+      free (buffer);
+      return -1;
+    }
+
+  if (buflen == 0)
+    {
+      ERROR ((0, 0, _("empty output from \"%s %s\""), script_name, file_name));
+      return -1;
+    }
+
+  cp = memchr (buffer, '\n', buflen);
+  if (cp)
+    *cp = 0;
+  else
+    {
+      if (buflen == bufsize)
+	buffer = x2nrealloc (buffer, &bufsize, 1);
+      buffer[buflen] = 0;
+    }
+
+  if (fmt)
+    {
+      struct tm tm;
+      time_t t;
+      cp = strptime (buffer, fmt, &tm);
+      if (cp == NULL)
+	{
+	  ERROR ((0, 0, _("output from \"%s %s\" does not satisfy format string: %s"),
+		  script_name, file_name, buffer));
+	  rc = -1;
+	}
+      else if (*cp != 0)
+	{
+	  WARN ((0, 0, _("unconsumed output from \"%s %s\": %s"),
+		 script_name, file_name, cp));
+	  rc = -1;
+	}
+      else
+	{
+	  t = mktime (&tm);
+	  if (t == (time_t) -1)
+	    {
+	      ERROR ((0, errno, _("mktime failed")));
+	      rc = -1;
+	    }
+	  else
+	    {
+	      ts->tv_sec = t;
+	      ts->tv_nsec = 0;
+	    }
+	}
+    }
+  else if (! parse_datetime (ts, buffer, NULL))
+    {
+      ERROR ((0, 0, _("unparsable output from \"%s %s\": %s"),
+	      script_name, file_name, buffer));
+      rc = -1;
+    }
+
+  free (buffer);
+
+  return rc;
 }
 
 #endif /* not MSDOS */
