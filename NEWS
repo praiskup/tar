@@ -1,7 +1,7 @@
 GNU tar NEWS - User visible changes. 2024-11-02
 Please send GNU tar bug reports to <bug-tar@gnu.org>
 
-version TBD
+version 1.35.90
 
 * New manual section "Reproducibility", for reproducible tarballs.
 
