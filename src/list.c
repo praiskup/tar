@@ -868,13 +868,10 @@ from_header (char const *where0, size_t digs, char const *type,
 	{
 	  if (value << LG_64 >> LG_64 != value)
 	    {
-	      char *string = alloca (digs + 1);
-	      memcpy (string, where0, digs);
-	      string[digs] = '\0';
 	      if (type && !silent)
 		ERROR ((0, 0,
 			_("Archive signed base-64 string %s is out of %s range"),
-			quote (string), type));
+			quote_mem (where0, digs), type));
 	      return -1;
 	    }
 	  value = (value << LG_64) | dig;
