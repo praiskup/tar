@@ -1638,12 +1638,15 @@ restore_parent_fd (struct tar_stat_info const *st)
 
 /* Dump a single file, recursing on directories.  ST is the file's
    status info, NAME its name relative to the parent directory, and P
-   its full name (which may be relative to the working directory).  */
+   its full name (which may be relative to the working directory).
+
+   Return the address of dynamically allocated storage that the caller
+   should free, or the null pointer if there is no such storage.  */
 
 /* FIXME: One should make sure that for *every* path leading to setting
    exit_status to failure, a clear diagnostic has been issued.  */
 
-static void
+static void *
 dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
 {
   union block *header;
@@ -1657,7 +1660,7 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
   void (*diag) (char const *) = 0;
 
   if (interactive_option && !confirm ("add", p))
-    return;
+    return NULL;
 
   assign_string (&st->orig_file_name, p);
   assign_string (&st->file_name,
@@ -1687,7 +1690,7 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
   if (diag)
     {
       file_removed_diag (p, top_level, diag);
-      return;
+      return NULL;
     }
 
   struct stat st1 = st->stat;
@@ -1696,16 +1699,13 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
   st->mtime = get_stat_mtime (&st->stat);
   st->ctime = get_stat_ctime (&st->stat);
 
+  void *allocated = NULL;
 #ifdef S_ISHIDDEN
   if (S_ISHIDDEN (st->stat.st_mode))
     {
-      char *new = (char *) alloca (strlen (p) + 2);
-      if (new)
-	{
-	  strcpy (new, p);
-	  strcat (new, "@");
-	  p = new;
-	}
+      allocated = xmalloc (strlen (p) + 2);
+      strcpy (stpcpy (allocated, p), "@");
+      p = allocated;
     }
 #endif
 
@@ -1724,7 +1724,7 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
 	WARNOPT (WARN_FILE_UNCHANGED,
 		 (0, 0, _("%s: file is unchanged; not dumped"),
 		  quotearg_colon (p)));
-      return;
+      return allocated;
     }
 
   /* See if we are trying to dump the archive.  */
@@ -1733,13 +1733,13 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
       WARNOPT (WARN_IGNORE_ARCHIVE,
 	       (0, 0, _("%s: archive cannot contain itself; not dumped"),
 		quotearg_colon (p)));
-      return;
+      return allocated;
     }
 
   is_dir = S_ISDIR (st->stat.st_mode) != 0;
 
   if (!is_dir && dump_hard_link (st))
-    return;
+    return allocated;
 
   if (is_dir || S_ISREG (st->stat.st_mode) || S_ISCTG (st->stat.st_mode))
     {
@@ -1760,7 +1760,7 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
 	    {
 	      exclusion_tag_warning (st->orig_file_name, tag_file_name,
 				     _("directory not dumped"));
-	      return;
+	      return allocated;
 	    }
 
 	  ok = dump_dir (st);
@@ -1868,7 +1868,7 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
       if (ok && remove_files_option)
 	queue_deferred_unlink (p, is_dir);
 
-      return;
+      return allocated;
     }
 #ifdef HAVE_READLINK
   else if (S_ISLNK (st->stat.st_mode))
@@ -1879,7 +1879,7 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
 	  if (errno == ENOMEM)
 	    xalloc_die ();
 	  file_removed_diag (p, top_level, readlink_diag);
-	  return;
+	  return allocated;
 	}
       transform_name (&st->link_name, XFORM_SYMLINK);
       if (NAME_FIELD_SIZE - (archive_format == OLDGNU_FORMAT)
@@ -1893,7 +1893,7 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
       st->stat.st_size = 0;	/* force 0 size on symlink */
       header = start_header (st);
       if (!header)
-	return;
+	return allocated;
       tar_copy_str (header->header.linkname, st->link_name, NAME_FIELD_SIZE);
       header->header.typeflag = SYMTYPE;
       finish_header (st, header, block_ordinal);
@@ -1903,7 +1903,7 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
 	queue_deferred_unlink (p, false);
 
       file_count_links (st);
-      return;
+      return allocated;
     }
 #endif
   else if (S_ISCHR (st->stat.st_mode))
@@ -1931,35 +1931,36 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
     {
       WARNOPT (WARN_FILE_IGNORED,
 	       (0, 0, _("%s: socket ignored"), quotearg_colon (p)));
-      return;
+      return allocated;
     }
   else if (S_ISDOOR (st->stat.st_mode))
     {
       WARNOPT (WARN_FILE_IGNORED,
 	       (0, 0, _("%s: door ignored"), quotearg_colon (p)));
-      return;
+      return allocated;
     }
   else
     {
       unknown_file_error (p);
-      return;
+      return allocated;
     }
 
   if (archive_format == V7_FORMAT)
     {
       unknown_file_error (p);
-      return;
+      return allocated;
     }
 
   block_ordinal = current_block_ordinal ();
   st->stat.st_size = 0;	/* force 0 size */
   header = start_header (st);
   if (!header)
-    return;
+    return allocated;
   header->header.typeflag = type;
   finish_header (st, header, block_ordinal);
   if (remove_files_option)
     queue_deferred_unlink (p, false);
+  return allocated;
 }
 
 /* Dump a file, recursively.  PARENT describes the file's parent
@@ -1974,7 +1975,7 @@ dump_file (struct tar_stat_info *parent, char const *name,
   struct tar_stat_info st;
   tar_stat_init (&st);
   st.parent = parent;
-  dump_file0 (&st, name, fullname);
+  free (dump_file0 (&st, name, fullname));
   if (parent && listed_incremental_option)
     update_parent_directory (parent);
   tar_stat_destroy (&st);
