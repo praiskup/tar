@@ -987,8 +987,7 @@ short_read (size_t status)
     }
 
   record_end = record_start + (record_size - left) / BLOCKSIZE;
-  if (left == 0)
-    records_read++;
+  records_read++;
 }
 
 /*  Flush the current buffer to/from the archive.  */

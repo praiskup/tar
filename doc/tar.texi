@@ -4215,6 +4215,11 @@ Total bytes read: 7924664320 (7.4GiB, 95MiB/s)
 @end group
 @end smallexample
 
+Notice, that since @command{tar} operates on @dfn{records}, the number
+of bytes reported can be rounded up to the nearest full record.  This
+can happen, in particular, when the last record in the archive is
+partial.  @xref{Blocking}.
+
 Finally, when deleting from an archive, the @option{--totals} option
 displays both numbers plus number of bytes removed from the archive:
 
