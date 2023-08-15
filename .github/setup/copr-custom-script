@@ -23,6 +23,14 @@ git clone \
 cd "$workdir"
 webhook-checkout "$hook_payload"
 
+git config --global user.email "you@example.com"
+git config --global user.name "CI for GNU tar on Fedora and EPEL"
+
+for i in .github/setup/patches/*.patch; do
+    test -f "$i" || continue
+    git am "$i" || continue
+done
+
 ./bootstrap && ./configure && make dist-xz
 tarball=$(echo tar-*.tar.xz)
 version=${tarball%%.tar.xz}
