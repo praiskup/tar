@@ -36,7 +36,10 @@ esac
 dd if=archive.tar of=trunc.tar bs=$size count=1 2>/dev/null
 tar --delete 'b/' -f trunc.tar
 ],
-[0],
-[],[],[],[],[gnu, pax])
+[2],
+[],
+[tar: lseek: trunc.tar: Value too large for defined data type
+tar: Exiting with failure status due to previous errors
+],[],[],[gnu, pax])
 
 AT_CLEANUP
