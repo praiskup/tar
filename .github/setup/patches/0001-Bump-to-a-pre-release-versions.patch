@@ -1,0 +1,39 @@
+From 2cc1b00881938def456dd67b971c5844fbfe2e9b Mon Sep 17 00:00:00 2001
+From: Pavel Raiskup <praiskup@redhat.com>
+Date: Tue, 1 Aug 2023 15:32:24 +0200
+Subject: [PATCH] Bump to a pre-release versions
+
+---
+ NEWS         | 2 +-
+ configure.ac | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/NEWS b/NEWS
+index 22d66500..222dfd5d 100644
+--- a/NEWS
++++ b/NEWS
+@@ -1,7 +1,7 @@
+ GNU tar NEWS - User visible changes. 2023-08-02
+ Please send GNU tar bug reports to <bug-tar@gnu.org>
+ 
+-version TBD
++version 1.35.90
+ 
+ * New manual section "Reproducibility", for reproducible tarballs.
+ 
+diff --git a/configure.ac b/configure.ac
+index 338e1834..4367d880 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -17,7 +17,7 @@
+ # You should have received a copy of the GNU General Public License
+ # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ 
+-AC_INIT([GNU tar], [1.35], [bug-tar@gnu.org])
++AC_INIT([GNU tar], [1.35.90], [bug-tar@gnu.org])
+ AC_CONFIG_SRCDIR([src/tar.c])
+ AC_CONFIG_AUX_DIR([build-aux])
+ AC_CONFIG_HEADERS([config.h])
+-- 
+2.41.0
+
