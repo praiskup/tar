@@ -535,9 +535,11 @@ delay_set_stat (char const *file_name, struct tar_stat_info const *st,
 	                                               ds_compare, NULL))))
     xalloc_die ();
 
-  const struct delayed_set_stat key = { .file_name = (char*) file_name };
+  struct delayed_set_stat key;
+  key.file_name = (char *) file_name;
 
-  if ((data = hash_lookup (delayed_set_stat_table, &key)) != NULL)
+  data = hash_lookup (delayed_set_stat_table, &key);
+  if (data)
     {
       if (data->interdir)
 	{
@@ -1847,7 +1849,7 @@ extract_archive (void)
   if (!delay_directory_restore_option)
     {
       int dir = chdir_current;
-      apply_nonancestor_delayed_set_stat (current_stat_info.file_name, 0);
+      apply_nonancestor_delayed_set_stat (current_stat_info.file_name, false);
       chdir_do (dir);
     }
 
@@ -1961,7 +1963,7 @@ apply_delayed_links (void)
   for (struct delayed_link *ds = delayed_link_head; ds; ds = ds->next)
     apply_delayed_link (ds);
 
-  if (false)
+  if (false && delayed_link_table)
     {
       /* There is little point to freeing, as we are about to exit,
 	 and freeing is more likely to cause than cure trouble.
@@ -1977,7 +1979,7 @@ void
 extract_finish (void)
 {
   /* First, fix the status of ordinary directories that need fixing.  */
-  apply_nonancestor_delayed_set_stat ("", 0);
+  apply_nonancestor_delayed_set_stat ("", false);
 
   /* Then, apply delayed links, so that they don't affect delayed
      directory status-setting for ordinary directories.  */
@@ -1985,11 +1987,13 @@ extract_finish (void)
 
   /* Finally, fix the status of directories that are ancestors
      of delayed links.  */
-  apply_nonancestor_delayed_set_stat ("", 1);
+  apply_nonancestor_delayed_set_stat ("", true);
 
-  /* This table should be empty after apply_nonancestor_delayed_set_stat  */
-  if (delayed_set_stat_table != NULL)
+  /* This table should be empty after apply_nonancestor_delayed_set_stat.  */
+  if (false && delayed_set_stat_table)
     {
+      /* There is little point to freeing, as we are about to exit,
+	 and freeing is more likely to cause than cure trouble.  */
       hash_free (delayed_set_stat_table);
       delayed_set_stat_table = NULL;
     }
