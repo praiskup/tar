@@ -963,15 +963,15 @@ sys_exec_setmtime_script (const char *script_name,
 	    FATAL_ERROR ((0, errno, _("chdir failed")));
 	}
 
-      close (0);
-      close (1);
-
-      if (open (dev_null, O_RDONLY) == -1)
-	open_error (dev_null);
-
-      if (dup2 (p[1], 1) == -1)
-	FATAL_ERROR ((0, errno, _("dup2 failed")));
       close (p[0]);
+      if (dup2 (p[1], STDOUT_FILENO) < 0)
+	FATAL_ERROR ((0, errno, _("dup2 failed")));
+      if (p[1] != STDOUT_FILENO)
+	close (p[1]);
+
+      close (STDIN_FILENO);
+      if (open (dev_null, O_RDONLY) != STDIN_FILENO)
+	open_error (dev_null);
 
       priv_set_restore_linkdir ();
       xexec (command);
