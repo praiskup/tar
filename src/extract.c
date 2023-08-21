@@ -130,6 +130,9 @@ struct delayed_set_stat
 
 static struct delayed_set_stat *delayed_set_stat_head;
 
+/* Table of delayed stat updates hashed by path; null if none.  */
+static Hash_table *delayed_set_stat_table;
+
 /* A link whose creation we have delayed.  */
 struct delayed_link
   {
@@ -212,6 +215,20 @@ dl_compare (void const *a, void const *b)
 {
   struct delayed_link const *da = a, *db = b;
   return (da->dev == db->dev) & (da->ino == db->ino);
+}
+
+static size_t
+ds_hash (void const *entry, size_t table_size)
+{
+  struct delayed_set_stat const *ds = entry;
+  return hash_string (ds->file_name, table_size);
+}
+
+static bool
+ds_compare (void const *a, void const *b)
+{
+  struct delayed_set_stat const *dsa = a, *dsb = b;
+  return strcmp (dsa->file_name, dsb->file_name) == 0;
 }
 
 /*  Set up to extract files.  */
@@ -513,10 +530,15 @@ delay_set_stat (char const *file_name, struct tar_stat_info const *st,
   size_t file_name_len = strlen (file_name);
   struct delayed_set_stat *data;
 
-  for (data = delayed_set_stat_head; data; data = data->next)
-    if (strcmp (data->file_name, file_name) == 0)
-      break;
+  if (! (delayed_set_stat_table
+	 || (delayed_set_stat_table = hash_initialize (0, 0, ds_hash,
+	                                               ds_compare, NULL))))
+    xalloc_die ();
 
+  struct delayed_set_stat key;
+  key.file_name = (char *) file_name;
+
+  data = hash_lookup (delayed_set_stat_table, &key);
   if (data)
     {
       if (data->interdir)
@@ -541,6 +563,8 @@ delay_set_stat (char const *file_name, struct tar_stat_info const *st,
       delayed_set_stat_head = data;
       data->file_name_len = file_name_len;
       data->file_name = xstrdup (file_name);
+      if (! hash_insert (delayed_set_stat_table, data))
+	xalloc_die ();
       data->after_links = false;
       if (st)
 	{
@@ -652,6 +676,7 @@ remove_delayed_set_stat (const char *fname)
       if (chdir_current == data->change_dir
 	  && strcmp (data->file_name, fname) == 0)
 	{
+	  hash_remove (delayed_set_stat_table, data);
 	  free_delayed_set_stat (data);
 	  if (prev)
 	    prev->next = next;
@@ -1000,6 +1025,7 @@ apply_nonancestor_delayed_set_stat (char const *file_name, bool after_links)
 	}
 
       delayed_set_stat_head = data->next;
+      hash_remove (delayed_set_stat_table, data);
       free_delayed_set_stat (data);
     }
 }
@@ -1823,7 +1849,7 @@ extract_archive (void)
   if (!delay_directory_restore_option)
     {
       int dir = chdir_current;
-      apply_nonancestor_delayed_set_stat (current_stat_info.file_name, 0);
+      apply_nonancestor_delayed_set_stat (current_stat_info.file_name, false);
       chdir_do (dir);
     }
 
@@ -1937,7 +1963,7 @@ apply_delayed_links (void)
   for (struct delayed_link *ds = delayed_link_head; ds; ds = ds->next)
     apply_delayed_link (ds);
 
-  if (false)
+  if (false && delayed_link_table)
     {
       /* There is little point to freeing, as we are about to exit,
 	 and freeing is more likely to cause than cure trouble.
@@ -1953,7 +1979,7 @@ void
 extract_finish (void)
 {
   /* First, fix the status of ordinary directories that need fixing.  */
-  apply_nonancestor_delayed_set_stat ("", 0);
+  apply_nonancestor_delayed_set_stat ("", false);
 
   /* Then, apply delayed links, so that they don't affect delayed
      directory status-setting for ordinary directories.  */
@@ -1961,7 +1987,16 @@ extract_finish (void)
 
   /* Finally, fix the status of directories that are ancestors
      of delayed links.  */
-  apply_nonancestor_delayed_set_stat ("", 1);
+  apply_nonancestor_delayed_set_stat ("", true);
+
+  /* This table should be empty after apply_nonancestor_delayed_set_stat.  */
+  if (false && delayed_set_stat_table)
+    {
+      /* There is little point to freeing, as we are about to exit,
+	 and freeing is more likely to cause than cure trouble.  */
+      hash_free (delayed_set_stat_table);
+      delayed_set_stat_table = NULL;
+    }
 }
 
 bool
