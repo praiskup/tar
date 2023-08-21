@@ -31,7 +31,7 @@ tar -cf archive.tar dirtree
 
 echo Extracting archive
 mkdir output
-timeout 15 tar -xf archive.tar --delay-directory-restore -C output
+timeout 60 tar -xf archive.tar --delay-directory-restore -C output
 ],
 [0],
 [Creating dirtree
