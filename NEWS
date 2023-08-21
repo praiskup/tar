@@ -1,4 +1,4 @@
-GNU tar NEWS - User visible changes. 2023-08-02
+GNU tar NEWS - User visible changes. 2023-08-21
 Please send GNU tar bug reports to <bug-tar@gnu.org>
 
 version TBD
@@ -25,6 +25,9 @@ Defines output format for the COMMAND set by the above option.  If
 used, command output will be parsed using strptime(3).
 
 * Bug fixes
+
+** Fixed O(n^2) time complexity bug for large numbers of directories when
+   extracting with --delay-directory-restore or reading incremental archives.
 
 ** tar no longer uses alloca, fixing an unlikely stack overflow.
 
