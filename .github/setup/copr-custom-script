@@ -28,7 +28,7 @@ git config --global user.name "CI for GNU tar on Fedora and EPEL"
 
 for i in .github/setup/patches/*.patch; do
     test -f "$i" || continue
-    git am "$i" || continue
+    patch -p1 < "$i" || continue
 done
 
 ./bootstrap && ./configure && make dist-xz
