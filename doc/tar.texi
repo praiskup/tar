@@ -1019,7 +1019,7 @@ The full output consists of six fields:
 @item File type and permissions in symbolic form.
 These are displayed in the same format as the first column of
 @command{ls -l} output (@pxref{What information is listed,
-format=verbose, Verbose listing, fileutils, GNU file utilities}).
+format=verbose, Verbose listing, coreutils, GNU core utilities}).
 
 @item Owner name and group separated by a slash character.
 If these data are not available (for example, when listing a @samp{v7} format
@@ -5584,7 +5584,7 @@ When adding files to an archive, @command{tar} will use
 from the files.  @var{permissions} can be specified either as an octal
 number or as symbolic permissions, like with
 @command{chmod} (@xref{File permissions, Permissions, File
-permissions, fileutils, @acronym{GNU} file utilities}.  This reference
+permissions, coreutils, @acronym{GNU} core utilities}.  This reference
 also has useful information for those not being overly familiar with
 the UNIX permission system).  Using latter syntax allows for
 more flexibility.  For example, the value @samp{a+rw} adds read and write
