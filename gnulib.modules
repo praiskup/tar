@@ -63,6 +63,7 @@ lchown
 linkat
 localcharset
 manywarnings
+mcel-prefer
 mkdirat
 mkdtemp
 mkfifoat
