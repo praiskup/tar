@@ -460,7 +460,8 @@ extern uintmax_t continued_file_size;
 extern uintmax_t continued_file_offset;
 extern off_t records_written;
 
-char *drop_volume_label_suffix (const char *label);
+char *drop_volume_label_suffix (const char *label)
+  _GL_ATTRIBUTE_MALLOC _GL_ATTRIBUTE_DEALLOC_FREE;
 
 size_t available_space_after (union block *pointer);
 off_t current_block_ordinal (void);
