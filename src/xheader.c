@@ -692,8 +692,8 @@ decx (void *data, char const *keyword, char const *value, size_t size)
     t->decoder (st, keyword, value, size);
   else
     WARNOPT (WARN_UNKNOWN_KEYWORD,
-	     (0, 0, _("Ignoring unknown extended header keyword '%s'"),
-	      keyword));
+	     (0, 0, _("Ignoring unknown extended header keyword %s"),
+	      quotearg_style (shell_escape_always_quoting_style, keyword)));
 }
 
 void

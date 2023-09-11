@@ -1565,33 +1565,21 @@ try_new_volume (void)
 }
 
 
-#define VOLUME_TEXT " Volume "
-#define VOLUME_TEXT_LEN (sizeof VOLUME_TEXT - 1)
-
 char *
 drop_volume_label_suffix (const char *label)
 {
-  const char *p;
-  size_t len = strlen (label);
+  static char const VOLUME_TEXT[] = " Volume ";
+  idx_t VOLUME_TEXT_LEN = sizeof VOLUME_TEXT - 1;
+  idx_t prefix_len = 0;
 
-  if (len < 1)
-    return NULL;
+  for (idx_t i = 0; label[i]; i++)
+    if (!isdigit ((unsigned char) label[i]))
+      prefix_len = i + 1;
 
-  for (p = label + len - 1; p > label && isdigit ((unsigned char) *p); p--)
-    ;
-  if (p > label && p - (VOLUME_TEXT_LEN - 1) > label)
-    {
-      p -= VOLUME_TEXT_LEN - 1;
-      if (memcmp (p, VOLUME_TEXT, VOLUME_TEXT_LEN) == 0)
-	{
-	  char *s = xmalloc ((len = p - label) + 1);
-	  memcpy (s, label, len);
-	  s[len] = 0;
-	  return s;
-	}
-    }
-
-  return NULL;
+  ptrdiff_t len = prefix_len - VOLUME_TEXT_LEN;
+  return (0 <= len && memcmp (label + len, VOLUME_TEXT, VOLUME_TEXT_LEN) == 0
+	  ? ximemdup0 (label, len)
+	  : NULL);
 }
 
 /* Check LABEL against the volume label, seen as a globbing
