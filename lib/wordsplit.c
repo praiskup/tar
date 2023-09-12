@@ -2194,7 +2194,7 @@ wordsplit_string_unquote_copy (struct wordsplit *ws, int inquote,
 		}
 	    }
 	  else if (WRDSO_ESC_TEST (ws, inquote, WRDSO_OESC)
-		   && (unsigned char) src[i] < 128 && c_isdigit (src[i]))
+		   && c_isdigit (src[i]))
 	    {
 	      if (n - i < 1)
 		{
