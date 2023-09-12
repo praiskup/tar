@@ -16,6 +16,7 @@
    with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include <system.h>
+#include <c-ctype.h>
 #include <inttostr.h>
 #include <quotearg.h>
 #include "common.h"
@@ -1251,7 +1252,7 @@ decode_num (uintmax_t *num, char const *arg, uintmax_t maxval)
   uintmax_t u;
   char *arg_lim;
 
-  if (!ISDIGIT (*arg))
+  if (!c_isdigit (*arg))
     return false;
 
   errno = 0;

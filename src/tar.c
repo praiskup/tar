@@ -38,6 +38,7 @@
 #include "common.h"
 
 #include <argmatch.h>
+#include <c-ctype.h>
 #include <closeout.h>
 #include <configmake.h>
 #include <exitfail.h>
@@ -1223,7 +1224,7 @@ expand_pax_option (struct tar_args *targs, const char *arg)
 	  size_t len = p - arg + 1;
 	  obstack_grow (&stk, arg, len);
 	  len = seglen - len;
-	  for (++p; *p && isspace ((unsigned char) *p); p++)
+	  for (++p; *p && c_isspace (*p); p++)
 	    len--;
 	  if (*p == '{' && p[len-1] == '}')
 	    {
@@ -1720,7 +1721,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
     case SET_MTIME_FORMAT_OPTION:
       set_mtime_format = arg;
       break;
-      
+
     case SPARSE_VERSION_OPTION:
       sparse_option = true;
       {

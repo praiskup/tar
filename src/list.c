@@ -20,6 +20,7 @@
    Written by John Gilmore, on 1985-08-26.  */
 
 #include <system.h>
+#include <c-ctype.h>
 #include <inttostr.h>
 #include <quotearg.h>
 #include <time.h>
@@ -780,7 +781,7 @@ from_header (char const *where0, size_t digs, char const *type,
 		    type));
 	  return -1;
 	}
-      if (!isspace ((unsigned char) *where))
+      if (!c_isspace (*where))
 	break;
       where++;
     }
@@ -916,7 +917,7 @@ from_header (char const *where0, size_t digs, char const *type,
 	value = -value;
     }
 
-  if (where != lim && *where && !isspace ((unsigned char) *where))
+  if (where != lim && *where && !c_isspace (*where))
     {
       if (type)
 	{

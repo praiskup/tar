@@ -19,6 +19,7 @@
 #include <system.h>
 #include <rmt.h>
 #include "common.h"
+#include <c-ctype.h>
 #include <quotearg.h>
 #include <xgetcwd.h>
 #include <unlinkdir.h>
@@ -414,7 +415,7 @@ strtosysint (char const *arg, char **arglim, intmax_t minval, uintmax_t maxval)
   errno = 0;
   if (maxval <= INTMAX_MAX)
     {
-      if (ISDIGIT (arg[*arg == '-']))
+      if (c_isdigit (arg[*arg == '-']))
 	{
 	  intmax_t i = strtoimax (arg, arglim, 10);
 	  intmax_t imaxval = maxval;
@@ -426,7 +427,7 @@ strtosysint (char const *arg, char **arglim, intmax_t minval, uintmax_t maxval)
     }
   else
     {
-      if (ISDIGIT (*arg))
+      if (c_isdigit (*arg))
 	{
 	  uintmax_t i = strtoumax (arg, arglim, 10);
 	  if (i <= maxval)
@@ -506,7 +507,7 @@ decode_timespec (char const *arg, char **arg_lim, bool parse_fraction)
   bool negative = *arg == '-';
   struct timespec r;
 
-  if (! ISDIGIT (arg[negative]))
+  if (! c_isdigit (arg[negative]))
     errno = EINVAL;
   else
     {
@@ -537,7 +538,7 @@ decode_timespec (char const *arg, char **arg_lim, bool parse_fraction)
 	  int digits = 0;
 	  bool trailing_nonzero = false;
 
-	  while (ISDIGIT (*++p))
+	  while (c_isdigit (*++p))
 	    if (digits < LOG10_BILLION)
 	      digits++, ns = 10 * ns + (*p - '0');
 	    else

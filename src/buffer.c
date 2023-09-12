@@ -23,6 +23,7 @@
 
 #include <signal.h>
 
+#include <c-ctype.h>
 #include <closeout.h>
 #include <fnmatch.h>
 #include <human.h>
@@ -1573,7 +1574,7 @@ drop_volume_label_suffix (const char *label)
   idx_t prefix_len = 0;
 
   for (idx_t i = 0; label[i]; i++)
-    if (!isdigit ((unsigned char) label[i]))
+    if (!c_isdigit (label[i]))
       prefix_len = i + 1;
 
   ptrdiff_t len = prefix_len - VOLUME_TEXT_LEN;
