@@ -606,7 +606,11 @@ read_header (union block **return_block, struct tar_stat_info *info,
   return status;
 }
 
-#define ISOCTAL(c) ((c)>='0'&&(c)<='7')
+static bool
+is_octal_digit (char c)
+{
+  return '0' <= c && c <= '7';
+}
 
 /* Decode things from a file HEADER block into STAT_INFO, also setting
    *FORMAT_POINTER depending on the header block format.  If
@@ -632,9 +636,9 @@ decode_header (union block *header, struct tar_stat_info *stat_info,
   if (strcmp (header->header.magic, TMAGIC) == 0)
     {
       if (header->star_header.prefix[130] == 0
-	  && ISOCTAL (header->star_header.atime[0])
+	  && is_octal_digit (header->star_header.atime[0])
 	  && header->star_header.atime[11] == ' '
-	  && ISOCTAL (header->star_header.ctime[0])
+	  && is_octal_digit (header->star_header.ctime[0])
 	  && header->star_header.ctime[11] == ' ')
 	format = STAR_FORMAT;
       else if (stat_info->xhdr.size)
@@ -782,7 +786,7 @@ from_header (char const *where0, size_t digs, char const *type,
     }
 
   value = 0;
-  if (ISODIGIT (*where))
+  if (is_octal_digit (*where))
     {
       char const *where1 = where;
       bool overflow = false;
@@ -790,7 +794,7 @@ from_header (char const *where0, size_t digs, char const *type,
       for (;;)
 	{
 	  value += *where++ - '0';
-	  if (where == lim || ! ISODIGIT (*where))
+	  if (where == lim || ! is_octal_digit (*where))
 	    break;
 	  overflow |= value != (value << LG_8 >> LG_8);
 	  value <<= LG_8;
@@ -813,7 +817,7 @@ from_header (char const *where0, size_t digs, char const *type,
 	    {
 	      value += 7 - digit;
 	      where++;
-	      if (where == lim || ! ISODIGIT (*where))
+	      if (where == lim || ! is_octal_digit (*where))
 		break;
 	      digit = *where - '0';
 	      overflow |= value != (value << LG_8 >> LG_8);
