@@ -293,6 +293,7 @@ m4_include([xform-h.at])
 m4_include([xform01.at])
 m4_include([xform02.at])
 m4_include([xform03.at])
+m4_include([xform04.at])
 
 AT_BANNER([Exclude])
 m4_include([exclude.at])

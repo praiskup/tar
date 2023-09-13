@@ -287,7 +287,8 @@ TESTSUITE_AT = \
  xform-h.at\
  xform01.at\
  xform02.at\
- xform03.at
+ xform03.at\
+ xform04.at
 
 distclean-local:
 	-rm -rf download
