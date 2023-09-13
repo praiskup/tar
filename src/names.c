@@ -17,6 +17,7 @@
 
 #include <system.h>
 
+#include <c-ctype.h>
 #include <fnmatch.h>
 #include <hash.h>
 #include <quotearg.h>
@@ -990,7 +991,7 @@ handle_option (const char *str, struct name_elt const *ent)
   int i;
   struct option_locus loc;
 
-  while (*str && isspace (*str))
+  while (*str && c_isspace (*str))
     ++str;
   if (*str != '-')
     return 1;

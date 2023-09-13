@@ -1,4 +1,4 @@
-GNU tar NEWS - User visible changes. 2023-09-10
+GNU tar NEWS - User visible changes. 2023-09-12
 Please send GNU tar bug reports to <bug-tar@gnu.org>
 
 version TBD
@@ -32,6 +32,9 @@ used, command output will be parsed using strptime(3).
 ** tar no longer uses alloca, fixing an unlikely stack overflow.
 
 ** When diagnosing invalid extended headers tar now quotes control characters.
+
+** Transformations that change case (e.g., --transform='s/.*/\L&/')
+   now work correctly with multi-byte characters.
 
 
 version 1.35 - Sergey Poznyakoff, 2023-07-18

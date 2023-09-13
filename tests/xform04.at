@@ -1,0 +1,48 @@
+# Process this file with autom4te to create testsuite. -*- Autotest -*-
+
+# Test suite for GNU tar.
+# Copyright 2023 Free Software Foundation, Inc.
+
+# This file is part of GNU tar.
+
+# GNU tar is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+
+# GNU tar is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# Transformations can change the number of bytes when downcasing.
+
+AT_SETUP([transformations and multi-byte downcasing])
+AT_KEYWORDS([transform xform xform04])
+
+AT_TAR_CHECK([
+if test "`(locale charmap) 2>/dev/null`" != UTF-8; then
+  for locale in en_US.UTF-8 `(locale -a) 2>/dev/null` not-found; do
+    case $locale in
+      *.[[Uu][Tt][Ff]]*8)
+	if test "`(LC_ALL=$locale locale charmap) 2>/dev/null`" = UTF-8; then
+	  LC_ALL=$locale
+	  export LC_ALL
+	  break
+	fi;;
+      not-found)
+	AT_SKIP_TEST;;
+    esac
+  done
+fi
+
+genfile --file Aa.Ⱥⱥ
+tar -cvf /dev/null --transform='s/.*/\L&-\U&/' --show-transformed-name Aa.Ⱥⱥ],
+[0],
+[aa.ⱥⱥ-AA.ȺȺ
+])
+
+AT_CLEANUP

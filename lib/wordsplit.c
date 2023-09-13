@@ -18,8 +18,9 @@
 # include <config.h>
 #endif
 
+#include <wordsplit.h>
+
 #include <errno.h>
-#include <ctype.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,6 +28,8 @@
 #include <stdarg.h>
 #include <pwd.h>
 #include <glob.h>
+
+#include <c-ctype.h>
 
 #if ENABLE_NLS
 # include <gettext.h>
@@ -36,22 +39,12 @@
 #define _(msgid) gettext (msgid)
 #define N_(msgid) msgid
 
-#include <wordsplit.h>
-
 #define ISWS(c) ((c)==' '||(c)=='\t'||(c)=='\n')
 #define ISDELIM(ws,c) \
   (strchr ((ws)->ws_delim, (c)) != NULL)
-#define ISPUNCT(c) (strchr("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~",(c))!=NULL)
-#define ISUPPER(c) ('A' <= ((unsigned) (c)) && ((unsigned) (c)) <= 'Z')
-#define ISLOWER(c) ('a' <= ((unsigned) (c)) && ((unsigned) (c)) <= 'z')
-#define ISALPHA(c) (ISUPPER(c) || ISLOWER(c))
-#define ISDIGIT(c) ('0' <= ((unsigned) (c)) && ((unsigned) (c)) <= '9')
-#define ISXDIGIT(c) (strchr("abcdefABCDEF", c)!=NULL)
-#define ISALNUM(c) (ISALPHA(c) || ISDIGIT(c))
-#define ISPRINT(c) (' ' <= ((unsigned) (c)) && ((unsigned) (c)) <= 127)
 
-#define ISVARBEG(c) (ISALPHA(c) || c == '_')
-#define ISVARCHR(c) (ISALNUM(c) || c == '_')
+#define ISVARBEG(c) (c_isalpha (c) || c == '_')
+#define ISVARCHR(c) (c_isalnum (c) || c == '_')
 
 #define WSP_RETURN_DELIMS(wsp) \
  ((wsp)->ws_flags & WRDSF_RETURN_DELIMS || ((wsp)->ws_options & WRDSO_MAXWORDS))
@@ -1891,7 +1884,7 @@ skip_sed_expr (const char *command, size_t i, size_t len)
 
       if (command[i] == ';')
 	i++;
-      if (!(command[i] == 's' && i + 3 < len && ISPUNCT (command[i + 1])))
+      if (!(command[i] == 's' && i + 3 < len && c_ispunct (command[i + 1])))
 	break;
 
       delim = command[++i];
@@ -1900,7 +1893,7 @@ skip_sed_expr (const char *command, size_t i, size_t len)
 	{
 	  if (state == 3)
 	    {
-	      if (command[i] == delim || !ISALNUM (command[i]))
+	      if (command[i] == delim || !c_isalnum (command[i]))
 		break;
 	    }
 	  else if (command[i] == '\\')
@@ -1987,7 +1980,7 @@ scan_word (struct wordsplit *wsp, size_t start, int consume_all)
   start = i;
 
   if (wsp->ws_flags & WRDSF_SED_EXPR
-      && command[i] == 's' && i + 3 < len && ISPUNCT (command[i + 1]))
+      && command[i] == 's' && i + 3 < len && c_ispunct (command[i + 1]))
     {
       flags = _WSNF_SEXP;
       i = skip_sed_expr (command, i, len);
@@ -2080,7 +2073,7 @@ scan_word (struct wordsplit *wsp, size_t start, int consume_all)
 }
 
 #define to_num(c) \
-  (ISDIGIT(c) ? c - '0' : (ISXDIGIT(c) ? toupper(c) - 'A' + 10 : 255 ))
+  (c_isdigit(c) ? c - '0' : c_isxdigit (c) ? c_toupper (c) - 'A' + 10 : 255)
 
 static int
 xtonum (int *pval, const char *src, int base, int cnt)
@@ -2113,7 +2106,7 @@ wordsplit_c_quoted_length (const char *str, int quote_hex, int *quote)
 	len++;
       else if (*str == '"')
 	len += 2;
-      else if (*str != '\t' && *str != '\\' && ISPRINT (*str))
+      else if (*str != '\t' && *str != '\\' && c_isprint (*str))
 	len++;
       else if (quote_hex)
 	len += 3;
@@ -2201,7 +2194,7 @@ wordsplit_string_unquote_copy (struct wordsplit *ws, int inquote,
 		}
 	    }
 	  else if (WRDSO_ESC_TEST (ws, inquote, WRDSO_OESC)
-		   && (unsigned char) src[i] < 128 && ISDIGIT (src[i]))
+		   && c_isdigit (src[i]))
 	    {
 	      if (n - i < 1)
 		{
@@ -2251,7 +2244,7 @@ wordsplit_c_quote_copy (char *dst, const char *src, int quote_hex)
 	  *dst++ = '\\';
 	  *dst++ = *src;
 	}
-      else if (*src != '\t' && *src != '\\' && ISPRINT (*src))
+      else if (*src != '\t' && *src != '\\' && c_isprint (*src))
 	*dst++ = *src;
       else
 	{

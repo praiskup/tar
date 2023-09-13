@@ -18,6 +18,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include <system.h>
+#include <c-ctype.h>
 #include <hash.h>
 #include <quotearg.h>
 #include "common.h"
@@ -1132,7 +1133,7 @@ read_num (FILE *fp, char const *fieldname,
   int c = getc (fp);
   bool negative = c == '-';
 
-  for (i = 0; (i == 0 && negative) || ISDIGIT (c); i++)
+  for (i = 0; (i == 0 && negative) || c_isdigit (c); i++)
     {
       buf[i] = c;
       if (i == sizeof buf - 1)

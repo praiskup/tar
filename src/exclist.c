@@ -18,6 +18,7 @@
    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include <system.h>
+#include <c-ctype.h>
 #include <quotearg.h>
 #include <flexmember.h>
 #include <fnmatch.h>
@@ -219,7 +220,7 @@ static void
 git_addfn (struct exclude *ex, char const *pattern, int options,
 	   MAYBE_UNUSED void *data)
 {
-  while (isspace (*pattern))
+  while (c_isspace (*pattern))
     ++pattern;
   if (*pattern == 0 || *pattern == '#')
     return;
@@ -232,7 +233,7 @@ static void
 bzr_addfn (struct exclude *ex, char const *pattern, int options,
 	   MAYBE_UNUSED void *data)
 {
-  while (isspace (*pattern))
+  while (c_isspace (*pattern))
     ++pattern;
   if (*pattern == 0 || *pattern == '#')
     return;
@@ -269,13 +270,13 @@ hg_addfn (struct exclude *ex, char const *pattern, int options, void *data)
   int *hgopt = data;
   size_t len;
 
-  while (isspace (*pattern))
+  while (c_isspace (*pattern))
     ++pattern;
   if (*pattern == 0 || *pattern == '#')
     return;
   if (strncmp (pattern, "syntax:", 7) == 0)
     {
-      for (pattern += 7; isspace (*pattern); ++pattern)
+      for (pattern += 7; c_isspace (*pattern); ++pattern)
 	;
       if (strcmp (pattern, "regexp") == 0)
 	/* FIXME: Regexps must be perl-style */

@@ -16,6 +16,7 @@
 
 #include <system.h>
 #include <regex.h>
+#include <mcel.h>
 #include "common.h"
 
 enum transform_type
@@ -416,50 +417,43 @@ set_transform_expr (const char *expr)
     expr = parse_transform_expr (expr);
 }
 
-/* Run case conversion specified by CASE_CTL on array PTR of SIZE
-   characters. Returns pointer to statically allocated storage. */
-static char *
-run_case_conv (enum case_ctl_type case_ctl, char *ptr, size_t size)
-{
-  static char *case_ctl_buffer;
-  static size_t case_ctl_bufsize;
-  char *p;
-
-  if (case_ctl_bufsize < size)
-    {
-      case_ctl_bufsize = size;
-      case_ctl_buffer = xrealloc (case_ctl_buffer, case_ctl_bufsize);
-    }
-  memcpy (case_ctl_buffer, ptr, size);
-  switch (case_ctl)
-    {
-    case ctl_upcase_next:
-      case_ctl_buffer[0] = toupper ((unsigned char) case_ctl_buffer[0]);
-      break;
-
-    case ctl_locase_next:
-      case_ctl_buffer[0] = tolower ((unsigned char) case_ctl_buffer[0]);
-      break;
-
-    case ctl_upcase:
-      for (p = case_ctl_buffer; p < case_ctl_buffer + size; p++)
-	*p = toupper ((unsigned char) *p);
-      break;
-
-    case ctl_locase:
-      for (p = case_ctl_buffer; p < case_ctl_buffer + size; p++)
-	*p = tolower ((unsigned char) *p);
-      break;
-
-    case ctl_stop:
-      break;
-    }
-  return case_ctl_buffer;
-}
-
 
 static struct obstack stk;
 static bool stk_init;
+
+/* Run case conversion specified by CASE_CTL on array PTR of SIZE
+   characters.  Append the result to STK.  */
+static void
+run_case_conv (enum case_ctl_type case_ctl, char *ptr, size_t size)
+{
+  char const *p = ptr, *plim = ptr + size;
+  mbstate_t mbs; mbszero (&mbs);
+  while (p < plim)
+    {
+      mcel_t g = mcel_scan (p, plim);
+      char32_t ch;
+      switch (case_ctl)
+	{
+	case ctl_upcase: case ctl_upcase_next: ch = c32toupper (g.ch); break;
+	case ctl_locase: case ctl_locase_next: ch = c32tolower (g.ch); break;
+	default: ch = g.ch; break;
+	}
+      if (ch == g.ch)
+	obstack_grow (&stk, p, g.len);
+      else
+	{
+	  obstack_make_room (&stk, MB_LEN_MAX);
+	  mbstate_t ombs; mbszero (&ombs);
+	  size_t outbytes = c32rtomb (obstack_next_free (&stk), ch, &ombs);
+	  obstack_blank_fast (&stk, outbytes);
+	}
+      p += g.len;
+      if (case_ctl != ctl_upcase && case_ctl != ctl_locase)
+	break;
+    }
+
+  obstack_grow (&stk, p, plim - p);
+}
 
 static void
 _single_transform_name_to_obstack (struct transform *tf, char *input)
@@ -483,7 +477,6 @@ _single_transform_name_to_obstack (struct transform *tf, char *input)
   while (*input)
     {
       size_t disp;
-      char *ptr;
 
       rc = regexec (&tf->regex, input, tf->regex.re_nsub + 1, rmp, 0);
 
@@ -509,16 +502,10 @@ _single_transform_name_to_obstack (struct transform *tf, char *input)
 	      switch (segm->type)
 		{
 		case segm_literal:    /* Literal segment */
-		  if (case_ctl == ctl_stop)
-		    ptr = segm->v.literal.ptr;
-		  else
-		    {
-		      ptr = run_case_conv (case_ctl,
-					   segm->v.literal.ptr,
-					   segm->v.literal.size);
-		      CASE_CTL_RESET();
-		    }
-		  obstack_grow (&stk, ptr, segm->v.literal.size);
+		  run_case_conv (case_ctl,
+				 segm->v.literal.ptr,
+				 segm->v.literal.size);
+		  CASE_CTL_RESET ();
 		  break;
 
 		case segm_backref:    /* Back-reference segment */
@@ -527,14 +514,9 @@ _single_transform_name_to_obstack (struct transform *tf, char *input)
 		    {
 		      size_t size = rmp[segm->v.ref].rm_eo
 			              - rmp[segm->v.ref].rm_so;
-		      ptr = input + rmp[segm->v.ref].rm_so;
-		      if (case_ctl != ctl_stop)
-			{
-			  ptr = run_case_conv (case_ctl, ptr, size);
-			  CASE_CTL_RESET();
-			}
-
-		      obstack_grow (&stk, ptr, size);
+		      run_case_conv (case_ctl,
+				     input + rmp[segm->v.ref].rm_so, size);
+		      CASE_CTL_RESET ();
 		    }
 		  break;
 

@@ -24,6 +24,10 @@ argp
 argp-version-etc
 attribute
 backupfile
+c-ctype
+c32rtomb
+c32tolower
+c32toupper
 closeout
 configmake
 dirname
@@ -63,6 +67,7 @@ lchown
 linkat
 localcharset
 manywarnings
+mbrtoc32-regular
 mcel-prefer
 mkdirat
 mkdtemp
