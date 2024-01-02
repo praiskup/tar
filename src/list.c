@@ -1,6 +1,6 @@
 /* List a tar archive, with support routines for reading a tar archive.
 
-   Copyright 1988-2023 Free Software Foundation, Inc.
+   Copyright 1988-2024 Free Software Foundation, Inc.
 
    This file is part of GNU tar.
 
