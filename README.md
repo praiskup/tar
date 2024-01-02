@@ -13,4 +13,8 @@ Copr [repository](https://copr.fedorainfracloud.org/coprs/praiskup/tar-upstream-
     $ sudo dnf copr enable praiskup/tar-upstream-head
     $ sudo dnf copr update tar
 
+Opening a pull request against the `ci` branch also triggers an RPM build.  You
+can view the existing proposals awaiting upstream merge in the [pull
+requests](https://github.com/praiskup/tar/pulls).
+
 RPM Build Status: [![badge](https://copr.fedorainfracloud.org/coprs/praiskup/tar-upstream-head/package/tar/status_image/last_build.png)](https://copr.fedorainfracloud.org/coprs/praiskup/tar-upstream-head/package/tar/)
