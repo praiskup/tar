@@ -34,7 +34,7 @@ MYGRP=$(id -gn) || AT_SKIP_TEST
 
 mkdir dir
 # Ensure correct group id on BSDs.
-chown :$MYGID dir >/dev/null 2>/dev/null
+chown :$MYGID dir || AT_SKIP_TEST
 genfile --file dir/file
 
 
@@ -74,4 +74,3 @@ OK
 AT_CLEANUP
 
 m4_popdef([TESTOP])
-
