@@ -39,6 +39,8 @@ if test "`(locale charmap) 2>/dev/null`" != UTF-8; then
   done
 fi
 
+expr Aa.Ⱥⱥ : 'Aa\.[[:print:]][[:print:]]$' >/dev/null || AT_SKIP_TEST
+
 genfile --file Aa.Ⱥⱥ
 tar -cvf /dev/null --transform='s/.*/\L&-\U&/' --show-transformed-name Aa.Ⱥⱥ],
 [0],
