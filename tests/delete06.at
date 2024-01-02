@@ -38,8 +38,6 @@ tar --delete 'b/' -f trunc.tar
 ],
 [2],
 [],
-[tar: lseek: trunc.tar: Value too large for defined data type
-tar: Exiting with failure status due to previous errors
-],[],[],[gnu, pax])
+[stderr],[],[],[gnu, pax])
 
 AT_CLEANUP
