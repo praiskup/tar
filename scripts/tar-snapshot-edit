@@ -1,6 +1,6 @@
 #! /usr/bin/perl -w
 # Display and edit the 'dev' field in tar's snapshots
-# Copyright 2007-2023 Free Software Foundation, Inc.
+# Copyright 2007-2024 Free Software Foundation, Inc.
 
 # This file is part of GNU tar.
 

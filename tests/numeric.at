@@ -1,6 +1,6 @@
 # Process this file with autom4te to create testsuite. -*- Autotest -*-
 # Test suite for GNU tar.
-# Copyright 2015-2023 Free Software Foundation, Inc.
+# Copyright 2015-2024 Free Software Foundation, Inc.
 #
 # GNU tar is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ MYGRP=$(id -gn) || AT_SKIP_TEST
 
 mkdir dir
 # Ensure correct group id on BSDs.
-chown :$MYGID dir >/dev/null 2>/dev/null
+chown :$MYGID dir || AT_SKIP_TEST
 genfile --file dir/file
 
 
@@ -74,4 +74,3 @@ OK
 AT_CLEANUP
 
 m4_popdef([TESTOP])
-

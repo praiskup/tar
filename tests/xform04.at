@@ -1,7 +1,7 @@
 # Process this file with autom4te to create testsuite. -*- Autotest -*-
 
 # Test suite for GNU tar.
-# Copyright 2023 Free Software Foundation, Inc.
+# Copyright 2023-2024 Free Software Foundation, Inc.
 
 # This file is part of GNU tar.
 
@@ -38,6 +38,8 @@ if test "`(locale charmap) 2>/dev/null`" != UTF-8; then
     esac
   done
 fi
+
+expr Aa.Ⱥⱥ : 'Aa\.[[:print:]][[:print:]]$' >/dev/null || AT_SKIP_TEST
 
 genfile --file Aa.Ⱥⱥ
 tar -cvf /dev/null --transform='s/.*/\L&-\U&/' --show-transformed-name Aa.Ⱥⱥ],

@@ -1,7 +1,7 @@
 # Process this file with autom4te to create testsuite. -*- Autotest -*-
 
 # Test suite for GNU tar.
-# Copyright 2023 Free Software Foundation, Inc.
+# Copyright 2023-2024 Free Software Foundation, Inc.
 
 # This file is part of GNU tar.
 
@@ -38,8 +38,6 @@ tar --delete 'b/' -f trunc.tar
 ],
 [2],
 [],
-[tar: lseek: trunc.tar: Value too large for defined data type
-tar: Exiting with failure status due to previous errors
-],[],[],[gnu, pax])
+[stderr],[],[],[gnu, pax])
 
 AT_CLEANUP

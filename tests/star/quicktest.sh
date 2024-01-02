@@ -1,6 +1,6 @@
 #! /bin/sh
 # This file is part of GNU tar testsuite.
-# Copyright 2004-2023 Free Software Foundation, Inc.
+# Copyright 2004-2024 Free Software Foundation, Inc.
 
 # This file is part of GNU tar.
 
