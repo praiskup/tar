@@ -968,7 +968,8 @@ bool transform_name_fp (char **pinput, int type,
 bool transform_program_p (void);
 
 /* Module suffix.c */
-void set_compression_program_by_suffix (const char *name, const char *defprog);
+void set_compression_program_by_suffix (const char *name, const char *defprog,
+					bool verbose);
 char *strip_compression_suffix (const char *name);
 
 /* Module checkpoint.c */

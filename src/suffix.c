@@ -52,47 +52,61 @@ static struct compression_suffix compression_suffixes[] = {
 #undef __CAT2__
 };
 
+/* Extract the suffix from archive file NAME, and return a pointer to
+   compression_suffix associated with it or NULL if none is found.
+   No matter what is the return value, if RET_LEN is not NULL, store
+   there the length of NAME with that suffix stripped, or 0 if NAME has
+   no suffix. */
 static struct compression_suffix const *
 find_compression_suffix (const char *name, size_t *ret_len)
 {
   char *suf = strrchr (name, '.');
 
-  if (suf)
+  if (suf && suf[1] != 0 && suf[1] != '/')
     {
       size_t len;
       struct compression_suffix *p;
 
       suf++;
       len = strlen (suf);
+      if (ret_len)
+	*ret_len = strlen (name) - len - 1;
 
       for (p = compression_suffixes; p->suffix; p++)
 	{
 	  if (p->length == len && memcmp (p->suffix, suf, len) == 0)
 	    {
-	      if (ret_len)
-		*ret_len = strlen (name) - len - 1;
 	      return p;
 	    }
 	}
     }
+  else if (ret_len)
+    *ret_len = 0;
   return NULL;
 }
 
-static const char *
-find_compression_program (const char *name, const char *defprog)
-{
-  struct compression_suffix const *p = find_compression_suffix (name, NULL);
-  if (p)
-    return p->program;
-  return defprog;
-}
-
+/* Select compression program using the suffix of the archive file NAME.
+   Use DEFPROG, if there is no suffix, or if no program is associated with
+   the suffix.  In the latter case, if VERBOSE is true, issue a warning.
+ */
 void
-set_compression_program_by_suffix (const char *name, const char *defprog)
+set_compression_program_by_suffix (const char *name, const char *defprog,
+				   bool verbose)
 {
-  const char *program = find_compression_program (name, defprog);
-  if (program)
-    use_compress_program_option = program;
+  size_t len;
+  struct compression_suffix const *p = find_compression_suffix (name, &len);
+  if (p)
+    use_compress_program_option = p->program;
+  else
+    {
+      use_compress_program_option = defprog;
+      if (len > 0 && verbose)
+	WARN ((0, 0,
+	       _("no compression program is defined for suffix '%s';"
+		 " assuming %s"),
+	       name + len,
+	       defprog ? defprog : "uncompressed archive"));
+    }
 }
 
 char *

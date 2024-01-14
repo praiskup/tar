@@ -455,7 +455,8 @@ open_compressed_archive (void)
             case ct_none:
               if (shortfile)
                 ERROR ((0, 0, _("This does not look like a tar archive")));
-              set_compression_program_by_suffix (archive_name_array[0], NULL);
+              set_compression_program_by_suffix (archive_name_array[0], NULL,
+						 false);
               if (!use_compress_program_option)
 		return archive;
               break;

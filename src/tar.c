@@ -2691,7 +2691,8 @@ decode_options (int argc, char **argv)
       if (args.compress_autodetect && archive_names
 	  && strcmp (archive_name_array[0], "-"))
 	set_compression_program_by_suffix (archive_name_array[0],
-					   use_compress_program_option);
+					   use_compress_program_option,
+					   true);
       break;
 
     case EXTRACT_SUBCOMMAND:
