@@ -2721,7 +2721,7 @@ The patterns affect only the directory itself.  @xref{exclude}.
 @item --exclude-ignore-recursive=@var{file}
 Before dumping a directory, @command{tar} checks if it contains
 @var{file}.  If so, exclusion patterns are read from this file.
-The patterns affect the directory and all itssubdirectories.
+The patterns affect the directory and all its subdirectories.
 @xref{exclude}.
 
 @opsummary{exclude-tag}
