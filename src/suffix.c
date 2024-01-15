@@ -31,6 +31,7 @@ static struct compression_suffix compression_suffixes[] = {
 #define S(s,p) #s, sizeof (#s) - 1, __CAT2__(p,_PROGRAM)
   { "tar", 3, NULL },
   { S(gz,   GZIP) },
+  { S(z,    GZIP) },
   { S(tgz,  GZIP) },
   { S(taz,  GZIP) },
   { S(Z,    COMPRESS) },
@@ -43,6 +44,7 @@ static struct compression_suffix compression_suffixes[] = {
   { S(lzma, LZMA) },
   { S(tlz,  LZMA) },
   { S(lzo,  LZOP) },
+  { S(tzo,  LZOP) },
   { S(xz,   XZ) },
   { S(txz,  XZ) }, /* Slackware */
   { S(zst,  ZSTD) },
