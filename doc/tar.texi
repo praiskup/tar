@@ -8218,9 +8218,19 @@ that match the following shell globbing patterns:
 @findex exclude-caches
 When creating an archive, the @option{--exclude-caches} option family
 causes @command{tar} to exclude all directories that contain a @dfn{cache
-directory tag}. A cache directory tag is a short file with the
-well-known name @file{CACHEDIR.TAG} and having a standard header
-specified in @url{http://www.brynosaurus.com/cachedir/spec.html}.
+directory tag}. A cache directory tag is a regular file with the
+well-known name @file{CACHEDIR.TAG} whose first 43 octets
+consist of the following ASCII header string:
+
+@example
+Signature: 8a477f597d28d172789f06886806bc55
+@end example
+
+Any remaining bytes are not relevant, in particular the signature
+string does not have to be followed by an LF or CR/LF pair@footnote{The
+cache directory tagging specification is set forth in
+@url{https://bford.info/cachedir/}}.
+
 Various applications write cache directory tags into directories they
 use to hold regenerable, non-precious data, so that such data can be
 more easily excluded from backups.

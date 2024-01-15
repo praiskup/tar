@@ -13,7 +13,7 @@
 .\"
 .\" You should have received a copy of the GNU General Public License
 .\" along with this program.  If not, see <http://www.gnu.org/licenses/>.
-.TH TAR 1 "July 11, 2022" "TAR" "GNU TAR Manual"
+.TH TAR 1 "January 15, 2024" "TAR" "GNU TAR Manual"
 .SH NAME
 tar \- an archiving utility
 .SH SYNOPSIS
@@ -876,7 +876,14 @@ Exclude backup and lock files.
 .TP
 \fB\-\-exclude\-caches\fR
 Exclude contents of directories containing file \fBCACHEDIR.TAG\fR,
-except for the tag file itself.
+except for the tag file itself.  The \fBCACHEDIR.TAG\fR file must be
+a regular file whose content begins with the following 43 characters:
+.IP
+.RS
+.EX
+Signature: 8a477f597d28d172789f06886806bc55
+.EE
+.RE
 .TP
 \fB\-\-exclude\-caches\-all\fR
 Exclude directories containing file \fBCACHEDIR.TAG\fR and the file itself.
