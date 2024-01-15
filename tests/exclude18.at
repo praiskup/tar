@@ -28,7 +28,7 @@
 # extracting.
 
 AT_SETUP([--exclude-vcs extract list compare])
-AT_KEYWORDS([exclude-vcs extract list compare exclude18])
+AT_KEYWORDS([exclude exclude-vcs extract list compare exclude18])
 
 AT_TAR_CHECK([
 AT_SORT_PREREQ

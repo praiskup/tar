@@ -118,8 +118,7 @@ info_attach_exclist (struct tar_stat_info *dir)
 
 	  ent = xmalloc (sizeof (*ent));
 	  ent->excluded = ex;
-	  ent->flags = file->flags == EXCL_DEFAULT
-	               ? file->flags : vcsfile->flags;
+	  ent->flags = file->flags;
 	  ent->prev = tail;
 	  ent->next = NULL;
 
@@ -333,5 +332,5 @@ exclude_vcs_ignores (void)
   struct vcs_ignore_file *p;
 
   for (p = vcs_ignore_files; p->filename; p++)
-    excfile_add (p->filename, EXCL_DEFAULT);
+    excfile_add (p->filename, p->flags);
 }
