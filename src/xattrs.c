@@ -447,8 +447,9 @@ acls_one_line (const char *prefix, char delim,
 }
 
 void
-xattrs_acls_get (int parentfd, char const *file_name,
-		 struct tar_stat_info *st, int xisfile)
+xattrs_acls_get (MAYBE_UNUSED int parentfd, MAYBE_UNUSED char const *file_name,
+		 MAYBE_UNUSED struct tar_stat_info *st,
+		 MAYBE_UNUSED int xisfile)
 {
   if (acls_option > 0)
     {
@@ -477,8 +478,8 @@ xattrs_acls_get (int parentfd, char const *file_name,
 }
 
 void
-xattrs_acls_set (struct tar_stat_info const *st,
-                 char const *file_name, char typeflag)
+xattrs_acls_set (MAYBE_UNUSED struct tar_stat_info const *st,
+                 MAYBE_UNUSED char const *file_name, char typeflag)
 {
   if (acls_option > 0 && typeflag != SYMTYPE)
     {
@@ -640,8 +641,8 @@ xattrs__fd_set (char const *file_name, char typeflag,
 /* lgetfileconat is called against FILE_NAME iff the FD parameter is set to
    zero, otherwise the fgetfileconat is used against correct file descriptor */
 void
-xattrs_selinux_get (int parentfd, char const *file_name,
-                    struct tar_stat_info *st, int fd)
+xattrs_selinux_get (MAYBE_UNUSED int parentfd, MAYBE_UNUSED char const *file_name,
+                    MAYBE_UNUSED struct tar_stat_info *st, MAYBE_UNUSED int fd)
 {
   if (selinux_context_option > 0)
     {
@@ -662,8 +663,8 @@ xattrs_selinux_get (int parentfd, char const *file_name,
 }
 
 void
-xattrs_selinux_set (struct tar_stat_info const *st,
-                    char const *file_name, char typeflag)
+xattrs_selinux_set (MAYBE_UNUSED struct tar_stat_info const *st,
+                    MAYBE_UNUSED char const *file_name, MAYBE_UNUSED char typeflag)
 {
   if (selinux_context_option > 0)
     {
