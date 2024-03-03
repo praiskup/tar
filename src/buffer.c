@@ -1072,6 +1072,11 @@ seek_archive (off_t size)
   off_t start = current_block_ordinal ();
   off_t offset;
   off_t nrec, nblk;
+
+  /* If low level I/O is already at EOF, do not try to seek further.  */
+  if (record_end < record_start + blocking_factor)
+    return 0;
+
   off_t skipped = (blocking_factor - (current_block - record_start))
                   * BLOCKSIZE;
 
