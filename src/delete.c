@@ -139,11 +139,9 @@ write_recent_bytes (char *data, size_t bytes)
 static void
 flush_file (void)
 {
-  off_t blocks_to_skip;
-
   set_next_block_after (current_header);
-  blocks_to_skip = (current_stat_info.stat.st_size
-			  + BLOCKSIZE - 1) / BLOCKSIZE;
+  off_t size = current_stat_info.stat.st_size;
+  off_t blocks_to_skip = size / BLOCKSIZE + (size % BLOCKSIZE != 0);
 
   while (record_end - current_block <= blocks_to_skip)
     {
