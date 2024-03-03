@@ -149,7 +149,7 @@ flush_file (void)
       flush_archive ();
       if (record_end == current_block)
 	/* Hit EOF */
-	break;
+	return;
     }
   current_block += blocks_to_skip;
 }
