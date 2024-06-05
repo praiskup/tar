@@ -136,6 +136,7 @@ TESTSUITE_AT = \
  extrac24.at\
  extrac25.at\
  extrac26.at\
+ extrac27.at\
  filerem01.at\
  filerem02.at\
  grow.at\

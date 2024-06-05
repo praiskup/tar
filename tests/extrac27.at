@@ -1,0 +1,46 @@
+# Test suite for GNU tar.                             -*- autotest -*-
+# Copyright 2024 Free Software Foundation, Inc.
+#
+# This file is part of GNU tar.
+#
+# GNU tar is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# GNU tar is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# Description: When called with --keep-newer-files, tar 1.35 issued
+# spurious diagnostic message:
+#
+#   Unexpected inconsistency when making directory.
+#
+# during extraction of ".".
+#
+# References: https://savannah.gnu.org/bugs/?65838
+
+AT_SETUP([extract current dir with --keep-newer-files])
+AT_KEYWORDS([extract extrac27])
+AT_TAR_CHECK([
+mkdir dir
+touch dir/file
+tar cf a.tar -C dir .
+
+mkdir ext
+tar xv --keep-newer-files -f a.tar -C ext
+],
+[0],
+[./
+./file
+])
+AT_CLEANUP
+
+
+
+
