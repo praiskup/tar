@@ -13,7 +13,7 @@
 .\"
 .\" You should have received a copy of the GNU General Public License
 .\" along with this program.  If not, see <http://www.gnu.org/licenses/>.
-.TH TAR 1 "January 15, 2024" "TAR" "GNU TAR Manual"
+.TH TAR 1 "June 7, 2024" "TAR" "GNU TAR Manual"
 .SH NAME
 tar \- an archiving utility
 .SH SYNOPSIS
@@ -21,7 +21,6 @@ tar \- an archiving utility
 \fBtar\fR {\fBA\fR|\fBc\fR|\fBd\fR|\fBr\fR|\fBt\fR|\fBu\fR|\fBx\fR}\
 [\fBGnSkUWOmpsMBiajJzZhPlRvwo\fR] [\fIARG\fR...]
 .SS UNIX-style usage
-.sp
 \fBtar\fR \fB\-A\fR [\fIOPTIONS\fR] \fB\-f\fR \fIARCHIVE\fR \fIARCHIVE\fR...
 .sp
 \fBtar\fR \fB\-c\fR [\fB\-f\fR \fIARCHIVE\fR] [\fIOPTIONS\fR] [\fIFILE\fR...]
@@ -36,7 +35,6 @@ tar \- an archiving utility
 .sp
 \fBtar\fR \fB\-x\fR [\fB\-f\fR \fIARCHIVE\fR] [\fIOPTIONS\fR] [\fIMEMBER\fR...]
 .SS GNU-style usage
-.sp
 \fBtar\fR {\fB\-\-catenate\fR|\fB\-\-concatenate\fR} [\fIOPTIONS\fR] \fB\-\-file\fR \fIARCHIVE\fR \fIARCHIVE\fR...
 .sp
 \fBtar\fR \fB\-\-create\fR [\fB\-\-file\fR \fIARCHIVE\fR] [\fIOPTIONS\fR] [\fIFILE\fR...]
@@ -83,11 +81,9 @@ GNU
 .B tar
 is an archiving program designed to store multiple files in a single
 file (an \fBarchive\fR), and to manipulate such archives.  The archive
-can be either a regular file or a device (e.g. a tape drive, hence the name
+can be either a regular file or a device (e.g., a tape drive, hence the name
 of the program, which stands for \fBt\fRape \fBar\fRchiver), which can
 be located either on the local or on a remote machine.
-.PP
-
 .SS Option styles
 Options to GNU \fBtar\fR can be given in three different styles.
 In
@@ -122,20 +118,20 @@ argument must follow the option letter without any intervening
 whitespace, as in \fB\-g/tmp/snar.db\fR.
 .PP
 Any number of options not taking arguments can be
-clustered together after a single dash, e.g. \fB\-vkp\fR.  An option
+clustered together after a single dash, e.g.\& \fB\-vkp\fR.  An option
 that takes an argument (whether mandatory or optional) can appear at
-the end of such a cluster, e.g. \fB\-vkpf a.tar\fR.
+the end of such a cluster, e.g.\& \fB\-vkpf a.tar\fR.
 .PP
 The example command above written in the
 .B short-option style
 could look like:
 .PP
 .EX
-tar -cvf etc.tar /etc
+tar \-cvf etc.tar /etc
 .EE
 or
 .EX
-tar -c -v -f etc.tar /etc
+tar \-c \-v \-f etc.tar /etc
 .EE
 .PP
 In
@@ -152,11 +148,11 @@ method.
 Here are several ways of writing the example command in this style:
 .PP
 .EX
-tar --create --file etc.tar --verbose /etc
+tar \-\-create \-\-file etc.tar \-\-verbose /etc
 .EE
 or (abbreviating some options):
 .EX
-tar --cre --file=etc.tar --verb /etc
+tar \-\-cre \-\-file=etc.tar \-\-verb /etc
 .EE
 .PP
 The options in all three styles can be intermixed, although doing so
@@ -228,7 +224,6 @@ same name, corresponding to various versions of the same file.
 Extract files from an archive.  Arguments are optional.  When given,
 they specify names of the archive members to be extracted.
 .TP
-.TP
 \fB\-\-show\-defaults\fR
 Show built-in defaults for various \fBtar\fR options and exit.
 .TP
@@ -281,7 +276,7 @@ the snapshot file before dumping, thereby forcing a level 0 dump.
 Assume the archive is seekable.  Normally \fBtar\fR determines
 automatically whether the archive can be seeked or not.  This option
 is intended for use in cases when such recognition fails.  It takes
-effect only if the archive is open for reading (e.g. with
+effect only if the archive is open for reading (e.g., with
 .B \-\-list
 or
 .B \-\-extract
@@ -447,7 +442,7 @@ GNU \fBtar\fR version number.
 The name of the archive \fBtar\fR is processing.
 .TP
 .B TAR_BLOCKING_FACTOR
-Current blocking factor, i.e. number of 512-byte blocks in a record.
+Current blocking factor, i.e., number of 512-byte blocks in a record.
 .TP
 .B TAR_VOLUME
 Ordinal number of the volume \fBtar\fR is processing (set if
@@ -597,7 +592,7 @@ Disable POSIX ACLs support.
 .B \-\-selinux
 Enable SELinux context support.
 .TP
-.B \-\-no-selinux
+.B \-\-no\-selinux
 Disable SELinux context support.
 .TP
 .B \-\-xattrs
@@ -608,7 +603,7 @@ Disable extended attributes support.
 .TP
 .BI \-\-xattrs\-exclude= PATTERN
 Specify the exclude pattern for xattr keys.  \fIPATTERN\fR is a globbing
-pattern, e.g. \fB\-\-xattrs\-exclude='user.*'\fR to include only
+pattern, e.g.\& \fB\-\-xattrs\-exclude='user.*'\fR to include only
 attributes from the user namespace.
 .TP
 .BI \-\-xattrs\-include= PATTERN
@@ -631,7 +626,7 @@ name or IP address, and the part after it as the file or device
 pathname, e.g.:
 
 .EX
---file=remotehost:/dev/sr0
+\-\-file=remotehost:/dev/sr0
 .EE
 
 An optional username can be prefixed to the hostname, placing a \fB@\fR
@@ -644,7 +639,7 @@ command.  Nowadays it is common to use
 instead.  You can do so by giving the following command line option:
 
 .EX
---rsh-command=/usr/bin/ssh
+\-\-rsh-command=/usr/bin/ssh
 .EE
 
 The remote machine should have the
@@ -670,7 +665,7 @@ GNU \fBtar\fR version number.
 The name of the archive \fBtar\fR is processing.
 .TP
 .B TAR_BLOCKING_FACTOR
-Current blocking factor, i.e. number of 512-byte blocks in a record.
+Current blocking factor, i.e., number of 512-byte blocks in a record.
 .TP
 .B TAR_VOLUME
 Ordinal number of the volume \fBtar\fR is processing (set if
@@ -748,7 +743,7 @@ reading archives created with the \fB\-A\fR option.
 \fB\-\-record\-size\fR=\fINUMBER\fR
 Set record size.  \fINUMBER\fR is the number of bytes per record.  It
 must be multiple of \fB512\fR.  It can can be suffixed with a \fBsize
-suffix\fR, e.g. \fB\-\-record-size=10K\fR, for 10 Kilobytes.  See the
+suffix\fR, e.g.\& \fB\-\-record-size=10K\fR, for 10 Kilobytes.  See the
 subsection
 .BR "Size suffixes" ,
 for a list of valid suffixes.
@@ -854,17 +849,15 @@ Make numbered backups if numbered backups exist, simple backups otherwise.
 .TP
 .BR never ", " simple
 Always make simple backups
-.RS
 .RE
-
+.IP
 If \fICONTROL\fR is not given, the value is taken from the
 .B VERSION_CONTROL
 environment variable.  If it is not set, \fBexisting\fR is assumed.
-.RE
 .TP
 \fB\-C\fR, \fB\-\-directory\fR=\fIDIR\fR
 Change to \fIDIR\fR before performing any operations.  This option is
-order-sensitive, i.e. it affects all options that follow.
+order-sensitive, i.e., it affects all options that follow.
 .TP
 \fB\-\-exclude\fR=\fIPATTERN\fR
 Exclude files matching \fIPATTERN\fR, a
@@ -879,6 +872,7 @@ Exclude contents of directories containing file \fBCACHEDIR.TAG\fR,
 except for the tag file itself.  The \fBCACHEDIR.TAG\fR file must be
 a regular file whose content begins with the following 43 characters:
 .IP
+
 .RS
 .EX
 Signature: 8a477f597d28d172789f06886806bc55
@@ -988,7 +982,7 @@ unless overridden by environment variable \fBSIMPLE_BACKUP_SUFFIX\fR.
 Get names to extract or create from \fIFILE\fR.
 
 Unless specified otherwise, the \fIFILE\fR must contain a list of
-names separated by ASCII \fBLF\fR (i.e. one name per line).  The
+names separated by ASCII \fBLF\fR (i.e., one name per line).  The
 names read are handled the same way as command line arguments.  They
 undergo quote removal and word splitting, and any string that starts
 with a \fB\-\fR is handled as \fBtar\fR command line option.
@@ -1011,7 +1005,7 @@ Treat each line obtained from a file list as a file name, even if it
 starts with a dash.  File lists are supplied with the
 \fB\-\-files\-from\fR (\fB\-T\fR) option.  The default behavior is to
 handle names supplied in file lists as if they were typed in the
-command line, i.e. any names starting with a dash are treated as
+command line, i.e., any names starting with a dash are treated as
 \fBtar\fR options.  The \fB\-\-verbatim\-files\-from\fR option
 disables this behavior.
 
@@ -1151,7 +1145,7 @@ Disable all warning messages.
 .B alone-zero-block
 "A lone zero block at %s"
 .HP
-Keywords applicable for \fBtar --create\fR:
+Keywords applicable for \fBtar \-\-create\fR:
 .TP
 .B cachedir
 "%s: contains a cache directory tag %s; %s"
@@ -1187,7 +1181,7 @@ keyword applies only if used together with the
 .B \-\-ignore\-failed\-read
 option.
 .HP
-Keywords applicable for \fBtar --extract\fR:
+Keywords applicable for \fBtar \-\-extract\fR:
 .TP
 .B existing\-file
 "%s: skipping existing file"
@@ -1219,7 +1213,7 @@ default (unless \fB\-\-verbose\fR is used).  A common example of what
 you can get when using this warning is:
 
 .EX
-$ tar --warning=decompress-program -x -f archive.Z
+$ tar \-\-warning=decompress-program \-x \-f archive.Z
 tar (child): cannot run compress: No such file or directory
 tar (child): trying gzip
 .EE
@@ -1256,7 +1250,6 @@ Ask for confirmation for every action.
 When creating, same as \fB\-\-old\-archive\fR.  When extracting, same
 as \fB\-\-no\-same\-owner\fR.
 .SS Size suffixes
-.sp
 .nf
 .ta 8n 18n 42n
 .ul
@@ -1272,7 +1265,6 @@ as \fB\-\-no\-same\-owner\fR.
 	T	Terabytes	\fISIZE\fR x 1024^4
 	w	Words	\fISIZE\fR x 2
 .fi
-.PP
 .SH "RETURN VALUE"
 Tar's exit code indicates whether it was able to successfully perform
 the requested operation, and if not, what kind of error occurred.
@@ -1284,10 +1276,11 @@ Successful termination.
 .I Some files differ.
 If \fBtar\fR was invoked with the \fB\-\-compare\fR (\fB\-\-diff\fR, \fB\-d\fR)
 command line option, this means that some files in the archive differ
-from their disk counterparts.  If \fBtar\fR was given one of the \fB\-\-create\fR,
-\fB\-\-append\fR or \fB\-\-update\fR options, this exit code means
-that some files were changed while being archived and so the resulting
-archive does not contain the exact copy of the file set.
+from their disk counterparts.  If \fBtar\fR was given one of the
+\fB\-\-create\fR, \fB\-\-append\fR or \fB\-\-update\fR options, this
+exit code means that some files were changed while being archived and
+so the resulting archive does not contain the exact copy of the file
+set.
 .TP
 .B 2
 .I Fatal error.
@@ -1298,7 +1291,7 @@ If a subprocess that had been invoked by
 exited with a nonzero exit code,
 .B tar
 itself exits with that code as well.  This can happen, for example, if
-a compression option (e.g. \fB\-z\fR) was used and the external
+a compression option (e.g.\& \fB\-z\fR) was used and the external
 compressor program failed.  Another example is
 .B rmt
 failure during backup to a remote device.

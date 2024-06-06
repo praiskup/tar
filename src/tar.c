@@ -1351,6 +1351,19 @@ static void
 set_old_files_option (int code, struct option_locus *loc)
 {
   struct option_locus *prev;
+  /* Option compatibility map. 0 means two options are incompatible. */
+  static bool compat_map[MAX_OLD_FILES][MAX_OLD_FILES] = {
+    [NO_OVERWRITE_DIR_OLD_FILES] = {
+      [KEEP_OLD_FILES] = 1,
+      [SKIP_OLD_FILES] = 1
+    },
+    [KEEP_OLD_FILES] = {
+      [NO_OVERWRITE_DIR_OLD_FILES] = 1
+    },
+    [SKIP_OLD_FILES] = {
+      [NO_OVERWRITE_DIR_OLD_FILES] = 1
+    }
+  };
   static char const *const code_to_opt[] = {
     "--overwrite-dir",
     "--no-overwrite-dir",
@@ -1362,7 +1375,8 @@ set_old_files_option (int code, struct option_locus *loc)
   };
 
   prev = optloc_save (OC_OLD_FILES, loc);
-  if (prev && optloc_eq (loc, prev) && code != old_files_option)
+  if (prev && optloc_eq (loc, prev) && code != old_files_option &&
+      compat_map[code][old_files_option] == 0)
     option_conflict_error (code_to_opt[code], code_to_opt[old_files_option]);
 
   old_files_option = code;

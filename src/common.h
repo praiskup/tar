@@ -191,6 +191,7 @@ enum old_files
   SKIP_OLD_FILES,             /* --skip-old-files */
   KEEP_NEWER_FILES	      /* --keep-newer-files */
 };
+#define MAX_OLD_FILES (KEEP_NEWER_FILES+1)
 GLOBAL enum old_files old_files_option;
 
 GLOBAL bool keep_directory_symlink_option;
