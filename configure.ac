@@ -179,7 +179,6 @@ if test "$gl_gcc_warnings" = yes; then
   nw="$nw -Winline"                 # It's OK to not inline.
   nw="$nw -Wstrict-overflow"	    # It's OK to optimize strictly.
   nw="$nw -Wsuggest-attribute=pure" # Too many warnings for now.
-  nw="$nw -Wsystem-headers"         # Don't let system headers trigger warnings
   nw="$nw -Wstack-protector"
 
   gl_MANYWARN_ALL_GCC([ws])
