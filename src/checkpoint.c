@@ -103,7 +103,7 @@ checkpoint_compile_action (const char *str)
       sigemptyset (&sigs);
       checkpoint_state = CHKP_COMPILE;
     }
-  
+
   if (strcmp (str, ".") == 0 || strcmp (str, "dot") == 0)
     alloc_action (cop_dot);
   else if (strcmp (str, "bell") == 0)
@@ -326,13 +326,11 @@ format_checkpoint_string (FILE *fp, size_t len,
 
 	    case 't':
 	      {
-		struct timeval tv;
-		struct tm *tm;
+		struct timespec ts = current_timespec ();
 		const char *fmt = arg ? arg : "%c";
-
-		gettimeofday (&tv, NULL);
-		tm = localtime (&tv.tv_sec);
-		len += fprintftime (fp, fmt, tm, 0, tv.tv_usec * 1000);
+		struct tm *tm = localtime (&ts.tv_sec);
+		len += (tm ? fprintftime (fp, fmt, tm, 0, ts.tv_nsec)
+			: fprintf (fp, "????""-??""-?? ??:??:??"));
 	      }
 	      break;
 
