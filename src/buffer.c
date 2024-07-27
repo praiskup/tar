@@ -55,7 +55,6 @@ static int record_index;
 int archive;
 struct timespec start_time;
 struct timespec volume_start_time;
-struct timespec last_stat_time;
 struct tar_stat_info current_stat_info;
 struct stat archive_stat;
 
@@ -68,12 +67,16 @@ enum access_mode access_mode;   /* how do we handle the archive */
 off_t records_read;             /* number of records read from this archive */
 off_t records_written;          /* likewise, for records written */
 
+/* When file status was last computed.  */
+static struct timespec last_stat_time;
+
 static off_t record_start_block; /* block ordinal at record_start */
 
 /* Where we write list messages (not errors, not interactions) to.  */
 FILE *stdlis;
 
 static void backspace_output (void);
+static _Noreturn void write_fatal_details (char const *, ssize_t, size_t);
 
 /* PID of child program, if compress_option or remote archive access.  */
 static pid_t child_pid;
@@ -1133,7 +1136,7 @@ close_archive (void)
   bufmap_free (NULL);
 }
 
-void
+static void
 write_fatal_details (char const *name, ssize_t status, size_t size)
 {
   write_error_details (name, status, size);

@@ -2350,6 +2350,13 @@ more_options (int argc, char **argv, struct option_locus *loc)
 	      NULL, &args);
 }
 
+/* Are there file names in the list?  */
+static bool
+name_more_files (void)
+{
+  return filename_args != FILES_NONE;
+}
+
 static void
 parse_default_options (struct tar_args *args)
 {

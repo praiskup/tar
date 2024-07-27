@@ -425,8 +425,6 @@ extern int archive;
 extern struct timespec start_time;        /* when we started execution */
 extern struct timespec volume_start_time; /* when the current volume was
 					     opened*/
-extern struct timespec last_stat_time;    /* when the statistics was last
-					     computed */
 
 extern struct tar_stat_info current_stat_info;
 
@@ -745,7 +743,6 @@ void file_removed_diag (const char *name, bool top_level,
 			void (*diagfn) (char const *name));
 void write_error_details (char const *name, size_t status, size_t size);
 _Noreturn void write_fatal (char const *name);
-_Noreturn void write_fatal_details (char const *name, ssize_t status, size_t size);
 
 pid_t xfork (void);
 void xpipe (int fd[2]);
@@ -769,13 +766,6 @@ extern enum files_count filename_args;
 #ifdef ARGP_ERR_UNKNOWN
 extern struct argp names_argp;
 #endif
-
-/* Return true if there are file names in the list */
-COMMON_INLINE bool
-name_more_files (void)
-{
-  return filename_args != FILES_NONE;
-}
 
 extern struct name *gnu_list_name;
 
@@ -905,8 +895,6 @@ bool xheader_keyword_deleted_p (const char *kw);
 char *xheader_format_name (struct tar_stat_info *st, const char *fmt,
 			   size_t n);
 void xheader_xattr_init (struct tar_stat_info *st);
-void xheader_xattr_add (struct tar_stat_info *st,
-                        const char *key, const char *val, size_t len);
 
 void xattr_map_init (struct xattr_map *map);
 void xattr_map_copy (struct xattr_map *dst,
