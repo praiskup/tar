@@ -1053,6 +1053,7 @@ optloc_eq (struct option_locus *a, struct option_locus *b)
     return 0;
   if (a->source == OPTS_COMMAND_LINE)
     return 1;
+  assume (a->name);
   return strcmp (a->name, b->name) == 0;
 }
 
