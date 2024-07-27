@@ -92,6 +92,7 @@ setenv
 snprintf
 stat-time
 stdbool
+stddef
 stdint
 stpcpy
 stdopen
