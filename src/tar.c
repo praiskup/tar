@@ -30,12 +30,94 @@
 # define SIGCHLD SIGCLD
 #endif
 
-/* The following causes "common.h" to produce definitions of all the global
-   variables, rather than just "extern" declarations of them.  GNU tar does
-   depend on the system loader to preset all GLOBAL variables to neutral (or
-   zero) values; explicit initialization is usually not done.  */
-#define GLOBAL
 #include "common.h"
+/* Define variables declared in common.h that belong to tar.c.  */
+enum subcommand subcommand_option;
+enum archive_format archive_format;
+int blocking_factor;
+size_t record_size;
+bool absolute_names_option;
+bool utc_option;
+bool full_time_option;
+int after_date_option;
+enum atime_preserve atime_preserve_option;
+bool backup_option;
+enum backup_type backup_type;
+bool block_number_option;
+unsigned checkpoint_option;
+const char *use_compress_program_option;
+bool dereference_option;
+bool hard_dereference_option;
+struct exclude *excluded;
+char const *group_name_option;
+gid_t group_option;
+bool ignore_failed_read_option;
+bool ignore_zeros_option;
+bool incremental_option;
+const char *info_script_option;
+bool interactive_option;
+uintmax_t occurrence_option;
+enum old_files old_files_option;
+bool keep_directory_symlink_option;
+const char *listed_incremental_option;
+int incremental_level;
+bool check_device_option;
+struct mode_change *mode_option;
+mode_t initial_umask;
+bool multi_volume_option;
+struct timespec newer_mtime_option;
+enum set_mtime_option_mode set_mtime_option;
+struct timespec mtime_option;
+char *set_mtime_command;
+char *set_mtime_format;
+int recursion_option;
+bool numeric_owner_option;
+bool one_file_system_option;
+bool one_top_level_option;
+char *one_top_level_dir;
+char const *owner_name_option;
+uid_t owner_option;
+bool recursive_unlink_option;
+bool read_full_records_option;
+bool remove_files_option;
+const char *rsh_command_option;
+bool same_order_option;
+int same_owner_option;
+int same_permissions_option;
+int selinux_context_option;
+int acls_option;
+int xattrs_option;
+size_t strip_name_components;
+bool show_omitted_dirs_option;
+bool sparse_option;
+unsigned tar_sparse_major;
+unsigned tar_sparse_minor;
+enum hole_detection_method hole_detection;
+bool starting_file_option;
+tarlong tape_length_option;
+bool to_stdout_option;
+bool totals_option;
+bool touch_option;
+char *to_command_option;
+bool ignore_command_error_option;
+bool restrict_option;
+int verbose_option;
+bool verify_option;
+const char *volno_file_option;
+const char *volume_label_option;
+bool posixly_correct;
+const char **archive_name_array;
+size_t archive_names;
+const char **archive_name_cursor;
+char const *index_file_name;
+int open_read_flags;
+int open_searchdir_flags;
+int fstatat_flags;
+int seek_option;
+bool unquote_option;
+int savedir_sort_order;
+bool show_transformed_names_option;
+bool delay_directory_restore_option;
 
 #include <argmatch.h>
 #include <c-ctype.h>
@@ -91,8 +173,6 @@ request_stdin (const char *option)
 
   stdin_used_by = option;
 }
-
-extern int rpmatch (char const *response);
 
 /* Returns true if and only if the user typed an affirmative response.  */
 int
@@ -2174,7 +2254,6 @@ parse_opt (int key, char *arg, struct argp_state *state)
   return 0;
 }
 
-extern struct argp names_argp;
 static struct argp_child argp_children[] = {
   { &names_argp, 0, NULL, GRID_FILE_NAME },
   { NULL }

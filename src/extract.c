@@ -30,6 +30,8 @@
 
 #include "common.h"
 
+dev_t root_device;
+
 static bool we_are_root;	/* true if our effective uid == 0 */
 static mode_t newdir_umask;	/* umask when creating new directories */
 static mode_t current_umask;	/* current umask (which is set to 0 if -p) */
