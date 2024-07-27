@@ -1870,7 +1870,6 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
 
       return allocated;
     }
-#ifdef HAVE_READLINK
   else if (S_ISLNK (st->stat.st_mode))
     {
       st->link_name = areadlinkat_with_size (parentfd, name, st->stat.st_size);
@@ -1905,7 +1904,6 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
       file_count_links (st);
       return allocated;
     }
-#endif
   else if (S_ISCHR (st->stat.st_mode))
     {
       type = CHRTYPE;

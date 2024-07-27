@@ -37,6 +37,7 @@ extern off_t records_read;
 
 /* The number of records skipped at the start of the archive, when
    passing over members that are not deleted.  */
+extern off_t records_skipped;
 off_t records_skipped;
 
 /* Move archive descriptor by COUNT records worth.  If COUNT is

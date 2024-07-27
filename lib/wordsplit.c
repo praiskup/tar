@@ -193,7 +193,7 @@ wordsplit_init0 (struct wordsplit *wsp)
   wsp->ws_errno = 0;
 }
 
-char wordsplit_c_escape_tab[] = "\\\\\"\"a\ab\bf\fn\nr\rt\tv\v";
+static char wordsplit_c_escape_tab[] = "\\\\\"\"a\ab\bf\fn\nr\rt\tv\v";
 
 static int
 wordsplit_init (struct wordsplit *wsp, const char *input, size_t len,
@@ -2513,7 +2513,7 @@ wordsplit_get_words (struct wordsplit *ws, size_t *wordc, char ***wordv)
   return 0;
 }
 
-const char *_wordsplit_errstr[] = {
+static char const *const wordsplit_errstr[] = {
   N_("no error"),
   N_("missing closing quote"),
   N_("memory exhausted"),
@@ -2524,16 +2524,15 @@ const char *_wordsplit_errstr[] = {
   N_("unbalanced parenthesis"),
   N_("globbing error")
 };
-int _wordsplit_nerrs =
-  sizeof (_wordsplit_errstr) / sizeof (_wordsplit_errstr[0]);
+enum { wordsplit_nerrs = sizeof wordsplit_errstr / sizeof *wordsplit_errstr };
 
 const char *
 wordsplit_strerror (struct wordsplit *ws)
 {
   if (ws->ws_errno == WRDSE_USERERR)
     return ws->ws_usererr;
-  if (ws->ws_errno < _wordsplit_nerrs)
-    return _wordsplit_errstr[ws->ws_errno];
+  if (ws->ws_errno < wordsplit_nerrs)
+    return wordsplit_errstr[ws->ws_errno];
   return N_("unknown error");
 }
 

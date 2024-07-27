@@ -16,7 +16,11 @@
    with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 #include <system.h>
-#include <system-ioctl.h>
+
+#if HAVE_SYS_MTIO_H
+# include <sys/ioctl.h>
+# include <sys/mtio.h>
+#endif
 
 #include "common.h"
 #include <priv-set.h>
@@ -69,7 +73,7 @@ mtioseek (bool count_files, off_t count)
   return false;
 }
 
-#if MSDOS
+#if !HAVE_WAITPID /* MingW, MSVC 14.  */
 
 bool
 sys_get_archive_stat (void)

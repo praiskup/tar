@@ -34,19 +34,7 @@ AC_PROG_YACC
 gl_EARLY
 AC_CHECK_TOOLS([AR], [ar])
 
-AC_SYS_LARGEFILE
-
-AC_CHECK_HEADERS_ONCE(fcntl.h linux/fd.h memory.h net/errno.h \
-  sgtty.h string.h \
-  sys/param.h sys/device.h sys/gentape.h \
-  sys/inet.h sys/io/trioctl.h \
-  sys/mtio.h sys/time.h sys/tprintf.h sys/tape.h \
-  unistd.h locale.h)
-
-AC_CHECK_HEADERS([sys/buf.h], [], [],
-[#if HAVE_SYS_PARAM_H
-#include <sys/param.h>
-#endif])
+AC_CHECK_HEADERS_ONCE([linux/fd.h sys/mtio.h])
 
 AC_HEADER_MAJOR
 
@@ -234,13 +222,7 @@ fi
 
 TAR_HEADERS_ATTR_XATTR_H
 
-AC_CHECK_FUNCS_ONCE([fchmod fchown fsync lstat mkfifo readlink symlink])
-
-AC_CHECK_DECLS([getgrgid],,, [#include <grp.h>])
-AC_CHECK_DECLS([getpwuid],,, [#include <pwd.h>])
-AC_CHECK_DECLS([time],,, [#include <time.h>])
-
-AC_REPLACE_FUNCS(waitpid)
+AC_CHECK_FUNCS_ONCE([fchmod fchown fsync mkfifo waitpid])
 
 AC_ARG_VAR([RSH], [Configure absolute path to default remote shell binary])
 AC_CACHE_CHECK(for remote shell, tar_cv_path_RSH,
@@ -264,9 +246,7 @@ AC_CACHE_CHECK(for remote shell, tar_cv_path_RSH,
       fi
     done
   fi])
-if test $tar_cv_path_RSH = no; then
-  AC_CHECK_HEADERS(netdb.h)
-else
+if test $tar_cv_path_RSH != "no"; then
   AC_DEFINE_UNQUOTED(REMOTE_SHELL, "$tar_cv_path_RSH",
     [Define to the full path of your rsh, if any.])
 fi
@@ -360,7 +340,7 @@ AC_DEFINE_UNQUOTED(DEFAULT_QUOTING_STYLE, $DEFAULT_QUOTING_STYLE,
 
 # Iconv
 AM_ICONV
-AC_CHECK_HEADERS(iconv.h)
+AC_CHECK_HEADERS_ONCE([iconv.h])
 AC_CHECK_TYPE(iconv_t,:,
               AC_DEFINE(iconv_t, int,
                         [Conversion descriptor type]),
