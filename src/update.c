@@ -26,10 +26,6 @@
 #include <quotearg.h>
 #include "common.h"
 
-/* FIXME: This module should not directly handle the following variable,
-   instead, this should be done in buffer.c only.  */
-extern union block *current_block;
-
 /* We've hit the end of the old stuff, and its time to start writing new
    stuff to the tape.  This involves seeking back one record and
    re-writing the current record (which has been changed).

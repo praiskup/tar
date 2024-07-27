@@ -712,7 +712,7 @@ name_list_adjust (void)
    For simplicity, only a tail pointer of the list is maintained.
 */
 
-struct name_elt *unconsumed_option_tail;
+static struct name_elt *unconsumed_option_tail;
 
 /* Push an option to the list */
 static void

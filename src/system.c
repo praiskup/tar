@@ -30,6 +30,8 @@
 #include <poll.h>
 #include <parse-datetime.h>
 
+bool dev_null_output;
+
 static _Noreturn void
 xexec (const char *cmd)
 {
@@ -165,8 +167,6 @@ sys_exec_setmtime_script (const char *script_name,
   FATAL_ERROR ((0, 0, _("--set-mtime-command not implemented on this platform")));
 }
 #else
-
-extern union block *record_start; /* FIXME */
 
 bool
 sys_get_archive_stat (void)

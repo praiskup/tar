@@ -26,18 +26,8 @@ static union block *new_record;
 static int new_blocks;
 static bool acting_as_filter;
 
-/* FIXME: This module should not directly handle the following
-   variables, instead, the interface should be cleaned up.  */
-extern union block *record_start;
-extern union block *record_end;
-extern union block *current_block;
-extern union block *recent_long_name;
-extern union block *recent_long_link;
-extern off_t records_read;
-
 /* The number of records skipped at the start of the archive, when
    passing over members that are not deleted.  */
-extern off_t records_skipped;
 off_t records_skipped;
 
 /* Move archive descriptor by COUNT records worth.  If COUNT is

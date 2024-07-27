@@ -52,18 +52,23 @@ static int record_index;
 /* FIXME: The following variables should ideally be static to this
    module.  However, this cannot be done yet.  The cleanup continues!  */
 
-extern union block *record_start;
+int archive;
+struct timespec start_time;
+struct timespec volume_start_time;
+struct tar_stat_info current_stat_info;
+struct stat archive_stat;
+
+bool seekable_archive;
+
 union block *record_start;      /* start of record of archive */
-extern union block *record_end;
 union block *record_end;        /* last+1 block of archive record */
-extern union block *current_block;
 union block *current_block;     /* current block of archive */
 enum access_mode access_mode;   /* how do we handle the archive */
-extern off_t records_read;
 off_t records_read;             /* number of records read from this archive */
 off_t records_written;          /* likewise, for records written */
-extern off_t records_skipped;   /* number of records skipped at the start
-                                   of the archive, defined in delete.c */
+
+/* When file status was last computed.  */
+static struct timespec last_stat_time;
 
 static off_t record_start_block; /* block ordinal at record_start */
 
@@ -71,6 +76,7 @@ static off_t record_start_block; /* block ordinal at record_start */
 FILE *stdlis;
 
 static void backspace_output (void);
+static _Noreturn void write_fatal_details (char const *, ssize_t, size_t);
 
 /* PID of child program, if compress_option or remote archive access.  */
 static pid_t child_pid;
@@ -82,13 +88,6 @@ static int read_error_count;
 static bool hit_eof;
 
 static bool read_full_records = false;
-
-/* We're reading, but we just read the last block and it's time to update.
-   Declared in update.c
-
-   FIXME: Either eliminate it or move it to common.h.
-*/
-extern bool time_to_start_writing;
 
 bool write_archive_to_stdout;
 
@@ -1137,7 +1136,7 @@ close_archive (void)
   bufmap_free (NULL);
 }
 
-void
+static void
 write_fatal_details (char const *name, ssize_t status, size_t size)
 {
   write_error_details (name, status, size);

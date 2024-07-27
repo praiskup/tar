@@ -33,16 +33,6 @@
 
 /* Some various global definitions.  */
 
-/* Name of file to use for interacting with user.  */
-
-/* GLOBAL is defined to empty in tar.c only, and left alone in other *.c
-   modules.  Here, we merely set it to "extern" if it is not already set.
-   GNU tar does depend on the system loader to preset all GLOBAL variables to
-   neutral (or zero) values, explicit initialization is usually not done.  */
-#ifndef GLOBAL
-# define GLOBAL extern
-#endif
-
 #define TAREXIT_SUCCESS PAXEXIT_SUCCESS
 #define TAREXIT_DIFFERS PAXEXIT_DIFFERS
 #define TAREXIT_FAILURE PAXEXIT_FAILURE
@@ -97,30 +87,30 @@ enum subcommand
   TEST_LABEL_SUBCOMMAND,        /* --test-label */
 };
 
-GLOBAL enum subcommand subcommand_option;
+extern enum subcommand subcommand_option;
 
 /* Selected format for output archive.  */
-GLOBAL enum archive_format archive_format;
+extern enum archive_format archive_format;
 
 /* Size of each record, once in blocks, once in bytes.  Those two variables
    are always related, the second being BLOCKSIZE times the first.  They do
    not have _option in their name, even if their values is derived from
    option decoding, as these are especially important in tar.  */
-GLOBAL int blocking_factor;
-GLOBAL size_t record_size;
+extern int blocking_factor;
+extern size_t record_size;
 
-GLOBAL bool absolute_names_option;
+extern bool absolute_names_option;
 
 /* Display file times in UTC */
-GLOBAL bool utc_option;
+extern bool utc_option;
 /* Output file timestamps to the full resolution */
-GLOBAL bool full_time_option;
+extern bool full_time_option;
 
 /* This variable tells how to interpret newer_mtime_option, below.  If zero,
    files get archived if their mtime is not less than newer_mtime_option.
    If nonzero, files get archived if *either* their ctime or mtime is not less
    than newer_mtime_option.  */
-GLOBAL int after_date_option;
+extern int after_date_option;
 
 enum atime_preserve
 {
@@ -128,26 +118,26 @@ enum atime_preserve
   replace_atime_preserve,
   system_atime_preserve
 };
-GLOBAL enum atime_preserve atime_preserve_option;
+extern enum atime_preserve atime_preserve_option;
 
-GLOBAL bool backup_option;
+extern bool backup_option;
 
 /* Type of backups being made.  */
-GLOBAL enum backup_type backup_type;
+extern enum backup_type backup_type;
 
-GLOBAL bool block_number_option;
+extern bool block_number_option;
 
-GLOBAL unsigned checkpoint_option;
+extern unsigned checkpoint_option;
 #define DEFAULT_CHECKPOINT 10
 
 /* Specified name of compression program, or "gzip" as implied by -z.  */
-GLOBAL const char *use_compress_program_option;
+extern const char *use_compress_program_option;
 
-GLOBAL bool dereference_option;
-GLOBAL bool hard_dereference_option;
+extern bool dereference_option;
+extern bool hard_dereference_option;
 
 /* Patterns that match file names to be excluded.  */
-GLOBAL struct exclude *excluded;
+extern struct exclude *excluded;
 
 enum exclusion_tag_type
   {
@@ -164,22 +154,22 @@ enum exclusion_tag_type
 
 /* Specified value to be put into tar file in place of stat () results, or
    just null and -1 if such an override should not take place.  */
-GLOBAL char const *group_name_option;
-GLOBAL gid_t group_option;
+extern char const *group_name_option;
+extern gid_t group_option;
 
-GLOBAL bool ignore_failed_read_option;
+extern bool ignore_failed_read_option;
 
-GLOBAL bool ignore_zeros_option;
+extern bool ignore_zeros_option;
 
-GLOBAL bool incremental_option;
+extern bool incremental_option;
 
 /* Specified name of script to run at end of each tape change.  */
-GLOBAL const char *info_script_option;
+extern const char *info_script_option;
 
-GLOBAL bool interactive_option;
+extern bool interactive_option;
 
 /* If nonzero, extract only Nth occurrence of each named file */
-GLOBAL uintmax_t occurrence_option;
+extern uintmax_t occurrence_option;
 
 enum old_files
 {
@@ -192,28 +182,28 @@ enum old_files
   KEEP_NEWER_FILES	      /* --keep-newer-files */
 };
 #define MAX_OLD_FILES (KEEP_NEWER_FILES+1)
-GLOBAL enum old_files old_files_option;
+extern enum old_files old_files_option;
 
-GLOBAL bool keep_directory_symlink_option;
+extern bool keep_directory_symlink_option;
 
 /* Specified file name for incremental list.  */
-GLOBAL const char *listed_incremental_option;
+extern const char *listed_incremental_option;
 /* Incremental dump level */
-GLOBAL int incremental_level;
+extern int incremental_level;
 /* Check device numbers when doing incremental dumps. */
-GLOBAL bool check_device_option;
+extern bool check_device_option;
 
 /* Specified mode change string.  */
-GLOBAL struct mode_change *mode_option;
+extern struct mode_change *mode_option;
 
 /* Initial umask, if needed for mode change string.  */
-GLOBAL mode_t initial_umask;
+extern mode_t initial_umask;
 
-GLOBAL bool multi_volume_option;
+extern bool multi_volume_option;
 
 /* Specified threshold date and time.  Files having an older time stamp
    do not get archived (also see after_date_option above).  */
-GLOBAL struct timespec newer_mtime_option;
+extern struct timespec newer_mtime_option;
 
 enum set_mtime_option_mode
 {
@@ -224,16 +214,16 @@ enum set_mtime_option_mode
 };
 
 /* Override actual mtime if set to FORCE_MTIME or CLAMP_MTIME */
-GLOBAL enum set_mtime_option_mode set_mtime_option;
+extern enum set_mtime_option_mode set_mtime_option;
 /* Value to use when forcing or clamping the mtime header field. */
-GLOBAL struct timespec mtime_option;
+extern struct timespec mtime_option;
 
 /* Command to use to set mtime when archiving. */
-GLOBAL char *set_mtime_command;
+extern char *set_mtime_command;
 
 /* Format (as per strptime(3)) of the output of the above command.  If
    not set, parse_datetime will be used. */
-GLOBAL char *set_mtime_format;
+extern char *set_mtime_format;
 
 /* Return true if mtime_option or newer_mtime_option is initialized.  */
 #define TIME_OPTION_INITIALIZED(opt) (0 <= (opt).tv_nsec)
@@ -248,56 +238,56 @@ GLOBAL char *set_mtime_format;
   (timespec_cmp ((st).m##time, newer_mtime_option) < 0)
 
 /* Zero if there is no recursion, otherwise FNM_LEADING_DIR.  */
-GLOBAL int recursion_option;
+extern int recursion_option;
 
-GLOBAL bool numeric_owner_option;
+extern bool numeric_owner_option;
 
-GLOBAL bool one_file_system_option;
+extern bool one_file_system_option;
 
 /* Create a top-level directory for extracting based on the archive name.  */
-GLOBAL bool one_top_level_option;
-GLOBAL char *one_top_level_dir;
+extern bool one_top_level_option;
+extern char *one_top_level_dir;
 
 /* Specified value to be put into tar file in place of stat () results, or
    just null and -1 if such an override should not take place.  */
-GLOBAL char const *owner_name_option;
-GLOBAL uid_t owner_option;
+extern char const *owner_name_option;
+extern uid_t owner_option;
 
-GLOBAL bool recursive_unlink_option;
+extern bool recursive_unlink_option;
 
-GLOBAL bool read_full_records_option;
+extern bool read_full_records_option;
 
-GLOBAL bool remove_files_option;
+extern bool remove_files_option;
 
 /* Specified remote shell command.  */
-GLOBAL const char *rsh_command_option;
+extern const char *rsh_command_option;
 
-GLOBAL bool same_order_option;
+extern bool same_order_option;
 
 /* If positive, preserve ownership when extracting.  */
-GLOBAL int same_owner_option;
+extern int same_owner_option;
 
 /* If positive, preserve permissions when extracting.  */
-GLOBAL int same_permissions_option;
+extern int same_permissions_option;
 
 /* If positive, save the SELinux context.  */
-GLOBAL int selinux_context_option;
+extern int selinux_context_option;
 
 /* If positive, save the ACLs.  */
-GLOBAL int acls_option;
+extern int acls_option;
 
 /* If positive, save the user and root xattrs.  */
-GLOBAL int xattrs_option;
+extern int xattrs_option;
 
 /* When set, strip the given number of file name components from the file name
    before extracting */
-GLOBAL size_t strip_name_components;
+extern size_t strip_name_components;
 
-GLOBAL bool show_omitted_dirs_option;
+extern bool show_omitted_dirs_option;
 
-GLOBAL bool sparse_option;
-GLOBAL unsigned tar_sparse_major;
-GLOBAL unsigned tar_sparse_minor;
+extern bool sparse_option;
+extern unsigned tar_sparse_major;
+extern unsigned tar_sparse_minor;
 
 enum hole_detection_method
   {
@@ -306,28 +296,28 @@ enum hole_detection_method
     HOLE_DETECTION_SEEK
   };
 
-GLOBAL enum hole_detection_method hole_detection;
+extern enum hole_detection_method hole_detection;
 
 /* The first entry in names.c:namelist specifies the member name to
    start extracting from. Set by add_starting_file() upon seeing the
    -K option.
 */
-GLOBAL bool starting_file_option;
+extern bool starting_file_option;
 
 /* Specified maximum byte length of each tape volume (multiple of 1024).  */
-GLOBAL tarlong tape_length_option;
+extern tarlong tape_length_option;
 
-GLOBAL bool to_stdout_option;
+extern bool to_stdout_option;
 
-GLOBAL bool totals_option;
+extern bool totals_option;
 
-GLOBAL bool touch_option;
+extern bool touch_option;
 
-GLOBAL char *to_command_option;
-GLOBAL bool ignore_command_error_option;
+extern char *to_command_option;
+extern bool ignore_command_error_option;
 
 /* Restrict some potentially harmful tar options */
-GLOBAL bool restrict_option;
+extern bool restrict_option;
 
 /* Return true if the extracted files are not being written to disk */
 #define EXTRACT_OVER_PIPE (to_stdout_option || to_command_option)
@@ -335,44 +325,29 @@ GLOBAL bool restrict_option;
 /* Count how many times the option has been set, multiple setting yields
    more verbose behavior.  Value 0 means no verbosity, 1 means file name
    only, 2 means file name and all attributes.  More than 2 is just like 2.  */
-GLOBAL int verbose_option;
+extern int verbose_option;
 
-GLOBAL bool verify_option;
+extern bool verify_option;
 
 /* Specified name of file containing the volume number.  */
-GLOBAL const char *volno_file_option;
+extern const char *volno_file_option;
 
 /* Specified value or pattern.  */
-GLOBAL const char *volume_label_option;
+extern const char *volume_label_option;
 
 /* Other global variables.  */
 
 /* Force POSIX-compliance */
-GLOBAL bool posixly_correct;
-
-/* File descriptor for archive file.  */
-GLOBAL int archive;
-
-/* Nonzero when outputting to /dev/null.  */
-GLOBAL bool dev_null_output;
-
-/* Timestamps: */
-GLOBAL struct timespec start_time;        /* when we started execution */
-GLOBAL struct timespec volume_start_time; /* when the current volume was
-					     opened*/
-GLOBAL struct timespec last_stat_time;    /* when the statistics was last
-					     computed */
-
-GLOBAL struct tar_stat_info current_stat_info;
+extern bool posixly_correct;
 
 /* List of tape drive names, number of such tape drives,
    and current cursor in list.  */
-GLOBAL const char **archive_name_array;
-GLOBAL size_t archive_names;
-GLOBAL const char **archive_name_cursor;
+extern const char **archive_name_array;
+extern size_t archive_names;
+extern const char **archive_name_cursor;
 
 /* Output index file name.  */
-GLOBAL char const *index_file_name;
+extern char const *index_file_name;
 
 /* Opaque structure for keeping directory meta-data */
 struct directory;
@@ -405,37 +380,28 @@ struct name
     char *caname;               /* canonical name */
   };
 
-/* Status of archive file, or all zeros if remote.  */
-GLOBAL struct stat archive_stat;
-
 /* Flags for reading, searching, and fstatatting files.  */
-GLOBAL int open_read_flags;
-GLOBAL int open_searchdir_flags;
-GLOBAL int fstatat_flags;
+extern int open_read_flags;
+extern int open_searchdir_flags;
+extern int fstatat_flags;
 
-GLOBAL int seek_option;
-
-/* true if archive if lseek should be used on the archive, 0 if it
-   should not be used.  */
-GLOBAL bool seekable_archive;
-
-GLOBAL dev_t root_device;
+extern int seek_option;
 
 /* Unquote filenames */
-GLOBAL bool unquote_option;
+extern bool unquote_option;
 
-GLOBAL int savedir_sort_order;
+extern int savedir_sort_order;
 
 /* Show file or archive names after transformation.
    In particular, when creating archive in verbose mode, list member names
    as stored in the archive */
-GLOBAL bool show_transformed_names_option;
+extern bool show_transformed_names_option;
 
 /* Delay setting modification times and permissions of extracted directories
    until the end of extraction. This variable helps correctly restore directory
    timestamps from archives with an unusual member order. It is automatically
    set for incremental archives. */
-GLOBAL bool delay_directory_restore_option;
+extern bool delay_directory_restore_option;
 
 /* Declarations for each module.  */
 
@@ -452,6 +418,23 @@ extern enum access_mode access_mode;
 
 /* Module buffer.c.  */
 
+/* File descriptor for archive file.  */
+extern int archive;
+
+/* Timestamps: */
+extern struct timespec start_time;        /* when we started execution */
+extern struct timespec volume_start_time; /* when the current volume was
+					     opened*/
+
+extern struct tar_stat_info current_stat_info;
+
+/* Status of archive file, or all zeros if remote.  */
+extern struct stat archive_stat;
+
+/* true if archive if lseek should be used on the archive, 0 if it
+   should not be used.  */
+extern bool seekable_archive;
+
 extern FILE *stdlis;
 extern bool write_archive_to_stdout;
 extern char *volume_label;
@@ -460,6 +443,10 @@ extern char *continued_file_name;
 extern uintmax_t continued_file_size;
 extern uintmax_t continued_file_offset;
 extern off_t records_written;
+extern union block *record_start;
+extern union block *record_end;
+extern union block *current_block;
+extern off_t records_read;
 
 char *drop_volume_label_suffix (const char *label)
   _GL_ATTRIBUTE_MALLOC _GL_ATTRIBUTE_DEALLOC_FREE;
@@ -554,6 +541,8 @@ void verify_volume (void);
 
 /* Module extract.c.  */
 
+extern dev_t root_device;
+
 void extr_init (void);
 void extract_archive (void);
 void extract_finish (void);
@@ -562,6 +551,9 @@ bool rename_directory (char *src, char *dst);
 void remove_delayed_set_stat (const char *fname);
 
 /* Module delete.c.  */
+
+/* number of records skipped at the start of the archive.  */
+extern off_t records_skipped;
 
 void delete_archive_members (void);
 
@@ -612,6 +604,8 @@ enum read_header_mode
 };
 extern union block *current_header;
 extern enum archive_format current_format;
+extern union block *recent_long_name;
+extern union block *recent_long_link;
 extern size_t recent_long_name_blocks;
 extern size_t recent_long_link_blocks;
 
@@ -749,7 +743,6 @@ void file_removed_diag (const char *name, bool top_level,
 			void (*diagfn) (char const *name));
 void write_error_details (char const *name, size_t status, size_t size);
 _Noreturn void write_fatal (char const *name);
-_Noreturn void write_fatal_details (char const *name, ssize_t status, size_t size);
 
 pid_t xfork (void);
 void xpipe (int fd[2]);
@@ -768,12 +761,11 @@ enum files_count
   };
 extern enum files_count filename_args;
 
-/* Return true if there are file names in the list */
-COMMON_INLINE bool
-name_more_files (void)
-{
-  return filename_args != FILES_NONE;
-}
+/* Declare only if argp.h has already been included,
+   as this declaration needs struct argp.  */
+#ifdef ARGP_ERR_UNKNOWN
+extern struct argp names_argp;
+#endif
 
 extern struct name *gnu_list_name;
 
@@ -873,6 +865,7 @@ void more_options (int argc, char **argv, struct option_locus *loc);
 
 /* Module update.c.  */
 
+extern bool time_to_start_writing;
 extern char *output_start;
 
 void update_archive (void);
@@ -902,8 +895,6 @@ bool xheader_keyword_deleted_p (const char *kw);
 char *xheader_format_name (struct tar_stat_info *st, const char *fmt,
 			   size_t n);
 void xheader_xattr_init (struct tar_stat_info *st);
-void xheader_xattr_add (struct tar_stat_info *st,
-                        const char *key, const char *val, size_t len);
 
 void xattr_map_init (struct xattr_map *map);
 void xattr_map_copy (struct xattr_map *dst,
@@ -913,6 +904,9 @@ void xattr_map_add (struct xattr_map *map,
 void xattr_map_free (struct xattr_map *xattr_map);
 
 /* Module system.c */
+
+/* Nonzero when outputting to /dev/null.  */
+extern bool dev_null_output;
 
 void sys_detect_dev_null_output (void);
 void sys_wait_for_child (pid_t, bool);
