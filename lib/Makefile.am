@@ -33,7 +33,6 @@ noinst_HEADERS = \
  paxlib.h\
  rmt.h\
  system.h\
- system-ioctl.h\
  wordsplit.h\
  xattr-at.h
 
@@ -41,7 +40,7 @@ libtar_a_SOURCES = \
   paxerror.c paxexit-status.c paxlib.h paxnames.c \
   rtapelib.c \
   rmt.h \
-  system.h system-ioctl.h \
+  system.h \
   wordsplit.c\
   xattr-at.c
 

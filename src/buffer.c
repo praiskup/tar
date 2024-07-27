@@ -52,10 +52,14 @@ static int record_index;
 /* FIXME: The following variables should ideally be static to this
    module.  However, this cannot be done yet.  The cleanup continues!  */
 
+extern union block *record_start;
 union block *record_start;      /* start of record of archive */
+extern union block *record_end;
 union block *record_end;        /* last+1 block of archive record */
+extern union block *current_block;
 union block *current_block;     /* current block of archive */
 enum access_mode access_mode;   /* how do we handle the archive */
+extern off_t records_read;
 off_t records_read;             /* number of records read from this archive */
 off_t records_written;          /* likewise, for records written */
 extern off_t records_skipped;   /* number of records skipped at the start

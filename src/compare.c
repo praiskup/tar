@@ -20,10 +20,14 @@
    Written by John Gilmore, on 1987-04-30.  */
 
 #include <system.h>
-#include <system-ioctl.h>
 
 #if HAVE_LINUX_FD_H
 # include <linux/fd.h>
+#endif
+
+#if HAVE_SYS_MTIO_H
+# include <sys/ioctl.h>
+# include <sys/mtio.h>
 #endif
 
 #include "common.h"
@@ -267,7 +271,6 @@ diff_link (void)
 				      current_stat_info.link_name));
 }
 
-#ifdef HAVE_READLINK
 static void
 diff_symlink (void)
 {
@@ -293,7 +296,6 @@ diff_symlink (void)
   if (linkbuf != buf)
     free (linkbuf);
 }
-#endif
 
 static void
 diff_special (void)
@@ -496,11 +498,9 @@ diff_archive (void)
       diff_link ();
       break;
 
-#ifdef HAVE_READLINK
     case SYMTYPE:
       diff_symlink ();
       break;
-#endif
 
     case CHRTYPE:
     case BLKTYPE:

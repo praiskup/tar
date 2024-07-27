@@ -63,6 +63,7 @@ human
 idx
 inttostr
 inttypes
+largefile
 lchown
 linkat
 localcharset
