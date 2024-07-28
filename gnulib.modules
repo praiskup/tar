@@ -94,6 +94,7 @@ selinux-at
 setenv
 snprintf
 stat-time
+std-gnu23
 stdbool
 stddef
 stdint
