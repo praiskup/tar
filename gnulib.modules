@@ -84,6 +84,7 @@ progname
 quote
 quotearg
 readlinkat
+reallocarray
 renameat
 root-uid
 rpmatch
