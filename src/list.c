@@ -746,17 +746,17 @@ decode_header (union block *header, struct tar_stat_info *stat_info,
    (uintmax_t) V yields the correct result.  If OCTAL_ONLY, allow only octal
    numbers instead of the other GNU extensions.  Return -1 on error,
    diagnosing the error if TYPE is nonnull and if !SILENT.  */
-#if ! (INTMAX_MAX <= UINTMAX_MAX && - (INTMAX_MIN + 1) <= UINTMAX_MAX)
-# error "from_header internally represents intmax_t as uintmax_t + sign"
-#endif
-#if ! (UINTMAX_MAX / 2 <= INTMAX_MAX)
-# error "from_header returns intmax_t to represent uintmax_t"
-#endif
 static intmax_t
 from_header (char const *where0, size_t digs, char const *type,
 	     intmax_t minval, uintmax_t maxval,
 	     bool octal_only, bool silent)
 {
+  /* from_header internally represents intmax_t as uintmax_t + sign.  */
+  static_assert (INTMAX_MAX <= UINTMAX_MAX
+		 && - (INTMAX_MIN + 1) <= UINTMAX_MAX);
+  /* from_header returns intmax_t to represent uintmax_t.  */
+  static_assert (UINTMAX_MAX / 2 <= INTMAX_MAX);
+
   uintmax_t value;
   uintmax_t uminval = minval;
   uintmax_t minus_minval = - uminval;
@@ -797,8 +797,7 @@ from_header (char const *where0, size_t digs, char const *type,
 	  value += *where++ - '0';
 	  if (where == lim || ! is_octal_digit (*where))
 	    break;
-	  overflow |= value != (value << LG_8 >> LG_8);
-	  value <<= LG_8;
+	  overflow |= ckd_mul (&value, value, 8);
 	}
 
       /* Parse the output of older, unportable tars, which generate

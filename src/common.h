@@ -664,12 +664,11 @@ const char *tar_dirname (void);
 /* Represent N using a signed integer I such that (uintmax_t) I == N.
    With a good optimizing compiler, this is equivalent to (intmax_t) i
    and requires zero machine instructions.  */
-#if ! (UINTMAX_MAX / 2 <= INTMAX_MAX)
-# error "represent_uintmax returns intmax_t to represent uintmax_t"
-#endif
 COMMON_INLINE intmax_t
 represent_uintmax (uintmax_t n)
 {
+  static_assert (UINTMAX_MAX / 2 <= INTMAX_MAX);
+
   if (n <= INTMAX_MAX)
     return n;
   else
