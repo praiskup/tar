@@ -1501,9 +1501,9 @@ parse_opt (int key, char *arg, struct argp_state *state)
       {
 	uintmax_t u;
 	if (! (xstrtoumax (arg, 0, 10, &u, "") == LONGINT_OK
-	       && u == (blocking_factor = u)
+	       && !ckd_add (&blocking_factor, u, 0)
 	       && 0 < blocking_factor
-	       && u == (record_size = u * BLOCKSIZE) / BLOCKSIZE))
+	       && !ckd_mul (&record_size, u, BLOCKSIZE)))
 	  USAGE_ERROR ((0, 0, "%s: %s", quotearg_colon (arg),
 			_("Invalid blocking factor")));
       }
