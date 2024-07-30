@@ -458,7 +458,6 @@ run_case_conv (enum case_ctl_type case_ctl, char *ptr, size_t size)
 static void
 _single_transform_name_to_obstack (struct transform *tf, char *input)
 {
-  regmatch_t *rmp;
   int rc;
   size_t nmatches = 0;
   enum case_ctl_type case_ctl = ctl_stop,  /* Current case conversion op */
@@ -472,7 +471,7 @@ _single_transform_name_to_obstack (struct transform *tf, char *input)
                               save_ctl = ctl_stop;            \
 			    }
 
-  rmp = xmalloc ((tf->regex.re_nsub + 1) * sizeof (*rmp));
+  regmatch_t *rmp = xinmalloc (tf->regex.re_nsub + 1, sizeof *rmp);
 
   while (*input)
     {
