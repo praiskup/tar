@@ -81,7 +81,10 @@ utf8_convert (bool to_utf, char const *input, char **output)
     return false;
 
   inlen = strlen (input) + 1;
-  outlen = inlen * MB_LEN_MAX + 1;
+  bool overflow = ckd_mul (&outlen, inlen, MB_LEN_MAX);
+  overflow |= ckd_add (&outlen, outlen, 1);
+  if (overflow)
+    xalloc_die ();
   ob = ret = xmalloc (outlen);
   ib = (char ICONV_CONST *) input;
   /* According to POSIX, "if iconv() encounters a character in the input
@@ -90,7 +93,7 @@ utf8_convert (bool to_utf, char const *input, char **output)
      implementation-defined conversion on this character." It will "update
      the variables pointed to by the arguments to reflect the extent of the
      conversion and return the number of non-identical conversions performed".
-     On error, it returns -1. 
+     On error, it returns -1.
      In other words, non-zero return always indicates failure, either because
      the input was not fully converted, or because it was converted in a
      non-reversible way.
