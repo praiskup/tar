@@ -783,12 +783,13 @@ xheader_read (struct xheader *xhdr, union block *p, off_t size)
   if (size < 0)
     size = 0; /* Already diagnosed.  */
 
-  if (SIZE_MAX - BLOCKSIZE <= size)
+  size_t size_plus_1;
+  if (ckd_add (&size_plus_1, size, BLOCKSIZE + 1))
     xalloc_die ();
+  size = size_plus_1 - 1;
 
-  size += BLOCKSIZE;
   xhdr->size = size;
-  xhdr->buffer = xmalloc (size + 1);
+  xhdr->buffer = xmalloc (size_plus_1);
   xhdr->buffer[size] = '\0';
 
   do
