@@ -795,9 +795,10 @@ oldgnu_add_sparse (struct tar_sparse_file *file, struct sparse *s)
     return add_finish;
   sp.offset = OFF_FROM_HEADER (s->offset);
   sp.numbytes = OFF_FROM_HEADER (s->numbytes);
+  off_t size;
   if (sp.offset < 0 || sp.numbytes < 0
-      || INT_ADD_OVERFLOW (sp.offset, sp.numbytes)
-      || file->stat_info->stat.st_size < sp.offset + sp.numbytes
+      || ckd_add (&size, sp.offset, sp.numbytes)
+      || file->stat_info->stat.st_size < size
       || file->stat_info->archive_file_size < 0)
     return add_fail;
 
@@ -1334,9 +1335,10 @@ pax_decode_header (struct tar_sparse_file *file)
 	    }
 	  sp.offset = u;
 	  COPY_BUF (blk,nbuf,p);
+	  off_t size;
 	  if (!decode_num (&u, nbuf, TYPE_MAXIMUM (off_t))
-	      || INT_ADD_OVERFLOW (sp.offset, u)
-	      || file->stat_info->stat.st_size < sp.offset + u)
+	      || ckd_add (&size, sp.offset, u)
+	      || file->stat_info->stat.st_size < size)
 	    {
 	      ERROR ((0, 0, _("%s: malformed sparse archive member"),
 		      file->stat_info->orig_file_name));

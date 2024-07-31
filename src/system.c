@@ -62,8 +62,8 @@ mtioseek (bool count_files, off_t count)
 			 ? (count < 0 ? MTBSF : MTFSF)
 			 : (count < 0 ? MTBSR : MTFSR));
       if (! (count < 0
-	     ? INT_SUBTRACT_WRAPV (0, count, &operation.mt_count)
-	     : INT_ADD_WRAPV (count, 0, &operation.mt_count))
+	     ? ckd_sub (&operation.mt_count, 0, count)
+	     : ckd_add (&operation.mt_count, count, 0))
 	  && (0 <= rmtioctl (archive, MTIOCTOP, &operation)
 	      || (errno == EIO
 		  && 0 <= rmtioctl (archive, MTIOCTOP, &operation))))
