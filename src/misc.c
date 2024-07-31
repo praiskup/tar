@@ -1228,8 +1228,8 @@ void *
 page_aligned_alloc (void **ptr, size_t size)
 {
   size_t alignment = getpagesize ();
-  size_t size1 = size + alignment;
-  if (size1 < size)
+  size_t size1;
+  if (ckd_add (&size1, size, alignment))
     xalloc_die ();
   *ptr = xmalloc (size1);
   return ptr_align (*ptr, alignment);
