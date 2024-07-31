@@ -467,14 +467,9 @@ read_header (union block **return_block, struct tar_stat_info *info,
 		   || header->header.typeflag == GNUTYPE_LONGLINK)
 	    {
 	      union block *header_copy;
-	      size_t name_size = info->stat.st_size;
-	      size_t n = name_size % BLOCKSIZE;
-	      size = name_size + BLOCKSIZE;
-	      if (n)
-		size += BLOCKSIZE - n;
-
-	      if (name_size != info->stat.st_size || size < name_size)
+	      if (ckd_add (&size, info->stat.st_size, 2 * BLOCKSIZE - 1))
 		xalloc_die ();
+	      size -= size % BLOCKSIZE;
 
 	      header_copy = xmalloc (size + 1);
 
