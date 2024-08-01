@@ -249,7 +249,8 @@ clear_read_error_count (void)
 
 /* Time-related functions */
 
-static double duration;
+/* Time consumed during run.  It is counted in ns to lessen rounding error.  */
+static double duration_ns;
 
 void
 set_start_time (void)
@@ -267,14 +268,18 @@ set_volume_start_time (void)
 }
 
 double
-compute_duration (void)
+compute_duration_ns (void)
 {
-  struct timespec now;
-  gettime (&now);
-  duration += ((now.tv_sec - last_stat_time.tv_sec)
-               + (now.tv_nsec - last_stat_time.tv_nsec) / 1e9);
-  gettime (&last_stat_time);
-  return duration;
+  struct timespec now = current_timespec ();
+
+  /* If the clock moves back, treat it as duration 0.
+     This works even if time_t is unsigned.  */
+  if (timespec_cmp (last_stat_time, now) < 0)
+    duration_ns += (1e9 * (now.tv_sec - last_stat_time.tv_sec)
+		    + (now.tv_nsec - last_stat_time.tv_nsec));
+
+  last_stat_time = current_timespec ();
+  return duration_ns;
 }
 
 
@@ -491,19 +496,29 @@ static int
 print_stats (FILE *fp, const char *text, tarlong numbytes)
 {
   char abbr[LONGEST_HUMAN_READABLE + 1];
-  char rate[LONGEST_HUMAN_READABLE + 1];
-  int n = 0;
-
   int human_opts = human_autoscale | human_base_1024 | human_SI | human_B;
+  double ulim = UINTMAX_MAX + 1.0;
 
-  if (text && text[0])
-    n += fprintf (fp, "%s: ", gettext (text));
-  return n + fprintf (fp, TARLONG_FORMAT " (%s, %s/s)",
-		      numbytes,
-		      human_readable (numbytes, abbr, human_opts, 1, 1),
-		      (0 < duration && numbytes / duration < (uintmax_t) -1
-		       ? human_readable (numbytes / duration, rate, human_opts, 1, 1)
-		       : "?"));
+  int n = fprintf (fp, "%s: "TARLONG_FORMAT" (", gettext (text), numbytes);
+
+  if (numbytes < ulim)
+    n += fprintf (fp, "%s", human_readable (numbytes, abbr, human_opts, 1, 1));
+  else
+    n += fprintf (fp, "%g", numbytes);
+
+  if (!duration_ns)
+    n += fprintf (fp, ")");
+  else
+    {
+      double rate = 1e9 * numbytes / duration_ns;
+      if (rate < ulim)
+	n += fprintf (fp, ", %s/s)",
+		      human_readable (rate, abbr, human_opts, 1, 1));
+      else
+	n += fprintf (fp, ", %g/s)", rate);
+    }
+
+  return n;
 }
 
 /* Format totals to file FP.  FORMATS is an array of strings to output
@@ -1121,7 +1136,7 @@ close_archive (void)
       while (current_block > record_start);
     }
 
-  compute_duration ();
+  compute_duration_ns ();
   if (verify_option)
     verify_volume ();
 

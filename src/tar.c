@@ -1083,7 +1083,7 @@ set_use_compress_program_option (const char *string, struct option_locus *loc)
 static void
 sigstat (int signo)
 {
-  compute_duration ();
+  compute_duration_ns ();
   print_total_stats ();
 #ifndef HAVE_SIGACTION
   signal (signo, sigstat);
@@ -1688,13 +1688,24 @@ parse_opt (int key, char *arg, struct argp_state *state)
 	uintmax_t u;
 	char *p;
 
-	if (xstrtoumax (arg, &p, 10, &u, TAR_SIZE_SUFFIXES) != LONGINT_OK)
-	  USAGE_ERROR ((0, 0, "%s: %s", quotearg_colon (arg),
-			_("Invalid tape length")));
-	if (p > arg && !strchr (TAR_SIZE_SUFFIXES, p[-1]))
-	  tape_length_option = 1024 * (tarlong) u;
-	else
-	  tape_length_option = (tarlong) u;
+	switch (xstrtoumax (arg, &p, 10, &u, TAR_SIZE_SUFFIXES))
+	  {
+	  case LONGINT_OK:
+	    tape_length_option = u;
+	    if (arg < p && !strchr (TAR_SIZE_SUFFIXES, p[-1]))
+	      tape_length_option *= 1024;
+	    break;
+
+	  case LONGINT_OVERFLOW:
+	    /* Treat enormous values as effectively infinity.  */
+	    tape_length_option = 0;
+	    break;
+
+	  default:
+	    USAGE_ERROR ((0, 0, "%s: %s", quotearg_colon (arg),
+			  _("Invalid tape length")));
+	  }
+
 	multi_volume_option = true;
       }
       break;
@@ -2102,10 +2113,9 @@ parse_opt (int key, char *arg, struct argp_state *state)
 	uintmax_t u;
 
 	if (! (xstrtoumax (arg, NULL, 10, &u, TAR_SIZE_SUFFIXES) == LONGINT_OK
-	       && u == (size_t) u))
+	       && !ckd_add (&record_size, u, 0)))
 	  USAGE_ERROR ((0, 0, "%s: %s", quotearg_colon (arg),
 			_("Invalid record size")));
-	record_size = u;
 	if (record_size % BLOCKSIZE != 0)
 	  USAGE_ERROR ((0, 0, _("Record size must be a multiple of %d."),
 			BLOCKSIZE));
@@ -2151,10 +2161,9 @@ parse_opt (int key, char *arg, struct argp_state *state)
       {
 	uintmax_t u;
 	if (! (xstrtoumax (arg, 0, 10, &u, "") == LONGINT_OK
-	       && u == (size_t) u))
+	       && !ckd_add (&strip_name_components, u, 0)))
 	  USAGE_ERROR ((0, 0, "%s: %s", quotearg_colon (arg),
 			_("Invalid number of elements")));
-	strip_name_components = u;
       }
       break;
 

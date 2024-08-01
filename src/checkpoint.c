@@ -291,14 +291,14 @@ format_checkpoint_string (FILE *fp, size_t len,
 	      break;
 
 	    case 'd':
-	      len += fprintf (fp, "%.0f", compute_duration ());
+	      len += fprintf (fp, "%.0f", compute_duration_ns () / BILLION);
 	      break;
 
 	    case 'T':
 	      {
 		const char **fmt = checkpoint_total_format, *fmtbuf[3];
 		struct wordsplit ws;
-		compute_duration ();
+		compute_duration_ns ();
 
 		if (arg)
 		  {
@@ -420,7 +420,7 @@ run_checkpoint_actions (bool do_write)
 	  break;
 
 	case cop_totals:
-	  compute_duration ();
+	  compute_duration_ns ();
 	  print_total_stats ();
 	  break;
 

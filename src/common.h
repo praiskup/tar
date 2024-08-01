@@ -455,7 +455,7 @@ size_t available_space_after (union block *pointer);
 off_t current_block_ordinal (void);
 void close_archive (void);
 void closeout_volume_number (void);
-double compute_duration (void);
+double compute_duration_ns (void);
 union block *find_next_block (void);
 void flush_read (void);
 void flush_write (void);
