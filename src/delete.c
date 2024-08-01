@@ -116,7 +116,7 @@ static void
 write_recent_bytes (char *data, size_t bytes)
 {
   size_t blocks = bytes / BLOCKSIZE;
-  size_t rest = bytes - blocks * BLOCKSIZE;
+  size_t rest = bytes % BLOCKSIZE;
 
   write_recent_blocks ((union block *)data, blocks);
   memcpy (new_record[new_blocks].buffer, data + blocks * BLOCKSIZE, rest);
@@ -154,7 +154,7 @@ delete_archive_members (void)
   /* FIXME: Should clean the routine before cleaning these variables :-( */
   struct name *name;
   off_t blocks_to_keep = 0;
-  int kept_blocks_in_record;
+  ptrdiff_t kept_blocks_in_record;
 
   name_gather ();
   open_archive (ACCESS_UPDATE);
@@ -307,7 +307,7 @@ delete_archive_members (void)
 
 	      while (blocks_to_keep)
 		{
-		  int count;
+		  ptrdiff_t count;
 
 		  if (current_block == record_end)
 		    {
