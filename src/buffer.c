@@ -195,7 +195,7 @@ bufmap_free (struct bufmap *mark)
 }
 
 static void
-bufmap_reset (struct bufmap *map, ssize_t fixup)
+bufmap_reset (struct bufmap *map, ptrdiff_t fixup)
 {
   bufmap_free (map);
   if (map)
@@ -877,7 +877,7 @@ _flush_write (void)
       if (map)
 	{
 	  size_t delta = status - map->start * BLOCKSIZE;
-	  ssize_t diff;
+	  ptrdiff_t diff;
 	  map->nblocks += delta / BLOCKSIZE;
 	  if (delta > map->sizeleft)
 	    delta = map->sizeleft;
