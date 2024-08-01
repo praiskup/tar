@@ -513,8 +513,8 @@ union block *start_header (struct tar_stat_info *st);
 void finish_header (struct tar_stat_info *st, union block *header,
 		    off_t block_ordinal);
 void simple_finish_header (union block *header);
-union block * write_extended (bool global, struct tar_stat_info *st,
-			      union block *old_header);
+union block *write_extended (bool global, struct tar_stat_info *st,
+			     union block *old_header);
 union block *start_private_header (const char *name, size_t size, time_t t);
 void write_eot (void);
 void check_links (void);

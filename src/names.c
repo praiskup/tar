@@ -250,7 +250,7 @@ static int include_anchored = EXCLUDE_ANCHORED;
   | matching_flags						    \
   | recursion_option)
 
-static char const * const vcs_file_table[] = {
+static char const *const vcs_file_table[] = {
   /* CVS: */
   "CVS",
   ".cvsignore",
@@ -284,7 +284,7 @@ static char const * const vcs_file_table[] = {
   NULL
 };
 
-static char const * const backup_file_table[] = {
+static char const *const backup_file_table[] = {
   ".#*",
   "*~",
   "#*#",
@@ -292,7 +292,7 @@ static char const * const backup_file_table[] = {
 };
 
 static void
-add_exclude_array (char const * const * fv, int opts)
+add_exclude_array (char const *const *fv, int opts)
 {
   int i;
 

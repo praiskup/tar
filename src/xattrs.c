@@ -352,7 +352,7 @@ xattrs_acls_cleanup (char *val, size_t *plen)
 
 static void
 acls_get_text (int parentfd, const char *file_name, acl_type_t type,
-	       char **ret_ptr, size_t * ret_len)
+	       char **ret_ptr, size_t *ret_len)
 {
   char *val = NULL;
   acl_t acl;
@@ -403,7 +403,7 @@ xattrs__acls_get_a (int parentfd, const char *file_name,
 /* "system.posix_acl_default" */
 static void
 xattrs__acls_get_d (int parentfd, char const *file_name,
-                    char **ret_ptr, size_t * ret_len)
+                    char **ret_ptr, size_t *ret_len)
 {
   acls_get_text (parentfd, file_name, ACL_TYPE_DEFAULT, ret_ptr, ret_len);
 }
