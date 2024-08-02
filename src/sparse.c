@@ -439,9 +439,8 @@ sparse_dump_region (struct tar_sparse_file *file, size_t i)
 	    }
 	  else
 	    {
-	      char buf[UINTMAX_STRSIZE_BOUND];
 	      struct stat st;
-	      size_t n;
+	      off_t n;
 	      if (fstat (file->fd, &st) == 0)
 		n = file->stat_info->stat.st_size - st.st_size;
 	      else
@@ -452,11 +451,11 @@ sparse_dump_region (struct tar_sparse_file *file, size_t i)
 
 	      WARNOPT (WARN_FILE_SHRANK,
 		       (0, 0,
-			ngettext ("%s: File shrank by %s byte; padding with zeros",
-				  "%s: File shrank by %s bytes; padding with zeros",
+			ngettext ("%s: File shrank by %jd byte; padding with zeros",
+				  "%s: File shrank by %jd bytes; padding with zeros",
 				  n),
 			quotearg_colon (file->stat_info->orig_file_name),
-			STRINGIFY_BIGINT (n, buf)));
+			intmax (n)));
 	      if (! ignore_failed_read_option)
 		set_exit_status (TAREXIT_DIFFERS);
 	      return false;

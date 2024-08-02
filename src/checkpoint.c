@@ -234,8 +234,6 @@ format_checkpoint_string (FILE *fp, size_t len,
 			  unsigned cpn)
 {
   const char *opstr = do_write ? gettext ("write") : gettext ("read");
-  char uintbuf[UINTMAX_STRSIZE_BOUND];
-  char *cps = STRINGIFY_BIGINT (cpn, uintbuf);
   const char *ip;
 
   static char *argbuf = NULL;
@@ -281,8 +279,7 @@ format_checkpoint_string (FILE *fp, size_t len,
 	      break;
 
 	    case 'u':
-	      fputs (cps, fp);
-	      len += strlen (cps);
+	      len += fprintf (fp, "%u", cpn);
 	      break;
 
 	    case 's':

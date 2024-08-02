@@ -1126,9 +1126,6 @@ read_num (FILE *fp, char const *fieldname,
 {
   int i;
   char buf[INT_BUFSIZE_BOUND (intmax_t)];
-  char offbuf[INT_BUFSIZE_BOUND (off_t)];
-  char minbuf[INT_BUFSIZE_BOUND (intmax_t)];
-  char maxbuf[INT_BUFSIZE_BOUND (intmax_t)];
   int conversion_errno;
   int c = getc (fp);
   bool negative = c == '-';
@@ -1138,9 +1135,9 @@ read_num (FILE *fp, char const *fieldname,
       buf[i] = c;
       if (i == sizeof buf - 1)
 	FATAL_ERROR ((0, 0,
-		      _("%s: byte %s: %s %.*s... too long"),
+		      _("%s: byte %jd: %s %.*s... too long"),
 		      quotearg_colon (listed_incremental_option),
-		      offtostr (ftello (fp), offbuf),
+		      intmax (ftello (fp)),
 		      fieldname, i + 1, buf));
       c = getc (fp);
     }
@@ -1162,9 +1159,9 @@ read_num (FILE *fp, char const *fieldname,
     {
       unsigned uc = c;
       FATAL_ERROR ((0, 0,
-		    _("%s: byte %s: %s %s followed by invalid byte 0x%02x"),
+		    _("%s: byte %jd: %s %s followed by invalid byte 0x%02x"),
 		    quotearg_colon (listed_incremental_option),
-		    offtostr (ftello (fp), offbuf),
+		    intmax (ftello (fp)),
 		    fieldname, buf, uc));
     }
 
@@ -1175,16 +1172,14 @@ read_num (FILE *fp, char const *fieldname,
     {
     case ERANGE:
       FATAL_ERROR ((0, conversion_errno,
-		    _("%s: byte %s: (valid range %s..%s)\n\t%s %s"),
+		    _("%s: byte %jd: (valid range %jd..%ju)\n\t%s %s"),
 		    quotearg_colon (listed_incremental_option),
-		    offtostr (ftello (fp), offbuf),
-		    imaxtostr (min_val, minbuf),
-		    umaxtostr (max_val, maxbuf), fieldname, buf));
+		    intmax (ftello (fp)), min_val, max_val, fieldname, buf));
     default:
       FATAL_ERROR ((0, conversion_errno,
-		    _("%s: byte %s: %s %s"),
+		    _("%s: byte %jd: %s %s"),
 		    quotearg_colon (listed_incremental_option),
-		    offtostr (ftello (fp), offbuf), fieldname, buf));
+		    intmax (ftello (fp)), fieldname, buf));
     case 0:
       break;
     }
@@ -1420,11 +1415,10 @@ write_directory_file_entry (void *entry, void *data)
 
       s = DIR_IS_NFS (directory) ? "1" : "0";
       fwrite (s, 2, 1, fp);
-      s = sysinttostr (directory->mtime.tv_sec, TYPE_MINIMUM (time_t),
-		       TYPE_MAXIMUM (time_t), buf);
+      s = timetostr (directory->mtime.tv_sec, buf);
       fwrite (s, strlen (s) + 1, 1, fp);
-      s = imaxtostr (directory->mtime.tv_nsec, buf);
-      fwrite (s, strlen (s) + 1, 1, fp);
+      int ns = directory->mtime.tv_nsec;
+      fprintf (fp, "%d%c", ns, 0);
       s = sysinttostr (directory->device_number,
 		       TYPE_MINIMUM (dev_t), TYPE_MAXIMUM (dev_t), buf);
       fwrite (s, strlen (s) + 1, 1, fp);
@@ -1454,26 +1448,20 @@ void
 write_directory_file (void)
 {
   FILE *fp = listed_incremental_stream;
-  char buf[UINTMAX_STRSIZE_BOUND];
-  char *s;
-
   if (! fp)
     return;
 
-  if (fseeko (fp, 0L, SEEK_SET) != 0)
+  if (fseeko (fp, 0, SEEK_SET) != 0)
     seek_error (listed_incremental_option);
   if (sys_truncate (fileno (fp)) != 0)
     truncate_error (listed_incremental_option);
 
-  fprintf (fp, "%s-%s-%d\n", PACKAGE_NAME, PACKAGE_VERSION,
-	   TAR_INCREMENTAL_VERSION);
-
-  s = (TYPE_SIGNED (time_t)
-       ? imaxtostr (start_time.tv_sec, buf)
-       : umaxtostr (start_time.tv_sec, buf));
-  fwrite (s, strlen (s) + 1, 1, fp);
-  s = umaxtostr (start_time.tv_nsec, buf);
-  fwrite (s, strlen (s) + 1, 1, fp);
+  int nsec = start_time.tv_nsec;
+  char buf[SYSINT_BUFSIZE];
+  fprintf (fp, "%s-%s-%d\n%s%c%d%c",
+	   PACKAGE_NAME, PACKAGE_VERSION, TAR_INCREMENTAL_VERSION,
+	   timetostr (start_time.tv_sec, buf),
+	   0, nsec, 0);
 
   if (! ferror (fp) && directory_table)
     hash_do_for_each (directory_table, write_directory_file_entry, fp);

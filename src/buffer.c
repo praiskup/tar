@@ -28,7 +28,6 @@
 #include <fnmatch.h>
 #include <human.h>
 #include <quotearg.h>
-#include <verify.h>
 
 #include "common.h"
 #include <rmt.h>
@@ -543,7 +542,6 @@ format_total_stats (FILE *fp, char const *const *formats, int eor, int eol)
 
     case DELETE_SUBCOMMAND:
       {
-        char buf[UINTMAX_STRSIZE_BOUND];
         n = print_stats (fp, formats[TF_READ],
 			 records_read * record_size);
 
@@ -553,15 +551,10 @@ format_total_stats (FILE *fp, char const *const *formats, int eor, int eol)
         n += print_stats (fp, formats[TF_WRITE],
 			  prev_written + bytes_written);
 
-	fputc (eor, fp);
-	n++;
-
-	if (formats[TF_DELETED] && formats[TF_DELETED][0])
-	  n += fprintf (fp, "%s: ", gettext (formats[TF_DELETED]));
-        n += fprintf (fp, "%s",
-		      STRINGIFY_BIGINT ((records_read - records_skipped)
-					* record_size
-					- (prev_written + bytes_written), buf));
+	intmax_t deleted = ((records_read - records_skipped) * record_size
+			    - (prev_written + bytes_written));
+	n += fprintf (fp, "%c%s: %jd", eor, gettext (formats[TF_DELETED]),
+		      deleted);
       }
       break;
 
@@ -1528,7 +1521,6 @@ try_new_volume (void)
 
   if (bufmap_head)
     {
-      uintmax_t s;
       if (!continued_file_name)
 	{
 	  WARN ((0, 0, _("%s is not continued on this volume"),
@@ -1553,34 +1545,25 @@ try_new_volume (void)
             }
         }
 
-      s = continued_file_size + continued_file_offset;
-
-      if (bufmap_head->sizetotal != s || s < continued_file_offset)
+      uintmax_t s;
+      if (ckd_add (&s, continued_file_size, continued_file_offset)
+	  || s != bufmap_head->sizetotal)
         {
-          char totsizebuf[UINTMAX_STRSIZE_BOUND];
-          char s1buf[UINTMAX_STRSIZE_BOUND];
-          char s2buf[UINTMAX_STRSIZE_BOUND];
-
-          WARN ((0, 0, _("%s is the wrong size (%s != %s + %s)"),
+	  WARN ((0, 0, _("%s is the wrong size (%jd != %ju + %ju)"),
                  quote (continued_file_name),
-                 STRINGIFY_BIGINT (bufmap_head->sizetotal, totsizebuf),
-                 STRINGIFY_BIGINT (continued_file_size, s1buf),
-                 STRINGIFY_BIGINT (continued_file_offset, s2buf)));
+		 intmax (bufmap_head->sizetotal),
+		 uintmax (continued_file_size),
+		 uintmax (continued_file_offset)));
           return false;
         }
 
-      if (bufmap_head->sizetotal - bufmap_head->sizeleft !=
-	  continued_file_offset)
+      if (bufmap_head->sizetotal - bufmap_head->sizeleft
+	  != continued_file_offset)
         {
-          char totsizebuf[UINTMAX_STRSIZE_BOUND];
-          char s1buf[UINTMAX_STRSIZE_BOUND];
-          char s2buf[UINTMAX_STRSIZE_BOUND];
-
-          WARN ((0, 0, _("This volume is out of sequence (%s - %s != %s)"),
-                 STRINGIFY_BIGINT (bufmap_head->sizetotal, totsizebuf),
-                 STRINGIFY_BIGINT (bufmap_head->sizeleft, s1buf),
-                 STRINGIFY_BIGINT (continued_file_offset, s2buf)));
-
+	  WARN ((0, 0, _("This volume is out of sequence (%jd - %jd != %ju)"),
+		 intmax (bufmap_head->sizetotal),
+		 intmax (bufmap_head->sizeleft),
+		 uintmax (continued_file_offset)));
           return false;
         }
     }
@@ -1700,11 +1683,9 @@ _write_volume_label (const char *str)
 static void
 add_volume_label (void)
 {
-  char buf[UINTMAX_STRSIZE_BOUND];
-  char *p = STRINGIFY_BIGINT (volno, buf);
   char *s = xmalloc (strlen (volume_label_option) + sizeof VOL_SUFFIX
-                     + strlen (p) + 2);
-  sprintf (s, "%s %s %s", volume_label_option, VOL_SUFFIX, p);
+		     + INT_BUFSIZE_BOUND (int) + 2);
+  sprintf (s, "%s %s %d", volume_label_option, VOL_SUFFIX, volno);
   _write_volume_label (s);
   free (s);
 }

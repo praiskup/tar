@@ -607,15 +607,13 @@ verify_volume (void)
 	  set_next_block_after (current_header);
           if (!ignore_zeros_option)
             {
-	      char buf[UINTMAX_STRSIZE_BOUND];
-
 	      status = read_header (&current_header, &current_stat_info,
 	                            read_header_auto);
 	      if (status == HEADER_ZERO_BLOCK)
 	        break;
 	      WARNOPT (WARN_ALONE_ZERO_BLOCK,
-		       (0, 0, _("A lone zero block at %s"),
-			STRINGIFY_BIGINT (current_block_ordinal (), buf)));
+		       (0, 0, _("A lone zero block at %jd"),
+			intmax (current_block_ordinal ())));
             }
 	  continue;
 	}

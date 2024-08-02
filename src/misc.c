@@ -372,7 +372,7 @@ replace_prefix (char **pname, const char *samp, size_t slen,
 /* Handling numbers.  */
 
 /* Convert VALUE, which is converted from a system integer type whose
-   minimum value is MINVAL and maximum MINVAL, to an decimal
+   minimum value is MINVAL and maximum MINVAL, to a decimal
    integer string.  Use the storage in BUF and return a pointer to the
    converted string.  If VALUE is converted from a negative integer in
    the range MINVAL .. -1, represent it with a string representation
@@ -390,6 +390,14 @@ sysinttostr (uintmax_t value, intmax_t minval, uintmax_t maxval,
       intmax_t i = value - minval;
       return imaxtostr (i + minval, buf);
     }
+}
+
+/* Convert T to a decimal integer string.  Use the storage in BUF and
+   return a pointer to the converted string.  */
+char *
+timetostr (time_t t, char buf[SYSINT_BUFSIZE])
+{
+  return sysinttostr (t, TYPE_MINIMUM (time_t), TYPE_MAXIMUM (time_t), buf);
 }
 
 /* Convert a prefix of the string ARG to a system integer type whose
@@ -472,11 +480,10 @@ code_ns_fraction (int ns, char *p)
 }
 
 char const *
-code_timespec (struct timespec t, char sbuf[TIMESPEC_STRSIZE_BOUND])
+code_timespec (struct timespec t, char tsbuf[TIMESPEC_STRSIZE_BOUND])
 {
   time_t s = t.tv_sec;
   int ns = t.tv_nsec;
-  char *np;
   bool negative = s < 0;
 
   /* ignore invalid values of ns */
@@ -489,11 +496,12 @@ code_timespec (struct timespec t, char sbuf[TIMESPEC_STRSIZE_BOUND])
       ns = BILLION - ns;
     }
 
-  np = umaxtostr (negative ? - (uintmax_t) s : (uintmax_t) s, sbuf + 1);
-  if (negative)
-    *--np = '-';
-  code_ns_fraction (ns, sbuf + UINTMAX_STRSIZE_BOUND);
-  return np;
+  bool minus_zero = negative & !s;
+  char *sstr = timetostr (s, tsbuf + 1);
+  sstr[-1] = '-';
+  sstr -= minus_zero;
+  code_ns_fraction (ns, sstr + strlen (sstr));
+  return sstr;
 }
 
 struct timespec

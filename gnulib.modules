@@ -63,6 +63,7 @@ gitlog-to-changelog
 hash
 human
 idx
+intprops
 inttostr
 inttypes
 largefile

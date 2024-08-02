@@ -125,9 +125,9 @@ cachedir_file_p (int fd)
 /* The maximum uintmax_t value that can be represented with DIGITS digits,
    assuming that each digit is BITS_PER_DIGIT wide.  */
 #define MAX_VAL_WITH_DIGITS(digits, bits_per_digit) \
-   ((digits) * (bits_per_digit) < sizeof (uintmax_t) * CHAR_BIT \
+   ((digits) * (bits_per_digit) < UINTMAX_WIDTH \
     ? ((uintmax_t) 1 << ((digits) * (bits_per_digit))) - 1 \
-    : (uintmax_t) -1)
+    : UINTMAX_MAX)
 
 /* The maximum uintmax_t value that can be represented with octal
    digits and a trailing NUL in BUFFER.  */
@@ -185,7 +185,7 @@ to_base256 (bool negative, uintmax_t value, char *where, size_t size)
 {
   uintmax_t v = value;
   uintmax_t propagated_sign_bits =
-    ((uintmax_t) - negative << (CHAR_BIT * sizeof v - LG_256));
+    ((uintmax_t) - negative << (UINTMAX_WIDTH - LG_256));
   size_t i = size;
 
   do
@@ -218,31 +218,12 @@ to_chars_subst (bool negative, bool gnu_format, uintmax_t value, size_t valsize,
   uintmax_t maxval = (gnu_format
 		      ? MAX_VAL_WITH_DIGITS (size - 1, LG_256)
 		      : MAX_VAL_WITH_DIGITS (size - 1, LG_8));
-  char valbuf[UINTMAX_STRSIZE_BOUND + 1];
-  char maxbuf[UINTMAX_STRSIZE_BOUND];
-  char minbuf[UINTMAX_STRSIZE_BOUND + 1];
-  char const *minval_string;
-  char const *maxval_string = STRINGIFY_BIGINT (maxval, maxbuf);
-  char const *value_string;
-
-  if (gnu_format)
-    {
-      uintmax_t m = maxval + 1 ? maxval + 1 : maxval / 2 + 1;
-      char *p = STRINGIFY_BIGINT (m, minbuf + 1);
-      *--p = '-';
-      minval_string = p;
-    }
-  else
-    minval_string = "0";
-
+  intmax_t minval = (!gnu_format ? 0
+		     : ckd_sub (&minval, -1, maxval) ? INTMAX_MIN
+		     : minval);
+  char const *valuesign = &"-"[!negative];
   if (negative)
-    {
-      char *p = STRINGIFY_BIGINT (- value, valbuf + 1);
-      *--p = '-';
-      value_string = p;
-    }
-  else
-    value_string = STRINGIFY_BIGINT (value, valbuf);
+    value = -value;
 
   if (substitute)
     {
@@ -256,18 +237,15 @@ to_chars_subst (bool negative, bool gnu_format, uintmax_t value, size_t valsize,
 
 	 Apart from this they are completely identical. */
       uintmax_t s = (negsub &= archive_format == GNU_FORMAT) ? - sub : sub;
-      char subbuf[UINTMAX_STRSIZE_BOUND + 1];
-      char *sub_string = STRINGIFY_BIGINT (s, subbuf + 1);
-      if (negsub)
-	*--sub_string = '-';
-      WARN ((0, 0, _("value %s out of %s range %s..%s; substituting %s"),
-	     value_string, type, minval_string, maxval_string,
-	     sub_string));
+      char const *ssign = &"-"[!negsub];
+      WARN ((0, 0, _("value %s%ju out of %s range %jd..%ju;"
+		     " substituting %s%ju"),
+	     valuesign, value, type, minval, maxval, ssign, s));
       return to_chars (negsub, s, valsize, 0, where, size, type);
     }
   else
-    ERROR ((0, 0, _("value %s out of %s range %s..%s"),
-	    value_string, type, minval_string, maxval_string));
+    ERROR ((0, 0, _("value %s%ju out of %s range %jd..%ju"),
+	    valuesign, value, type, minval, maxval));
   return false;
 }
 
@@ -1097,15 +1075,16 @@ dump_regular_file (int fd, struct tar_stat_info *st)
 
       if (count != bufsize)
 	{
-	  char buf[UINTMAX_STRSIZE_BOUND];
 	  memset (blk->buffer + count, 0, bufsize - count);
 	  WARNOPT (WARN_FILE_SHRANK,
 		   (0, 0,
-		    ngettext ("%s: File shrank by %s byte; padding with zeros",
-			      "%s: File shrank by %s bytes; padding with zeros",
+		    ngettext (("%s: File shrank by %jd byte;"
+			       " padding with zeros"),
+			      ("%s: File shrank by %jd bytes;"
+			       " padding with zeros"),
 			      size_left),
 		    quotearg_colon (st->orig_file_name),
-		    STRINGIFY_BIGINT (size_left, buf)));
+		    intmax (size_left)));
 	  if (! ignore_failed_read_option)
 	    set_exit_status (TAREXIT_DIFFERS);
 	  pad_archive (size_left - (bufsize - count));

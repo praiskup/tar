@@ -662,10 +662,8 @@ sys_child_open_for_uncompress (void)
 static void
 dec_to_env (char const *envar, uintmax_t num)
 {
-  char buf[UINTMAX_STRSIZE_BOUND];
-  char *numstr;
-
-  numstr = STRINGIFY_BIGINT (num, buf);
+  char numstr[UINTMAX_STRSIZE_BOUND];
+  sprintf (numstr, "%ju", num);
   if (setenv (envar, numstr, 1) != 0)
     xalloc_die ();
 }
@@ -823,15 +821,13 @@ sys_wait_command (void)
 int
 sys_exec_info_script (const char **archive_name, int volume_number)
 {
-  pid_t pid;
-  char uintbuf[UINTMAX_STRSIZE_BOUND];
   int p[2];
   static void (*saved_handler) (int sig);
 
   xpipe (p);
   saved_handler = signal (SIGPIPE, SIG_IGN);
 
-  pid = xfork ();
+  pid_t pid = xfork ();
 
   if (pid != 0)
     {
@@ -877,14 +873,17 @@ sys_exec_info_script (const char **archive_name, int volume_number)
   /* Child */
   setenv ("TAR_VERSION", PACKAGE_VERSION, 1);
   setenv ("TAR_ARCHIVE", *archive_name, 1);
-  setenv ("TAR_VOLUME", STRINGIFY_BIGINT (volume_number, uintbuf), 1);
-  setenv ("TAR_BLOCKING_FACTOR",
-	  STRINGIFY_BIGINT (blocking_factor, uintbuf), 1);
+  char intbuf[INT_BUFSIZE_BOUND (int)];
+  sprintf (intbuf, "%d", volume_number);
+  setenv ("TAR_VOLUME", intbuf, 1);
+  sprintf (intbuf, "%d", blocking_factor);
+  setenv ("TAR_BLOCKING_FACTOR", intbuf, 1);
   setenv ("TAR_SUBCOMMAND", subcommand_string (subcommand_option), 1);
   setenv ("TAR_FORMAT",
 	  archive_format_string (current_format == DEFAULT_FORMAT ?
 				 archive_format : current_format), 1);
-  setenv ("TAR_FD", STRINGIFY_BIGINT (p[PWRITE], uintbuf), 1);
+  sprintf (intbuf, "%d", p[PWRITE]);
+  setenv ("TAR_FD", intbuf, 1);
 
   xclose (p[PREAD]);
 
@@ -897,10 +896,7 @@ sys_exec_checkpoint_script (const char *script_name,
 			    const char *archive_name,
 			    int checkpoint_number)
 {
-  pid_t pid;
-  char uintbuf[UINTMAX_STRSIZE_BOUND];
-
-  pid = xfork ();
+  pid_t pid = xfork ();
 
   if (pid != 0)
     {
@@ -921,9 +917,11 @@ sys_exec_checkpoint_script (const char *script_name,
   /* Child */
   setenv ("TAR_VERSION", PACKAGE_VERSION, 1);
   setenv ("TAR_ARCHIVE", archive_name, 1);
-  setenv ("TAR_CHECKPOINT", STRINGIFY_BIGINT (checkpoint_number, uintbuf), 1);
-  setenv ("TAR_BLOCKING_FACTOR",
-	  STRINGIFY_BIGINT (blocking_factor, uintbuf), 1);
+  char intbuf[INT_BUFSIZE_BOUND (int)];
+  sprintf (intbuf, "%d", checkpoint_number);
+  setenv ("TAR_CHECKPOINT", intbuf, 1);
+  sprintf (intbuf, "%d", blocking_factor);
+  setenv ("TAR_BLOCKING_FACTOR", intbuf, 1);
   setenv ("TAR_SUBCOMMAND", subcommand_string (subcommand_option), 1);
   setenv ("TAR_FORMAT",
 	  archive_format_string (current_format == DEFAULT_FORMAT ?

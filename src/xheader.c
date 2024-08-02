@@ -999,15 +999,10 @@ static void
 out_of_range_header (char const *keyword, char const *value,
 		     intmax_t minval, uintmax_t maxval)
 {
-  char minval_buf[INT_BUFSIZE_BOUND (intmax_t)];
-  char maxval_buf[UINTMAX_STRSIZE_BOUND];
-  char *minval_string = imaxtostr (minval, minval_buf);
-  char *maxval_string = umaxtostr (maxval, maxval_buf);
-
   /* TRANSLATORS: The first %s is the pax extended header keyword
      (atime, gid, etc.).  */
-  ERROR ((0, 0, _("Extended header %s=%s is out of range %s..%s"),
-	  keyword, value, minval_string, maxval_string));
+  ERROR ((0, 0, _("Extended header %s=%s is out of range %jd..%ju"),
+	  keyword, value, minval, maxval));
 }
 
 static void

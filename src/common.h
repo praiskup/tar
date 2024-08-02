@@ -39,25 +39,28 @@
 
 
 #include "arith.h"
-#include <attribute.h>
-#include <backupfile.h>
-#include <exclude.h>
-#include <full-write.h>
-#include <idx.h>
-#include <inttostr.h>
-#include <modechange.h>
-#include <quote.h>
-#include <safe-read.h>
-#include <full-read.h>
-#include <stat-time.h>
-#include <timespec.h>
+
 #define obstack_chunk_alloc xmalloc
 #define obstack_chunk_free free
 #include <obstack.h>
-#include <progname.h>
-#include <xvasprintf.h>
 
+#include <attribute.h>
+#include <backupfile.h>
+#include <exclude.h>
+#include <full-read.h>
+#include <full-write.h>
+#include <idx.h>
+#include <intprops.h>
+#include <inttostr.h>
+#include <modechange.h>
 #include <paxlib.h>
+#include <progname.h>
+#include <quote.h>
+#include <safe-read.h>
+#include <stat-time.h>
+#include <timespec.h>
+#include <verify.h>
+#include <xvasprintf.h>
 
 /* Log base 2 of common values.  */
 #define LG_8 3
@@ -661,6 +664,23 @@ char *namebuf_name (namebuf_t buf, const char *name);
 
 const char *tar_dirname (void);
 
+/* intmax (N) is like ((intmax_t) (N)) except without a cast so
+   that it is an error if N is a pointer.  Similarly for uintmax.  */
+COMMON_INLINE intmax_t
+intmax (intmax_t n)
+{
+  return n;
+}
+COMMON_INLINE uintmax_t
+uintmax (uintmax_t n)
+{
+  return n;
+}
+/* intmax should be used only with signed types, and uintmax for unsigned.
+   To bypass this check parenthesize the function, e.g., (intmax) (n).  */
+#define intmax(n) verify_expr (EXPR_SIGNED (n), (intmax) (n))
+#define uintmax(n) verify_expr (!EXPR_SIGNED (n), (uintmax) (n))
+
 /* Represent N using a signed integer I such that (uintmax_t) I == N.
    With a good optimizing compiler, this is equivalent to (intmax_t) i
    and requires zero machine instructions.  */
@@ -679,18 +699,18 @@ represent_uintmax (uintmax_t n)
     }
 }
 
-#define STRINGIFY_BIGINT(i, b) umaxtostr (i, b)
 enum { UINTMAX_STRSIZE_BOUND = INT_BUFSIZE_BOUND (intmax_t) };
 enum { SYSINT_BUFSIZE =
 	 max (UINTMAX_STRSIZE_BOUND, INT_BUFSIZE_BOUND (intmax_t)) };
 char *sysinttostr (uintmax_t, intmax_t, uintmax_t, char buf[SYSINT_BUFSIZE]);
 intmax_t strtosysint (char const *, char **, intmax_t, uintmax_t);
+char *timetostr (time_t, char buf[SYSINT_BUFSIZE]);
 void code_ns_fraction (int ns, char *p);
 enum { BILLION = 1000000000, LOG10_BILLION = 9 };
 enum { TIMESPEC_STRSIZE_BOUND =
-         UINTMAX_STRSIZE_BOUND + LOG10_BILLION + sizeof "-." - 1 };
+         SYSINT_BUFSIZE + LOG10_BILLION + sizeof "." - 1 };
 char const *code_timespec (struct timespec ts,
-			   char sbuf[TIMESPEC_STRSIZE_BOUND]);
+			   char tsbuf[TIMESPEC_STRSIZE_BOUND]);
 struct timespec decode_timespec (char const *, char **, bool);
 
 /* Return true if T does not represent an out-of-range or invalid value.  */
