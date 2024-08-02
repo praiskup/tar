@@ -336,43 +336,15 @@ usage (int code)
 static void
 guess_outname (char *name)
 {
-  char *p;
-  char *s;
-
-  if (name[0] == '.' && name[1] == '/')
-    name += 2;
-
-  p = name + strlen (name) - 1;
-  s = NULL;
-
-  for (; p > name && *p != '/'; p--)
-    ;
-  if (*p == '/')
-    s = p + 1;
-  if (p != name)
-    {
-      for (p--; p > name && *p != '/'; p--)
-	;
-    }
-
-  if (*p != '/')
-    {
-      if (s)
-	outname = s;
-      else
-	{
-	  outname = emalloc (4 + strlen (name));
-	  strcpy (outname, "../");
-	  strcpy (outname + 3, name);
-	}
-    }
-  else
-    {
-      size_t len = p - name + 1;
-      outname = emalloc (len + strlen (s) + 1);
-      memcpy (outname, name, len);
-      strcpy (outname + len, s);
-    }
+  char *base = strrchr (name, '/');
+  base = base ? base + 1 : name;
+  size_t dirlen = base - name, baselen = strlen (base);
+  static char const parentdir[] = "../";
+  int parentdirlen = sizeof parentdir - 1;
+  outname = emalloc (dirlen + parentdirlen + baselen + 1);
+  memcpy (outname, name, dirlen);
+  memcpy (outname + dirlen, parentdir, parentdirlen);
+  memcpy (outname + dirlen + parentdirlen, base, baselen + 1);
 }
 
 int
