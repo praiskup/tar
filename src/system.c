@@ -677,11 +677,13 @@ time_to_env (char const *envar, struct timespec t)
 }
 
 static void
-oct_to_env (char const *envar, unsigned long num)
+oct_to_env (char const *envar, mode_t m)
 {
-  char buf[1+1+(sizeof(unsigned long)*CHAR_BIT+2)/3];
-
-  snprintf (buf, sizeof buf, "0%lo", num);
+  char buf[sizeof "0" + (UINTMAX_WIDTH + 2) / 3];
+  uintmax_t um = m;
+  if (EXPR_SIGNED (m) && sizeof m < sizeof um)
+    um &= ~ (UINTMAX_MAX << TYPE_WIDTH (m));
+  sprintf (buf, "%#"PRIoMAX, um);
   if (setenv (envar, buf, 1) != 0)
     xalloc_die ();
 }
