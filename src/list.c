@@ -100,9 +100,9 @@ decode_xform (char *file_name, void *data)
 
   if (strip_name_components)
     {
-      size_t prefix_len = stripped_prefix_len (file_name,
-					       strip_name_components);
-      if (prefix_len == (size_t) -1)
+      ptrdiff_t prefix_len = stripped_prefix_len (file_name,
+						  strip_name_components);
+      if (prefix_len < 0)
 	prefix_len = strlen (file_name);
       file_name += prefix_len;
     }

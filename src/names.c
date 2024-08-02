@@ -1964,9 +1964,10 @@ make_file_name (const char *directory_name, const char *name)
 
 /* Return the size of the prefix of FILE_NAME that is removed after
    stripping NUM leading file name components.  NUM must be
-   positive.  */
+   positive.  Return a negative number if FILE_NAME does not have
+   enough components.  */
 
-size_t
+ptrdiff_t
 stripped_prefix_len (char const *file_name, size_t num)
 {
   char const *p = file_name + FILE_SYSTEM_PREFIX_LEN (file_name);
