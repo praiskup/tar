@@ -877,8 +877,7 @@ from_header (char const *where0, size_t digs, char const *type,
 	 others (assuming ASCII bytes of 8 bits or more).  */
       int signbit = *where & (1 << (LG_256 - 2));
       uintmax_t topbits = (((uintmax_t) - signbit)
-			   << (CHAR_BIT * sizeof (uintmax_t)
-			       - LG_256 - (LG_256 - 2)));
+			   << (UINTMAX_WIDTH - LG_256 - (LG_256 - 2)));
       value = (*where++ & ((1 << (LG_256 - 2)) - 1)) - signbit;
       for (;;)
 	{
