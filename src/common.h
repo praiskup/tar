@@ -766,7 +766,6 @@ _Noreturn void write_fatal (char const *name);
 pid_t xfork (void);
 void xpipe (int fd[2]);
 
-void *page_aligned_alloc (void **ptr, size_t size);
 int set_file_atime (int fd, int parentfd, char const *file,
 		    struct timespec atime);
 

@@ -119,6 +119,7 @@ unlinkdir
 unlocked-io
 utimensat
 version-etc-fsf
+xalignalloc
 xalloc
 xalloc-die
 xgetcwd

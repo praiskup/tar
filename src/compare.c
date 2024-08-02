@@ -31,6 +31,7 @@
 #endif
 
 #include "common.h"
+#include <alignalloc.h>
 #include <quotearg.h>
 #include <rmt.h>
 #include <stdarg.h>
@@ -48,8 +49,7 @@ static char *diff_buffer;
 void
 diff_init (void)
 {
-  void *ptr;
-  diff_buffer = page_aligned_alloc (&ptr, record_size);
+  diff_buffer = xalignalloc (getpagesize (), record_size);
   if (listed_incremental_option)
     read_directory_file ();
 }

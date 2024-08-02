@@ -1216,33 +1216,6 @@ xpipe (int fd[2])
     call_arg_fatal ("pipe", _("interprocess channel"));
 }
 
-/* Return PTR, aligned upward to the next multiple of ALIGNMENT.
-   ALIGNMENT must be nonzero.  The caller must arrange for ((char *)
-   PTR) through ((char *) PTR + ALIGNMENT - 1) to be addressable
-   locations.  */
-
-static void *
-ptr_align (void *ptr, size_t alignment)
-{
-  char *p0 = ptr;
-  char *p1 = p0 + alignment - 1;
-  return p1 - (size_t) p1 % alignment;
-}
-
-/* Return the address of a page-aligned buffer of at least SIZE bytes.
-   The caller should free *PTR when done with the buffer.  */
-
-void *
-page_aligned_alloc (void **ptr, size_t size)
-{
-  size_t alignment = getpagesize ();
-  size_t size1;
-  if (ckd_add (&size1, size, alignment))
-    xalloc_die ();
-  *ptr = xmalloc (size1);
-  return ptr_align (*ptr, alignment);
-}
-
 
 
 struct namebuf

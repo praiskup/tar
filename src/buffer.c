@@ -23,6 +23,7 @@
 
 #include <signal.h>
 
+#include <alignalloc.h>
 #include <c-ctype.h>
 #include <closeout.h>
 #include <fnmatch.h>
@@ -45,7 +46,6 @@
 static tarlong prev_written;    /* bytes written on previous volumes */
 static tarlong bytes_written;   /* bytes written on this volume */
 static void *record_buffer[2];  /* allocated memory */
-static union block *record_buffer_aligned[2];
 static int record_index;
 
 /* FIXME: The following variables should ideally be static to this
@@ -665,11 +665,10 @@ xclose (int fd)
 static void
 init_buffer (void)
 {
-  if (! record_buffer_aligned[record_index])
-    record_buffer_aligned[record_index] =
-      page_aligned_alloc (&record_buffer[record_index], record_size);
+  if (! record_buffer[record_index])
+    record_buffer[record_index] = xalignalloc (getpagesize (), record_size);
 
-  record_start = record_buffer_aligned[record_index];
+  record_start = record_buffer[record_index];
   current_block = record_start;
   record_end = record_start + blocking_factor;
 }
@@ -1139,8 +1138,8 @@ close_archive (void)
   sys_wait_for_child (child_pid, hit_eof);
 
   tar_stat_destroy (&current_stat_info);
-  free (record_buffer[0]);
-  free (record_buffer[1]);
+  alignfree (record_buffer[0]);
+  alignfree (record_buffer[1]);
   bufmap_free (NULL);
 }
 
