@@ -101,7 +101,8 @@ struct wordsplit
   idx_t ws_len;		    /* Length of ws_input. */
   idx_t ws_endp;	    /* Points past the last processed byte in
 			       ws_input. */
-  int ws_errno;             /* [Output] Error code, if an error occurred. */
+  int ws_errno;             /* [Output] Error code, if an error occurred.
+			       This is not the same as a POSIX errno value.  */
   char *ws_usererr;         /* Points to textual description of
 			       the error, if ws_errno is WRDSE_USERERR.  Must
 			       be allocated with malloc(3). */
@@ -230,6 +231,7 @@ struct wordsplit
 /* Test WS for escape option F for words (Q==0) or quoted strings (Q==1) */
 #define WRDSO_ESC_TEST(ws,q,f) ((ws)->ws_options & ((f) << 4*(q)))
 
+/* Error codes.  */
 #define WRDSE_OK         0
 #define WRDSE_EOF        WRDSE_OK
 #define WRDSE_QUOTE      1
@@ -251,10 +253,10 @@ int wordsplit_get_words (wordsplit_t *ws, idx_t *wordc, char ***wordv);
 
 int wordsplit_append (wordsplit_t *wsp, int argc, char **argv);
 
-int wordsplit_c_unquote_char (int c);
-int wordsplit_c_quote_char (int c);
-idx_t wordsplit_c_quoted_length (const char *str, int quote_hex, int *quote);
-void wordsplit_c_quote_copy (char *dst, const char *src, int quote_hex);
+char wordsplit_c_unquote_char (char c);
+char wordsplit_c_quote_char (char c);
+idx_t wordsplit_c_quoted_length (const char *str, bool quote_hex, bool *quote);
+void wordsplit_c_quote_copy (char *dst, const char *src, bool quote_hex);
 
 void wordsplit_perror (wordsplit_t *ws);
 const char *wordsplit_strerror (wordsplit_t *ws);
