@@ -64,7 +64,6 @@
 
 /* Log base 2 of common values.  */
 #define LG_8 3
-#define LG_64 6
 #define LG_256 8
 
 _GL_INLINE_HEADER_BEGIN

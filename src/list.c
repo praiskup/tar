@@ -793,7 +793,7 @@ from_header (char const *where0, size_t digs, char const *type,
 	  /* Compute the negative of the input value, assuming two's
 	     complement.  */
 	  int digit = (*where1 - '0') | 4;
-	  overflow = 0;
+	  overflow = false;
 	  value = 0;
 	  where = where1;
 	  for (;;)
@@ -803,11 +803,9 @@ from_header (char const *where0, size_t digs, char const *type,
 	      if (where == lim || ! is_octal_digit (*where))
 		break;
 	      digit = *where - '0';
-	      overflow |= value != (value << LG_8 >> LG_8);
-	      value <<= LG_8;
+	      overflow |= ckd_mul (&value, value, 8);
 	    }
-	  value++;
-	  overflow |= !value;
+	  overflow |= ckd_add (&value, value, 1);
 
 	  if (!overflow && value <= minus_minval)
 	    {
@@ -853,7 +851,7 @@ from_header (char const *where0, size_t digs, char const *type,
       while (where != lim
 	     && (dig = base64_map[(unsigned char) *where]) < 64)
 	{
-	  if (value << LG_64 >> LG_64 != value)
+	  if (ckd_mul (&value, value, 64))
 	    {
 	      if (type && !silent)
 		ERROR ((0, 0,
@@ -861,7 +859,7 @@ from_header (char const *where0, size_t digs, char const *type,
 			quote_mem (where0, digs), type));
 	      return -1;
 	    }
-	  value = (value << LG_64) | dig;
+	  value |= dig;
 	  where++;
 	}
     }
