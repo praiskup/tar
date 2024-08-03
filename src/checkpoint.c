@@ -300,10 +300,13 @@ format_checkpoint_string (FILE *fp, size_t len,
 		if (arg)
 		  {
 		    ws.ws_delim = ",";
-		    if (wordsplit (arg, &ws, WRDSF_NOVAR | WRDSF_NOCMD |
-				           WRDSF_QUOTE | WRDSF_DELIM))
+		    if (wordsplit (arg, &ws,
+				   (WRDSF_NOVAR | WRDSF_NOCMD
+				    | WRDSF_QUOTE | WRDSF_DELIM)))
 		      ERROR ((0, 0, _("cannot split string '%s': %s"),
 			      arg, wordsplit_strerror (&ws)));
+		    else if (3 < ws.ws_wordc)
+		      ERROR ((0, 0, _("too many words in '%s'"), arg));
 		    else
 		      {
 			int i;
