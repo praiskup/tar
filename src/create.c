@@ -145,8 +145,8 @@ to_octal (uintmax_t value, char *where, size_t size)
 
   do
     {
-      where[--i] = '0' + (v & ((1 << LG_8) - 1));
-      v >>= LG_8;
+      where[--i] = '0' + v % 8;
+      v /= 8;
     }
   while (i);
 }
@@ -190,8 +190,8 @@ to_base256 (bool negative, uintmax_t value, char *where, size_t size)
 
   do
     {
-      where[--i] = v & ((1 << LG_256) - 1);
-      v = propagated_sign_bits | (v >> LG_256);
+      where[--i] = v % 256;
+      v = propagated_sign_bits | (v / 256);
     }
   while (i);
 }
