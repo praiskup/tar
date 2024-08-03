@@ -216,7 +216,7 @@ static Hash_table *directory_meta_table;
   static char const nfs_string[] = "nfs";
 # define NFS_FILE_STAT(st) (strcmp ((st).st_fstype, nfs_string) == 0)
 #else
-# define ST_DEV_MSB(st) (~ (dev_t) 0 << (sizeof (st).st_dev * CHAR_BIT - 1))
+# define ST_DEV_MSB(st) (~ (dev_t) 0 << (TYPE_WIDTH ((st).st_dev) - 1))
 # define NFS_FILE_STAT(st) (((st).st_dev & ST_DEV_MSB (st)) != 0)
 #endif
 
