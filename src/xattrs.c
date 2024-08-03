@@ -316,7 +316,7 @@ xattrs__acls_set (struct tar_stat_info const *st,
       return;
     }
 
-  if (acl_set_file_at (chdir_fd, file_name, type, acl) == -1)
+  if (acl_set_file_at (chdir_fd, file_name, type, acl) < 0)
     /* warn even if filesystem does not support acls */
     WARNOPT (WARN_XATTR_WRITE,
 	     (0, errno,
@@ -462,7 +462,7 @@ xattrs_acls_get (MAYBE_UNUSED int parentfd, MAYBE_UNUSED char const *file_name,
       int err = file_has_acl_at (parentfd, file_name, &st->stat);
       if (err == 0)
         return;
-      if (err == -1)
+      if (err < 0)
         {
           call_arg_warn ("file_has_acl_at", file_name);
           return;
@@ -560,16 +560,16 @@ xattrs_xattrs_get (int parentfd, char const *file_name,
       if (!xatrs)
 	xatrs = x2nrealloc (xatrs, &xsz, 1);
 
-      while (((fd == 0) ?
-              ((xret =
-                llistxattrat (parentfd, file_name, xatrs, xsz)) == -1) :
-	      ((xret = flistxattr (fd, xatrs, xsz)) == -1))
-             && (errno == ERANGE))
+      while (((xret = (fd == 0
+		       ? listxattrat (parentfd, file_name, xatrs, xsz)
+		       : flistxattr (fd, xatrs, xsz)))
+	      < 0)
+             && errno == ERANGE)
         {
 	  xatrs = x2nrealloc (xatrs, &xsz, 1);
         }
 
-      if (xret == -1)
+      if (xret < 0)
         call_arg_warn ((fd == 0) ? "llistxattrat" : "flistxattr", file_name);
       else
         {
@@ -585,16 +585,17 @@ xattrs_xattrs_get (int parentfd, char const *file_name,
               size_t len = strlen (attr);
               ssize_t aret = 0;
 
-              while (((fd == 0)
-                      ? ((aret = lgetxattrat (parentfd, file_name, attr,
-                                              val, asz)) == -1)
-                      : ((aret = fgetxattr (fd, attr, val, asz)) == -1))
-                     && (errno == ERANGE))
+	      while (((aret = (fd == 0
+			       ? lgetxattrat (parentfd, file_name, attr,
+					      val, asz)
+			       : fgetxattr (fd, attr, val, asz)))
+		      < 0)
+                     && errno == ERANGE)
                 {
 		  val = x2nrealloc (val, &asz, 1);
                 }
 
-              if (aret != -1)
+              if (0 <= aret)
                 {
                   if (!xattrs_masked_out (attr, true))
                     xheader_xattr_add (st, attr, val, aret);
@@ -619,7 +620,7 @@ xattrs__fd_set (char const *file_name, char typeflag,
   if (ptr)
     {
       const char *sysname = "setxattrat";
-      int ret = -1;
+      int ret;
 
       if (typeflag != SYMTYPE)
         ret = setxattrat (chdir_fd, file_name, attr, ptr, len, 0);
@@ -629,7 +630,7 @@ xattrs__fd_set (char const *file_name, char typeflag,
           ret = lsetxattrat (chdir_fd, file_name, attr, ptr, len, 0);
         }
 
-      if (ret == -1)
+      if (ret < 0)
         WARNOPT (WARN_XATTR_WRITE,
 		 (0, errno,
 		  _("%s: Cannot set '%s' extended attribute for file '%s'"),
@@ -652,11 +653,11 @@ xattrs_selinux_get (MAYBE_UNUSED int parentfd, MAYBE_UNUSED char const *file_nam
         WARN ((0, 0, _("SELinux support is not available")));
       done = 1;
 #else
-      int result = fd ?
-	            fgetfilecon (fd, &st->cntx_name)
-                    : lgetfileconat (parentfd, file_name, &st->cntx_name);
+      int result = (fd
+		    ? fgetfilecon (fd, &st->cntx_name)
+		    : lgetfileconat (parentfd, file_name, &st->cntx_name));
 
-      if (result == -1 && errno != ENODATA && errno != ENOTSUP)
+      if (result < 0 && errno != ENODATA && errno != ENOTSUP)
         call_arg_warn (fd ? "fgetfilecon" : "lgetfileconat", file_name);
 #endif
     }
@@ -691,7 +692,7 @@ xattrs_selinux_set (MAYBE_UNUSED struct tar_stat_info const *st,
           sysname = "lsetfileconat";
         }
 
-      if (ret == -1)
+      if (ret < 0)
         WARNOPT (WARN_XATTR_WRITE,
 		 (0, errno,
 		  _("%s: Cannot set SELinux context for file '%s'"),

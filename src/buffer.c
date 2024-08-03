@@ -442,7 +442,7 @@ open_compressed_archive (void)
 {
   archive = rmtopen (archive_name_array[0], O_RDONLY | O_BINARY,
                      MODE_RW, rsh_command_option);
-  if (archive == -1)
+  if (archive < 0)
     return archive;
 
   if (!multi_volume_option)

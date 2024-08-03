@@ -1203,7 +1203,7 @@ pid_t
 xfork (void)
 {
   pid_t p = fork ();
-  if (p == (pid_t) -1)
+  if (p < 0)
     call_arg_fatal ("fork", _("child process"));
   return p;
 }

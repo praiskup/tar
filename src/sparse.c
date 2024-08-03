@@ -301,7 +301,7 @@ sparse_scan_file_seek (struct tar_sparse_file *file)
       /* locate first chunk of data */
       data_offset = lseek (fd, offset, SEEK_DATA);
 
-      if (data_offset == (off_t)-1)
+      if (data_offset < 0)
         /* ENXIO == EOF; error otherwise */
         {
           if (errno == ENXIO)
@@ -1311,7 +1311,7 @@ pax_decode_header (struct tar_sparse_file *file)
         FATAL_ERROR ((0, 0, _("Unexpected EOF in archive")));
       p = blk->buffer;
       COPY_BUF (blk,nbuf,p);
-      if (!decode_num (&u, nbuf, TYPE_MAXIMUM (size_t)))
+      if (!decode_num (&u, nbuf, SIZE_MAX))
 	{
 	  ERROR ((0, 0, _("%s: malformed sparse archive member"),
 		  file->stat_info->orig_file_name));

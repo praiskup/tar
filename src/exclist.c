@@ -85,7 +85,7 @@ info_attach_exclist (struct tar_stat_info *dir)
 	  FILE *fp;
 	  struct exclude *ex = NULL;
 	  int fd = subfile_open (dir, file->name, O_RDONLY);
-	  if (fd == -1)
+	  if (fd < 0)
 	    {
 	      open_error (file->name);
 	      continue;

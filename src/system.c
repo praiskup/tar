@@ -222,7 +222,7 @@ sys_wait_for_child (pid_t child_pid, bool eof)
     {
       int wait_status;
 
-      while (waitpid (child_pid, &wait_status, 0) == -1)
+      while (waitpid (child_pid, &wait_status, 0) < 0)
 	if (errno != EINTR)
 	  {
 	    waitpid_error (use_compress_program_option);
@@ -258,7 +258,7 @@ sys_spawn_shell (void)
   else
     {
       int wait_status;
-      while (waitpid (child, &wait_status, 0) == -1)
+      while (waitpid (child, &wait_status, 0) < 0)
 	if (errno != EINTR)
 	  {
 	    waitpid_error (shell);
@@ -343,7 +343,7 @@ wait_for_grandchild (pid_t pid)
   int wait_status;
   int exit_code = 0;
 
-  while (waitpid (pid, &wait_status, 0) == -1)
+  while (waitpid (pid, &wait_status, 0) < 0)
     if (errno != EINTR)
       {
 	waitpid_error (use_compress_program_option);
@@ -794,7 +794,7 @@ sys_wait_command (void)
     return;
 
   signal (SIGPIPE, pipe_handler);
-  while (waitpid (global_pid, &status, 0) == -1)
+  while (waitpid (global_pid, &status, 0) < 0)
     if (errno != EINTR)
       {
         global_pid = -1;
@@ -849,7 +849,7 @@ sys_exec_info_script (const char **archive_name, int volume_number)
       if (rc > 0 && buf[rc-1] == '\n')
 	buf[--rc] = 0;
 
-      while (waitpid (pid, &status, 0) == -1)
+      while (waitpid (pid, &status, 0) < 0)
 	if (errno != EINTR)
 	  {
 	    signal (SIGPIPE, saved_handler);
@@ -906,7 +906,7 @@ sys_exec_checkpoint_script (const char *script_name,
 
       int status;
 
-      while (waitpid (pid, &status, 0) == -1)
+      while (waitpid (pid, &status, 0) < 0)
 	if (errno != EINTR)
 	  {
 	    waitpid_error (script_name);
@@ -988,7 +988,7 @@ sys_exec_setmtime_script (const char *script_name,
   while (1)
     {
       int n = poll (&pfd, 1, -1);
-      if (n == -1)
+      if (n < 0)
 	{
 	  if (errno != EINTR)
 	    {
@@ -1007,14 +1007,14 @@ sys_exec_setmtime_script (const char *script_name,
 		bufsize = BUFSIZ;
 	      buffer = x2nrealloc (buffer, &bufsize, 1);
 	    }
-	  n = read (pfd.fd, buffer + buflen, bufsize - buflen);
-	  if (n == -1)
+	  ssize_t nread = read (pfd.fd, buffer + buflen, bufsize - buflen);
+	  if (nread < 0)
 	    {
 	      ERROR ((0, errno, _("error reading output of %s"), script_name));
 	      stop = 1;
 	      break;
 	    }
-	  if (n == 0)
+	  if (nread == 0)
 	    break;
 	  buflen += n;
 	}
@@ -1069,8 +1069,9 @@ sys_exec_setmtime_script (const char *script_name,
 	}
       else
 	{
+	  tm.tm_wday = -1;
 	  t = mktime (&tm);
-	  if (t == (time_t) -1)
+	  if (tm.tm_wday < 0)
 	    {
 	      ERROR ((0, errno, _("mktime failed")));
 	      rc = -1;

@@ -508,8 +508,8 @@ _single_transform_name_to_obstack (struct transform *tf, char *input)
 		  break;
 
 		case segm_backref:    /* Back-reference segment */
-		  if (rmp[segm->v.ref].rm_so != -1
-		      && rmp[segm->v.ref].rm_eo != -1)
+		  if (0 <= rmp[segm->v.ref].rm_so
+		      && 0 <= rmp[segm->v.ref].rm_eo)
 		    {
 		      size_t size = rmp[segm->v.ref].rm_eo
 			              - rmp[segm->v.ref].rm_so;

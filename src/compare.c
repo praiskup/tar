@@ -565,7 +565,7 @@ verify_volume (void)
   ioctl (archive, FDFLUSH);
 #endif
 
-  if (!mtioseek (true, -1) && rmtlseek (archive, 0, SEEK_SET) != 0)
+  if (!mtioseek (true, -1) && rmtlseek (archive, 0, SEEK_SET) < 0)
     {
       /* Lseek failed.  Try a different method.  */
       seek_warn (archive_name_array[0]);
