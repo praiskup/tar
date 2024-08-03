@@ -62,6 +62,7 @@ gettime
 gitlog-to-changelog
 hash
 human
+ialloc
 idx
 intprops
 inttostr

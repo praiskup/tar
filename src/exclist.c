@@ -204,13 +204,12 @@ cvs_addfn (struct exclude *ex, char const *pattern, int options,
 	   MAYBE_UNUSED void *data)
 {
   struct wordsplit ws;
-  size_t i;
 
   options |= EXCLUDE_ALLOC;
   if (wordsplit (pattern, &ws,
 		 WRDSF_NOVAR | WRDSF_NOCMD | WRDSF_SQUEEZE_DELIMS))
     return;
-  for (i = 0; i < ws.ws_wordc; i++)
+  for (idx_t i = 0; i < ws.ws_wordc; i++)
     add_exclude (ex, ws.ws_wordv[i], options);
   wordsplit_free (&ws);
 }

@@ -19,6 +19,7 @@
 
 #include <stddef.h>
 #include <attribute.h>
+#include <idx.h>
 
 typedef struct wordsplit wordsplit_t;
 
@@ -36,17 +37,17 @@ typedef struct wordsplit wordsplit_t;
    default value upon entry to wordsplit(). */
 struct wordsplit
 {
-  size_t ws_wordc;          /* [Output] Number of words in ws_wordv. */
+  idx_t ws_wordc;	    /* [Output] Number of words in ws_wordv. */
   char **ws_wordv;          /* [Output] Array of parsed out words. */
-  size_t ws_offs;           /* [Input] (WRDSF_DOOFFS) Number of initial
+  idx_t ws_offs;	    /* [Input] (WRDSF_DOOFFS) Number of initial
 			       elements in ws_wordv to fill with NULLs. */
-  size_t ws_wordn;          /* Number of elements ws_wordv can accommodate. */
+  idx_t ws_wordn;	    /* Number of elements ws_wordv can accommodate. */
   unsigned ws_flags;        /* [Input] Flags passed to wordsplit. */
   unsigned ws_options;      /* [Input] (WRDSF_OPTIONS)
 			       Additional options. */
-  size_t ws_maxwords;       /* [Input] (WRDSO_MAXWORDS) Return at most that
+  idx_t ws_maxwords;	    /* [Input] (WRDSO_MAXWORDS) Return at most that
 			       many words */
-  size_t ws_wordi;          /* [Output] (WRDSF_INCREMENTAL) Total number of
+  idx_t ws_wordi;	    /* [Output] (WRDSF_INCREMENTAL) Total number of
 			       words returned so far */
 
   const char *ws_delim;     /* [Input] (WRDSF_DELIM) Word delimiters. */
@@ -68,10 +69,10 @@ struct wordsplit
 			       environment variables. */
 
   char **ws_envbuf;
-  size_t ws_envidx;
-  size_t ws_envsiz;
+  idx_t ws_envidx;
+  idx_t ws_envsiz;
 
-  int (*ws_getvar) (char **ret, const char *var, size_t len, void *clos);
+  int (*ws_getvar) (char **ret, const char *var, idx_t len, void *clos);
                             /* [Input] (WRDSF_GETVAR, !WRDSF_NOVAR) Looks up
 			       the name VAR (LEN bytes long) in the table of
 			       variables and if found returns in memory
@@ -85,7 +86,7 @@ struct wordsplit
 			       using malloc(3). */
   void *ws_closure;         /* [Input] (WRDSF_CLOSURE) Passed as the CLOS
 			       argument to ws_getvar and ws_command. */
-  int (*ws_command) (char **ret, const char *cmd, size_t len, char **argv,
+  int (*ws_command) (char **ret, const char *cmd, idx_t len, char **argv,
                      void *clos);
 	                    /* [Input] (!WRDSF_NOCMD) Returns in the memory
 			       location pointed to by RET the expansion of
@@ -97,8 +98,8 @@ struct wordsplit
 			       return values. */
 
   const char *ws_input;     /* Input string (the S argument to wordsplit. */
-  size_t ws_len;            /* Length of ws_input. */
-  size_t ws_endp;           /* Points past the last processed byte in
+  idx_t ws_len;		    /* Length of ws_input. */
+  idx_t ws_endp;	    /* Points past the last processed byte in
 			       ws_input. */
   int ws_errno;             /* [Output] Error code, if an error occurred. */
   char *ws_usererr;         /* Points to textual description of
@@ -106,7 +107,7 @@ struct wordsplit
 			       be allocated with malloc(3). */
   struct wordsplit_node *ws_head, *ws_tail;
                             /* Doubly-linked list of parsed out nodes. */
-  int ws_lvl;               /* Invocation nesting level. */
+  idx_t ws_lvl;             /* Invocation nesting level. */
 };
 
 /* Initial size for ws_env, if allocated automatically */
@@ -242,17 +243,17 @@ struct wordsplit
 #define WRDSE_USERERR    9
 
 int wordsplit (const char *s, wordsplit_t *ws, unsigned flags);
-int wordsplit_len (const char *s, size_t len, wordsplit_t *ws, unsigned flags);
+int wordsplit_len (const char *s, idx_t len, wordsplit_t *ws, unsigned flags);
 void wordsplit_free (wordsplit_t *ws);
 void wordsplit_free_words (wordsplit_t *ws);
 void wordsplit_free_envbuf (wordsplit_t *ws);
-int wordsplit_get_words (wordsplit_t *ws, size_t *wordc, char ***wordv);
+int wordsplit_get_words (wordsplit_t *ws, idx_t *wordc, char ***wordv);
 
 int wordsplit_append (wordsplit_t *wsp, int argc, char **argv);
 
 int wordsplit_c_unquote_char (int c);
 int wordsplit_c_quote_char (int c);
-size_t wordsplit_c_quoted_length (const char *str, int quote_hex, int *quote);
+idx_t wordsplit_c_quoted_length (const char *str, int quote_hex, int *quote);
 void wordsplit_c_quote_copy (char *dst, const char *src, int quote_hex);
 
 void wordsplit_perror (wordsplit_t *ws);

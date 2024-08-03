@@ -526,8 +526,8 @@ run_decompress_program (void)
 	FATAL_ERROR ((0, 0, _("cannot split string '%s': %s"),
 		      p, wordsplit_strerror (&ws)));
       wsflags |= WRDSF_REUSE;
-      memmove(ws.ws_wordv, ws.ws_wordv + ws.ws_offs,
-	      sizeof(ws.ws_wordv[0])*ws.ws_wordc);
+      memmove (ws.ws_wordv, ws.ws_wordv + ws.ws_offs,
+	       ws.ws_wordc * sizeof *ws.ws_wordv);
       ws.ws_wordv[ws.ws_wordc] = (char *) "-d";
       prog = p;
       execvp (ws.ws_wordv[0], ws.ws_wordv);
