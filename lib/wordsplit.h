@@ -249,7 +249,7 @@ int wordsplit_len (const char *s, idx_t len, wordsplit_t *ws, unsigned flags);
 void wordsplit_free (wordsplit_t *ws);
 void wordsplit_free_words (wordsplit_t *ws);
 void wordsplit_free_envbuf (wordsplit_t *ws);
-int wordsplit_get_words (wordsplit_t *ws, idx_t *wordc, char ***wordv);
+void wordsplit_get_words (wordsplit_t *ws, idx_t *wordc, char ***wordv);
 
 int wordsplit_append (wordsplit_t *wsp, int argc, char **argv);
 

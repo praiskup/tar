@@ -2524,22 +2524,18 @@ wordsplit_free (struct wordsplit *ws)
   wordsplit_free_envbuf (ws);
 }
 
-int
+void
 wordsplit_get_words (struct wordsplit *ws, idx_t *wordc, char ***wordv)
 {
   /* Tell the memory manager that ws->ws_wordv can be shrunk.  */
   char **p = realloc (ws->ws_wordv,
 		      (ws->ws_wordc + 1) * sizeof (ws->ws_wordv[0]));
-  if (!p)
-    return -1;
-  *wordv = p;
+  *wordv = p ? p : ws->ws_wordv;
   *wordc = ws->ws_wordc;
 
   ws->ws_wordv = NULL;
   ws->ws_wordc = 0;
   ws->ws_wordn = 0;
-
-  return 0;
 }
 
 static char const *const wordsplit_errstr[] = {
