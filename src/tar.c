@@ -1711,9 +1711,9 @@ parse_opt (int key, char *arg, struct argp_state *state)
 
     case LEVEL_OPTION:
       {
-	char *p;
-	incremental_level = strtoul (arg, &p, 10);
-	if (*p)
+	uintmax_t u;
+	if (! (xstrtoumax (arg, nullptr, 10, &u, "") == LONGINT_OK
+	       && ckd_add (&incremental_level, u, 0)))
 	  USAGE_ERROR ((0, 0, _("Invalid incremental level value")));
       }
       break;
@@ -2595,7 +2595,7 @@ decode_options (int argc, char **argv)
 	memset (&newer_mtime_option, 0, sizeof (newer_mtime_option));
     }
 
-  if (incremental_level != -1 && !listed_incremental_option)
+  if (0 <= incremental_level && !listed_incremental_option)
     WARN ((0, 0,
 	   _("--level is meaningless without --listed-incremental")));
 
