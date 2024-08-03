@@ -106,7 +106,7 @@ get_line (char *s, int size, FILE *stream)
     die (1, "unexpected end of file");
   len = strlen (p);
   if (s[len - 1] != '\n')
-    die (1, "buffer overflow");
+    die (1, "invalid or too-long data");
   s[len - 1] = '\0';
 }
 
@@ -300,17 +300,25 @@ expand_sparse (FILE *sfp, int ofd)
       off_t size = sparse_map[i].numbytes;
 
       if (size == 0)
-	ftruncate (ofd, sparse_map[i].offset);
+	{
+	  if (0 <= ofd && ftruncate (ofd, sparse_map[i].offset) < 0)
+	    die (1, "ftruncate error (%d)", errno);
+	}
       else
 	{
-	  lseek (ofd, sparse_map[i].offset, SEEK_SET);
+	  if (0 <= ofd && lseek (ofd, sparse_map[i].offset, SEEK_SET) < 0)
+	    die (1, "lseek error (%d)", errno);
 	  while (size)
 	    {
 	      size_t rdsize = (size < maxbytes) ? size : maxbytes;
 	      if (rdsize != fread (buffer, 1, rdsize, sfp))
 		die (1, "read error (%d)", errno);
-	      if (rdsize != write (ofd, buffer, rdsize))
-		die (1, "write error (%d)", errno);
+	      if (0 <= ofd)
+		{
+		  ssize_t written = write (ofd, buffer, rdsize);
+		  if (written != rdsize)
+		    die (1, "write error (%d)", written < 0 ? errno : 0);
+		}
 	      size -= rdsize;
 	    }
 	}
@@ -405,17 +413,15 @@ main (int argc, char **argv)
   if (!outname)
     guess_outname (inname);
 
-  int ofd = open (outname, O_RDWR|O_CREAT|O_TRUNC, st.st_mode);
-  if (ofd < 0)
-    die (1, "cannot open file %s (%d)", outname, errno);
-
   if (verbose)
     printf ("Expanding file '%s' to '%s'\n", inname, outname);
 
-  if (dry_run)
+  int ofd = -1;
+  if (!dry_run)
     {
-      printf ("Finished dry run\n");
-      return 0;
+      ofd = open (outname, O_RDWR | O_CREAT | O_TRUNC, st.st_mode);
+      if (ofd < 0)
+	die (1, "cannot open file %s (%d)", outname, errno);
     }
 
   expand_sparse (ifp, ofd);
@@ -427,6 +433,12 @@ main (int argc, char **argv)
 
   if (verbose)
     printf ("Done\n");
+
+  if (dry_run)
+    {
+      printf ("Finished dry run\n");
+      return 0;
+    }
 
   if (outsize)
     {
