@@ -1395,7 +1395,7 @@ create_archive (void)
   else
     {
       const char *name;
-      while ((name = name_next (1)) != NULL)
+      while ((name = name_next (true)))
 	if (!excluded_name (name, NULL))
 	  dump_file (0, name, name);
     }

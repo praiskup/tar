@@ -367,7 +367,7 @@ struct name
     bool cmdline;               /* true if this name was given in the
 				   command line */
 
-    int change_dir;		/* Number of the directory to change to.
+    idx_t change_dir;		/* Number of the directory to change to.
 				   Set with the -C option. */
     uintmax_t found_count;	/* number of times a matching file has
 				   been found */
@@ -650,7 +650,7 @@ void assign_string_n (char **string, const char *value, size_t n);
 #define ASSIGN_STRING_N(s,v) assign_string_n (s, v, sizeof (v))
 int unquote_string (char *str);
 char *zap_slashes (char *name);
-char *normalize_filename (int cdidx, const char *name);
+char *normalize_filename (idx_t, char const *);
 void normalize_filename_x (char *name);
 void replace_prefix (char **pname, const char *samp, size_t slen,
 		     const char *repl, size_t rlen);
@@ -744,11 +744,11 @@ int deref_stat (char const *name, struct stat *buf);
 size_t blocking_read (int fd, void *buf, size_t count);
 size_t blocking_write (int fd, void const *buf, size_t count);
 
-extern int chdir_current;
+extern idx_t chdir_current;
 extern int chdir_fd;
-int chdir_arg (char const *dir);
-void chdir_do (int dir);
-int chdir_count (void);
+idx_t chdir_arg (char const *dir);
+void chdir_do (idx_t dir);
+idx_t chdir_count (void);
 
 void close_diag (char const *name);
 void open_diag (char const *name);
@@ -794,10 +794,9 @@ int uname_to_uid (char const *uname, uid_t *puid);
 void name_init (void);
 void name_add_name (const char *name);
 void name_term (void);
-const char *name_next (int change_dirs);
+char const *name_next (bool);
 void name_gather (void);
-struct name *addname (char const *string, int change_dir,
-		      bool cmdline, struct name *parent);
+struct name *addname (char const *, idx_t, bool, struct name *);
 void add_starting_file (char const *file_name);
 void remname (struct name *name);
 bool name_match (const char *name);

@@ -31,7 +31,7 @@
 
 static void namebuf_add_dir (namebuf_t, char const *);
 static char *namebuf_finish (namebuf_t);
-static const char *tar_getcdpath (int);
+static const char *tar_getcdpath (idx_t);
 
 char const *
 quote_n_colon (int n, char const *arg)
@@ -315,7 +315,7 @@ normalize_filename_x (char *file_name)
    Return a normalized newly-allocated copy.  */
 
 char *
-normalize_filename (int cdidx, const char *name)
+normalize_filename (idx_t cdidx, const char *name)
 {
   char *copy = NULL;
 
@@ -903,7 +903,7 @@ struct wd
 static struct wd *wd;
 
 /* The number of working directories in the vector.  */
-static size_t wd_count;
+static idx_t wd_count;
 
 /* The allocated size of the vector.  */
 static size_t wd_alloc;
@@ -921,17 +921,15 @@ static int wdcache[CHDIR_CACHE_SIZE];
 /* Number of nonzero entries in WDCACHE.  */
 static size_t wdcache_count;
 
-int
+idx_t
 chdir_count (void)
 {
-  if (wd_count == 0)
-    return wd_count;
-  return wd_count - 1;
+  return wd_count - !!wd_count;
 }
 
 /* DIR is the operand of a -C option; add it to vector of chdir targets,
    and return the index of its location.  */
-int
+idx_t
 chdir_arg (char const *dir)
 {
   if (wd_count == wd_alloc)
@@ -967,7 +965,7 @@ chdir_arg (char const *dir)
 }
 
 /* Index of current directory.  */
-int chdir_current;
+idx_t chdir_current;
 
 /* Value suitable for use as the first argument to openat, and in
    similar locations for fstatat, etc.  This is an open file
@@ -981,7 +979,7 @@ int chdir_fd = AT_FDCWD;
    working directory; otherwise, I must be a value returned by
    chdir_arg.  */
 void
-chdir_do (int i)
+chdir_do (idx_t i)
 {
   if (chdir_current != i)
     {
@@ -1049,7 +1047,7 @@ tar_dirname (void)
    process's actual cwd.  (Note that in this case IDX is ignored,
    since it should always be 0.) */
 static const char *
-tar_getcdpath (int idx)
+tar_getcdpath (idx_t idx)
 {
   if (!wd)
     {
@@ -1065,14 +1063,11 @@ tar_getcdpath (int idx)
 
   if (!wd[idx].abspath)
     {
-      int i;
-      int save_cwdi = chdir_current;
+      idx_t save_cwdi = chdir_current, i = idx;
+      while (0 < i && !wd[i - 1].abspath)
+	i--;
 
-      for (i = idx; i >= 0; i--)
-	if (wd[i].abspath)
-	  break;
-
-      while (++i <= idx)
+      for (; i <= idx; i++)
 	{
 	  chdir_do (i);
 	  if (i == 0)

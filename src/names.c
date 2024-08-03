@@ -1100,7 +1100,7 @@ copy_name (struct name_elt *ep)
 
 */
 static struct name_elt *
-name_next_elt (int change_dirs)
+name_next_elt (bool change_dirs)
 {
   static struct name_elt entry;
   struct name_elt *ep;
@@ -1148,7 +1148,7 @@ name_next_elt (int change_dirs)
 }
 
 const char *
-name_next (int change_dirs)
+name_next (bool change_dirs)
 {
   struct name_elt *nelt = name_next_elt (change_dirs);
   return nelt ? nelt->v.name : NULL;
@@ -1181,9 +1181,9 @@ name_gather (void)
 
   if (same_order_option)
     {
-      static int change_dir;
+      static idx_t change_dir;
 
-      while ((ep = name_next_elt (0)) && ep->type == NELT_CHDIR)
+      while ((ep = name_next_elt (false)) && ep->type == NELT_CHDIR)
 	change_dir = chdir_arg (xstrdup (ep->v.name));
 
       if (ep)
@@ -1207,12 +1207,12 @@ name_gather (void)
   else
     {
       /* Non sorted names -- read them all in.  */
-      int change_dir = 0;
+      idx_t change_dir = 0;
 
       for (;;)
 	{
-	  int change_dir0 = change_dir;
-	  while ((ep = name_next_elt (0)) && ep->type == NELT_CHDIR)
+	  idx_t change_dir0 = change_dir;
+	  while ((ep = name_next_elt (false)) && ep->type == NELT_CHDIR)
 	    change_dir = chdir_arg (xstrdup (ep->v.name));
 
 	  if (ep)
@@ -1229,7 +1229,8 @@ name_gather (void)
 
 /*  Add a name to the namelist.  */
 struct name *
-addname (char const *string, int change_dir, bool cmdline, struct name *parent)
+addname (char const *string, idx_t change_dir, bool cmdline,
+	 struct name *parent)
 {
   struct name *name = make_name (string);
 
@@ -1443,7 +1444,7 @@ names_notfound (void)
     {
       const char *name;
 
-      while ((name = name_next (1)) != NULL)
+      while ((name = name_next (true)))
 	{
 	  regex_usage_warning (name);
 	  ERROR ((0, 0, _("%s: Not found in archive"),
@@ -1482,7 +1483,7 @@ label_notfound (void)
     {
       const char *name;
 
-      while ((name = name_next (1)) != NULL
+      while ((name = name_next (true))
 	     && regex_usage_warning (name) == 0)
 	;
     }
@@ -1620,7 +1621,7 @@ add_hierarchy_to_namelist (struct tar_stat_info *st, struct name *name)
       char *namebuf = xmalloc (allocated_length);
       const char *string;
       size_t string_length;
-      int change_dir = name->change_dir;
+      idx_t change_dir = name->change_dir;
 
       strcpy (namebuf, name->name);
       if (! ISSLASH (namebuf[name_length - 1]))
