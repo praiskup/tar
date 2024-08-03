@@ -59,12 +59,12 @@ programs (using pipes); tar can even access remote devices or files
 %%developers:
  John Gilmore,
  Thomas Bushnell,
- Paul Eggert <eggert@twinsun.com>,
- Sergey Poznyakoff <gray@Mirddin.farlep.net>
+ Paul Eggert <eggert@cs.ucla.edu>,
+ Sergey Poznyakoff <gray@gnu.org>
 
 %%contributors: Jay Fenlason,
  Joy Kendall,
- Francois Pinard <pinard@iro.umontreal.ca>
+ François Pinard
 
 %%source-tarball: ftp://ftp.gnu.org/pub/gnu/tar/tar-1.15.1.tar.gz
 %%source-info: http://savannah.gnu.org/projects/tar

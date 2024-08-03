@@ -20,7 +20,7 @@
 
 # Up to version 1.15.91 tar was unable to recognize all volumes
 # given after an out-of-sync volume.
-# Reported by: Joerg Weilbier <gnu@weilbier.net>
+# Reported by: Jörg Weilbier <gnu@weilbier.net>
 # References: <200610011952.29880.gnu@weilbier.net>
 
 AT_SETUP([Restoring after an out of sync volume])
