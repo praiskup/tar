@@ -2387,10 +2387,11 @@ parse_default_options (struct tar_args *args)
       ws.ws_wordv[0] = (char*) program_name;
       save_loc_ptr = args->loc;
       args->loc = &loc;
-      if (argp_parse (&argp,
-		      ws.ws_offs + ws.ws_wordc,
-		      ws.ws_wordv,
-		      ARGP_IN_ORDER|ARGP_NO_EXIT, &idx, args))
+      int argc;
+      if (ckd_add (&argc, ws.ws_offs, ws.ws_wordc))
+	FATAL_ERROR ((0, 0, "too many options"));
+      if (argp_parse (&argp, argc, ws.ws_wordv,
+		      ARGP_IN_ORDER | ARGP_NO_EXIT, &idx, args))
 	abort (); /* shouldn't happen */
       args->loc = save_loc_ptr;
       if (name_more_files ())

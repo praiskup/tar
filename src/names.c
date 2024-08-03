@@ -988,7 +988,6 @@ static int
 handle_option (const char *str, struct name_elt const *ent)
 {
   struct wordsplit ws;
-  int i;
   struct option_locus loc;
 
   while (*str && c_isspace (*str))
@@ -1000,14 +999,15 @@ handle_option (const char *str, struct name_elt const *ent)
   if (wordsplit (str, &ws, WRDSF_DEFFLAGS|WRDSF_DOOFFS))
     FATAL_ERROR ((0, 0, _("cannot split string '%s': %s"),
 		  str, wordsplit_strerror (&ws)));
+  int argc;
+  if (ckd_add (&argc, ws.ws_wordc, ws.ws_offs))
+    FATAL_ERROR ((0, 0, _("too many options")));
   ws.ws_wordv[0] = (char *) program_name;
   loc.source = OPTS_FILE;
   loc.name = ent->v.file.name;
   loc.line = ent->v.file.line;
-  more_options (ws.ws_wordc+ws.ws_offs, ws.ws_wordv, &loc);
-  for (i = 0; i < ws.ws_wordc+ws.ws_offs; i++)
-    ws.ws_wordv[i] = NULL;
-
+  more_options (argc, ws.ws_wordv, &loc);
+  memset (ws.ws_wordv, 0, argc * sizeof *ws.ws_wordv);
   wordsplit_free (&ws);
   return 0;
 }
