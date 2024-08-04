@@ -342,7 +342,7 @@ alloc_space (struct wordsplit *wsp, idx_t count)
       wordn = offs_plus_count <= ALLOC_INIT ? ALLOC_INIT : offs_plus_count;
 
       /* Use calloc so that the initial ws_offs words are zero.  */
-      wordv = calloc (wordn, sizeof *wordv);
+      wordv = icalloc (wordn, sizeof *wordv);
     }
   else
     {
@@ -356,11 +356,11 @@ alloc_space (struct wordsplit *wsp, idx_t count)
       idx_t halfn = wsp->ws_wordn >> 1;
       wordv = (halfn <= minincr || ckd_add (&wordn, wsp->ws_wordn, halfn)
 	       ? nullptr
-	       : reallocarray (wsp->ws_wordv, wordn, sizeof *wordv));
+	       : ireallocarray (wsp->ws_wordv, wordn, sizeof *wordv));
       if (!wordv)
 	wordv = (ckd_add (&wordn, wsp->ws_wordn, minincr)
 		 ? nullptr
-		 : reallocarray (wsp->ws_wordv, wordn, sizeof *wordv));
+		 : ireallocarray (wsp->ws_wordv, wordn, sizeof *wordv));
     }
 
   if (!wordv)
@@ -1081,7 +1081,7 @@ wsplt_assign_var (struct wordsplit *wsp, char const *name, idx_t namelen,
 
 	      sz = i + n + 1;
 
-	      newenv = calloc (sz, sizeof *newenv);
+	      newenv = icalloc (sz, sizeof *newenv);
 	      if (!newenv)
 		return _wsplt_nomem (wsp);
 
@@ -1120,8 +1120,8 @@ wsplt_assign_var (struct wordsplit *wsp, char const *name, idx_t namelen,
 	{
 	  if (ckd_add (&wsp->ws_envsiz, wsp->ws_envsiz, wsp->ws_envsiz >> 1))
 	    return _wsplt_nomem (wsp);
-	  newenv = reallocarray (wsp->ws_envbuf,
-				 wsp->ws_envsiz, sizeof *newenv);
+	  newenv = ireallocarray (wsp->ws_envbuf,
+				  wsp->ws_envsiz, sizeof *newenv);
 	  if (!newenv)
 	    return _wsplt_nomem (wsp);
 	  wsp->ws_envbuf = newenv;
@@ -1441,7 +1441,7 @@ expvar (struct wordsplit *wsp, char const *str, idx_t len,
       wsnode_insert (wsp, newnode, *ptail);
       *ptail = newnode;
       newnode->flags = _WSNF_WORD | _WSNF_NOEXPAND | flg;
-      newnode->v.word = malloc (size + 1);
+      newnode->v.word = imalloc (size + 1);
       if (!newnode->v.word)
 	return _wsplt_nomem (wsp);
       memcpy (newnode->v.word, start, size);
@@ -1747,10 +1747,9 @@ wordsplit_tildexpand (struct wordsplit *wsp)
       str = wsnode_ptr (wsp, p);
       if (str[0] == '~')
 	{
-	  idx_t i, size, dlen;
+	  idx_t i;
 	  idx_t slen = wsnode_len (p);
 	  struct passwd *pw;
-	  char *newstr;
 
 	  for (i = 1; i < slen && str[i] != '/'; i++)
 	    ;
@@ -1760,7 +1759,7 @@ wordsplit_tildexpand (struct wordsplit *wsp)
 	    {
 	      if (i > usize)
 		{
-		  char *p = realloc (uname, i);
+		  char *p = irealloc (uname, i);
 		  if (!p)
 		    {
 		      free (uname);
@@ -1780,9 +1779,9 @@ wordsplit_tildexpand (struct wordsplit *wsp)
 	  if (!pw)
 	    continue;
 
-	  dlen = strlen (pw->pw_dir);
-	  size = slen - i + dlen;
-	  newstr = malloc (size);
+	  idx_t dlen = strlen (pw->pw_dir);
+	  idx_t size = slen - i + dlen;
+	  char *newstr = imalloc (size);
 	  if (!newstr)
 	    {
 	      free (uname);
@@ -1844,9 +1843,8 @@ wordsplit_pathexpand (struct wordsplit *wsp)
 	  int i;
 	  glob_t g;
 	  struct wordsplit_node *prev;
-	  char *pattern;
 
-	  pattern = malloc (slen + 1);
+	  char *pattern = imalloc (slen + 1);
 	  if (!pattern)
 	    return _wsplt_nomem (wsp);
 	  memcpy (pattern, str, slen);
@@ -2560,8 +2558,8 @@ void
 wordsplit_get_words (struct wordsplit *ws, idx_t *wordc, char ***wordv)
 {
   /* Tell the memory manager that ws->ws_wordv can be shrunk.  */
-  char **p = realloc (ws->ws_wordv,
-		      (ws->ws_wordc + 1) * sizeof (ws->ws_wordv[0]));
+  char **p = irealloc (ws->ws_wordv,
+		       (ws->ws_wordc + 1) * sizeof (ws->ws_wordv[0]));
   *wordv = p ? p : ws->ws_wordv;
   *wordc = ws->ws_wordc;
 
