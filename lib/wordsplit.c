@@ -31,6 +31,7 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <attribute.h>
 #include <c-ctype.h>
 #include <ialloc.h>
 
@@ -50,6 +51,11 @@
 
 #define WSP_RETURN_DELIMS(wsp) \
  ((wsp)->ws_flags & WRDSF_RETURN_DELIMS || ((wsp)->ws_options & WRDSO_MAXWORDS))
+
+/* Set escape option F in WS for words (Q==0) or quoted strings (Q==1).  */
+#define WRDSO_ESC_SET(ws,q,f) ((ws)->ws_options |= ((f) << 4*(q)))
+/* Test WS for escape option F for words (Q==0) or quoted strings (Q==1).  */
+#define WRDSO_ESC_TEST(ws,q,f) ((ws)->ws_options & ((f) << 4*(q)))
 
 /* When printing diagnostics with %.*s, output at most this many bytes.
    Users typically don't want super-long strings in diagnostics,
@@ -89,6 +95,16 @@ _wsplt_error (const char *fmt, ...)
   va_end (ap);
   fputc ('\n', stderr);
 }
+
+#ifdef _WORDSPLIT_EXTRAS
+# define WORDSPLIT_EXTRAS_extern extern
+#else
+# define WORDSPLIT_EXTRAS_extern static
+static void wordsplit_clearerr (struct wordsplit *);
+static void wordsplit_free_envbuf (struct wordsplit *);
+static void wordsplit_free_words (struct wordsplit *);
+static void wordsplit_perror (struct wordsplit *);
+#endif
 
 static void wordsplit_free_nodes (struct wordsplit *);
 
@@ -867,6 +883,7 @@ wordsplit_finish (struct wordsplit *wsp)
   return WRDSE_OK;
 }
 
+#ifdef _WORDSPLIT_EXTRAS
 int
 wordsplit_append (wordsplit_t *wsp, int argc, char **argv)
 {
@@ -895,6 +912,7 @@ wordsplit_append (wordsplit_t *wsp, int argc, char **argv)
   wsp->ws_wordv[wsp->ws_offs + wsp->ws_wordc] = NULL;
   return WRDSE_OK;
 }
+#endif
 
 /* Variable expansion */
 static int
@@ -1033,6 +1051,9 @@ wordsplit_find_env (struct wordsplit *wsp, char const *name, idx_t len,
     }
   return WRDSE_UNDEF;
 }
+
+/* Initial size for ws_env, if allocated automatically */
+enum { WORDSPLIT_ENV_INIT = 16 };
 
 static int
 wsplt_assign_var (struct wordsplit *wsp, char const *name, idx_t namelen,
@@ -2127,6 +2148,7 @@ xtonum (char *pval, char const *src, int base, int cnt)
   return i;
 }
 
+#ifdef _WORDSPLIT_EXTRAS
 idx_t
 wordsplit_c_quoted_length (const char *str, bool quote_hex, bool *quote)
 {
@@ -2156,6 +2178,7 @@ wordsplit_c_quoted_length (const char *str, bool quote_hex, bool *quote)
     }
   return len;
 }
+#endif
 
 static char
 wsplt_unquote_char (const char *transtab, char c)
@@ -2169,6 +2192,7 @@ wsplt_unquote_char (const char *transtab, char c)
   return '\0';
 }
 
+#ifdef _WORDSPLIT_EXTRAS
 static char
 wsplt_quote_char (const char *transtab, char c)
 {
@@ -2191,6 +2215,7 @@ wordsplit_c_quote_char (char c)
 {
   return wsplt_quote_char (wordsplit_c_escape_tab, c);
 }
+#endif
 
 void
 wordsplit_string_unquote_copy (struct wordsplit *ws, bool inquote,
@@ -2266,6 +2291,7 @@ wordsplit_string_unquote_copy (struct wordsplit *ws, bool inquote,
   *dst = '\0';
 }
 
+#ifdef _WORDSPLIT_EXTRAS
 void
 wordsplit_c_quote_copy (char *dst, const char *src, bool quote_hex)
 {
@@ -2306,6 +2332,7 @@ wordsplit_c_quote_copy (char *dst, const char *src, bool quote_hex)
 	}
     }
 }
+#endif
 
 
 /* This structure describes a single expansion phase */
@@ -2428,6 +2455,7 @@ wordsplit_process_list (struct wordsplit *wsp, idx_t start)
   return wsp->ws_errno;
 }
 
+WORDSPLIT_EXTRAS_extern
 int
 wordsplit_len (char const *command, idx_t length, struct wordsplit *wsp,
 	       unsigned flags)
@@ -2471,6 +2499,7 @@ wordsplit (const char *command, struct wordsplit *ws, unsigned flags)
   return wordsplit_len (command, command ? strlen (command) : 0, ws, flags);
 }
 
+WORDSPLIT_EXTRAS_extern
 void
 wordsplit_free_words (struct wordsplit *ws)
 {
@@ -2488,6 +2517,7 @@ wordsplit_free_words (struct wordsplit *ws)
   ws->ws_wordc = 0;
 }
 
+WORDSPLIT_EXTRAS_extern
 void
 wordsplit_free_envbuf (struct wordsplit *ws)
 {
@@ -2505,6 +2535,7 @@ wordsplit_free_envbuf (struct wordsplit *ws)
     }
 }
 
+WORDSPLIT_EXTRAS_extern
 void
 wordsplit_clearerr (struct wordsplit *ws)
 {
@@ -2524,6 +2555,7 @@ wordsplit_free (struct wordsplit *ws)
   wordsplit_free_envbuf (ws);
 }
 
+#ifdef _WORDSPLIT_EXTRAS
 void
 wordsplit_get_words (struct wordsplit *ws, idx_t *wordc, char ***wordv)
 {
@@ -2537,6 +2569,7 @@ wordsplit_get_words (struct wordsplit *ws, idx_t *wordc, char ***wordv)
   ws->ws_wordc = 0;
   ws->ws_wordn = 0;
 }
+#endif
 
 static char const *const wordsplit_errstr[] = {
   N_("no error"),
@@ -2552,7 +2585,7 @@ static char const *const wordsplit_errstr[] = {
 enum { wordsplit_nerrs = sizeof wordsplit_errstr / sizeof *wordsplit_errstr };
 
 const char *
-wordsplit_strerror (struct wordsplit *ws)
+wordsplit_strerror (struct wordsplit const *ws)
 {
   if (ws->ws_errno == WRDSE_USERERR)
     return ws->ws_usererr;
@@ -2561,6 +2594,7 @@ wordsplit_strerror (struct wordsplit *ws)
   return N_("unknown error");
 }
 
+WORDSPLIT_EXTRAS_extern
 void
 wordsplit_perror (struct wordsplit *wsp)
 {
