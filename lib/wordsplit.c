@@ -1880,17 +1880,19 @@ wordsplit_pathexpand (struct wordsplit *wsp)
 		}
 	      else if (wsp->ws_options & WRDSO_FAILGLOB)
 		{
-		  char buf[128];
 		  if (wsp->ws_errno == WRDSE_USERERR)
 		    free (wsp->ws_usererr);
-		  snprintf (buf, sizeof (buf), _("no files match pattern %s"),
-			    pattern);
-		  free (pattern);
-		  wsp->ws_usererr = strdup (buf);
-		  if (!wsp->ws_usererr)
-		    return _wsplt_nomem (wsp);
-		  else
-		    return _wsplt_seterr (wsp, WRDSE_USERERR);
+		  char const *msg = _("no files match pattern ");
+		  idx_t msglen = strlen (msg);
+		  char *usererr = irealloc (pattern, msglen + slen + 1);
+		  if (!usererr)
+		    {
+		      free (pattern);
+		      return _wsplt_nomem (wsp);
+		    }
+		  memmove (usererr + msglen, usererr, slen + 1);
+		  wsp->ws_usererr = memcpy (usererr, msg, msglen);
+		  return _wsplt_seterr (wsp, WRDSE_USERERR);
 		}
 	      free (pattern);
 	      continue;
@@ -2316,14 +2318,14 @@ wordsplit_c_quote_copy (char *dst, const char *src, bool quote_hex)
 	*dst++ = *src;
       else
 	{
-	  char tmp[4];
+	  unsigned char uc = *src;
 
 	  if (quote_hex)
 	    {
-	      unsigned char c = *src;
-	      snprintf (tmp, sizeof tmp, "%%%02X", c);
-	      memcpy (dst, tmp, 3);
-	      dst += 3;
+	      static char const hexdigit[16] = "0123456789ABCDEF";
+	      *dst++ = '%';
+	      for (int i = 4; 0 <= i; i -= 4)
+		*dst++ = hexdigit[(uc >> i) & 0xf];
 	    }
 	  else
 	    {
@@ -2332,12 +2334,8 @@ wordsplit_c_quote_copy (char *dst, const char *src, bool quote_hex)
 	      if (c)
 		*dst++ = c;
 	      else
-		{
-		  unsigned char ch = *src;
-		  snprintf (tmp, sizeof tmp, "%03o", ch);
-		  memcpy (dst, tmp, 3);
-		  dst += 3;
-		}
+		for (int i = 6; 0 <= i; i -= 3)
+		  *dst++ = '0' + ((uc >> i) & 7);
 	    }
 	}
     }
