@@ -1062,7 +1062,7 @@ wsplt_assign_var (struct wordsplit *wsp, char const *name, idx_t namelen,
   int n = (wsp->ws_flags & WRDSF_ENV_KV) ? 2 : 1;
   char *v;
 
-  if (wsp->ws_envidx + n >= wsp->ws_envsiz)
+  if (wsp->ws_envsiz - wsp->ws_envidx <= n)
     {
       idx_t sz;
       char **newenv;
@@ -1118,13 +1118,24 @@ wsplt_assign_var (struct wordsplit *wsp, char const *name, idx_t namelen,
 	}
       else
 	{
-	  if (ckd_add (&wsp->ws_envsiz, wsp->ws_envsiz, wsp->ws_envsiz >> 1))
+	  idx_t envsiz, envsiz2;
+	  if (ckd_add (&envsiz, wsp->ws_envidx, n + 1))
 	    return _wsplt_nomem (wsp);
-	  newenv = ireallocarray (wsp->ws_envbuf,
-				  wsp->ws_envsiz, sizeof *newenv);
-	  if (!newenv)
-	    return _wsplt_nomem (wsp);
+	  newenv = ((!ckd_add (&envsiz2, wsp->ws_envsiz, wsp->ws_envsiz >> 1)
+		     && envsiz < envsiz2)
+		    ? ireallocarray (wsp->ws_envbuf, envsiz2, sizeof *newenv)
+		    : NULL);
+	  if (newenv)
+	    envsiz = envsiz2;
+	  else
+	    {
+	      newenv = ireallocarray (wsp->ws_envbuf, envsiz, sizeof *newenv);
+	      if (!newenv)
+		return _wsplt_nomem (wsp);
+	    }
+
 	  wsp->ws_envbuf = newenv;
+	  wsp->ws_envsiz = envsiz;
 	  wsp->ws_env = (char const **) wsp->ws_envbuf;
 	}
     }
@@ -1759,14 +1770,15 @@ wordsplit_tildexpand (struct wordsplit *wsp)
 	    {
 	      if (i > usize)
 		{
-		  char *p = irealloc (uname, i);
+		  if (ckd_add (&usize, usize, usize >> 1) || usize < i)
+		    usize = i;
+		  char *p = irealloc (uname, usize);
 		  if (!p)
 		    {
 		      free (uname);
 		      return _wsplt_nomem (wsp);
 		    }
 		  uname = p;
-		  usize = i;
 		}
 	      --i;
 	      memcpy (uname, str + 1, i);
