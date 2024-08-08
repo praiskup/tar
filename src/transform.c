@@ -62,7 +62,7 @@ struct transform
   struct transform *next;
   enum transform_type transform_type;
   int flags;
-  unsigned match_number;
+  idx_t match_number;
   regex_t regex;
   /* Compiled replacement expression */
   struct replace_segm *repl_head, *repl_tail;
@@ -248,8 +248,14 @@ parse_transform_expr (const char *expr)
 
       case '0': case '1': case '2': case '3': case '4':
       case '5': case '6': case '7': case '8': case '9':
-	tf->match_number = strtoul (p, (char**) &p, 0);
-	p--;
+	{
+	  char *endp;
+	  intmax_t match_number = strtoimax (p, &endp, 10);
+	  assume (0 <= match_number);
+	  if (ckd_add (&tf->match_number, match_number, 0))
+	    tf->match_number = IDX_MAX;
+	  p = endp - 1;
+	}
 	break;
 
       default:
@@ -290,17 +296,19 @@ parse_transform_expr (const char *expr)
     {
       if (*cur == '\\')
 	{
-	  size_t n;
-
 	  add_literal_segment (tf, beg, cur);
 	  switch (*++cur)
 	    {
 	    case '0': case '1': case '2': case '3': case '4':
 	    case '5': case '6': case '7': case '8': case '9':
-	      n = strtoul (cur, &cur, 10);
-	      if (n > tf->regex.re_nsub)
-		USAGE_ERROR ((0, 0, _("Invalid transform replacement: back reference out of range")));
-	      add_backref_segment (tf, n);
+	      {
+		intmax_t n = strtoimax (cur, &cur, 10);
+		assume (0 <= n);
+		if (tf->regex.re_nsub < n)
+		  USAGE_ERROR ((0, 0, _("Invalid transform replacement:"
+					" back reference out of range")));
+		add_backref_segment (tf, n);
+	      }
 	      break;
 
 	    case '\\':

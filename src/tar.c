@@ -44,7 +44,7 @@ enum atime_preserve atime_preserve_option;
 bool backup_option;
 enum backup_type backup_type;
 bool block_number_option;
-unsigned checkpoint_option;
+intmax_t checkpoint_option;
 const char *use_compress_program_option;
 bool dereference_option;
 bool hard_dereference_option;
@@ -90,8 +90,8 @@ int xattrs_option;
 size_t strip_name_components;
 bool show_omitted_dirs_option;
 bool sparse_option;
-unsigned tar_sparse_major;
-unsigned tar_sparse_minor;
+intmax_t tar_sparse_major;
+intmax_t tar_sparse_minor;
 enum hole_detection_method hole_detection;
 bool starting_file_option;
 tarlong tape_length_option;
@@ -1831,15 +1831,27 @@ parse_opt (int key, char *arg, struct argp_state *state)
       sparse_option = true;
       {
 	char *p;
-	tar_sparse_major = strtoul (arg, &p, 10);
-	if (*p)
+	bool ok;
+	switch (xstrtoimax (arg, &p, 10, &tar_sparse_major, ""))
 	  {
-	    if (*p != '.')
-	      USAGE_ERROR ((0, 0, _("Invalid sparse version value")));
-	    tar_sparse_minor = strtoul (p + 1, &p, 10);
-	    if (*p)
-	      USAGE_ERROR ((0, 0, _("Invalid sparse version value")));
+	  case LONGINT_OK:
+	    tar_sparse_minor = 0;
+	    ok = 0 <= tar_sparse_major;
+	    break;
+
+	  case LONGINT_INVALID_SUFFIX_CHAR:
+	    ok = (*p == '.'
+		  && (xstrtoimax (p + 1, nullptr, 10, &tar_sparse_minor, "")
+		      == LONGINT_OK)
+		  && 0 <= tar_sparse_minor && 0 <= tar_sparse_major);
+	    break;
+
+	  default:
+	    ok = false;
+	    break;
 	  }
+	if (!ok)
+	  USAGE_ERROR ((0, 0, _("Invalid sparse version value")));
       }
       break;
 
@@ -1936,10 +1948,10 @@ parse_opt (int key, char *arg, struct argp_state *state)
 	      checkpoint_compile_action (".");
 	      arg++;
 	    }
-	  checkpoint_option = strtoul (arg, &p, 0);
-	  if (*p)
+	  checkpoint_option = strtoimax (arg, &p, 0);
+	  if (*p || checkpoint_option <= 0)
 	    FATAL_ERROR ((0, 0,
-			  _("--checkpoint value is not an integer")));
+			  _("invalid --checkpoint value")));
 	}
       else
 	checkpoint_option = DEFAULT_CHECKPOINT;

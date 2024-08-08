@@ -896,7 +896,7 @@ sys_exec_info_script (const char **archive_name, int volume_number)
 void
 sys_exec_checkpoint_script (const char *script_name,
 			    const char *archive_name,
-			    int checkpoint_number)
+			    intmax_t checkpoint_number)
 {
   pid_t pid = xfork ();
 
@@ -919,8 +919,8 @@ sys_exec_checkpoint_script (const char *script_name,
   /* Child */
   setenv ("TAR_VERSION", PACKAGE_VERSION, 1);
   setenv ("TAR_ARCHIVE", archive_name, 1);
-  char intbuf[INT_BUFSIZE_BOUND (int)];
-  sprintf (intbuf, "%d", checkpoint_number);
+  char intbuf[INT_BUFSIZE_BOUND (intmax_t)];
+  sprintf (intbuf, "%jd", checkpoint_number);
   setenv ("TAR_CHECKPOINT", intbuf, 1);
   sprintf (intbuf, "%d", blocking_factor);
   setenv ("TAR_BLOCKING_FACTOR", intbuf, 1);

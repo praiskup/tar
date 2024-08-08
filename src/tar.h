@@ -325,8 +325,8 @@ struct tar_stat_info
   bool   is_sparse;         /* Is the file sparse */
 
   /* For sparse files: */
-  unsigned sparse_major;
-  unsigned sparse_minor;
+  intmax_t sparse_major;
+  intmax_t sparse_minor;
   size_t sparse_map_avail;  /* Index to the first unused element in
 			       sparse_map array. Zero if the file is
 			       not sparse */

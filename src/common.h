@@ -129,7 +129,7 @@ extern enum backup_type backup_type;
 
 extern bool block_number_option;
 
-extern unsigned checkpoint_option;
+extern intmax_t checkpoint_option;
 #define DEFAULT_CHECKPOINT 10
 
 /* Specified name of compression program, or "gzip" as implied by -z.  */
@@ -288,8 +288,7 @@ extern size_t strip_name_components;
 extern bool show_omitted_dirs_option;
 
 extern bool sparse_option;
-extern unsigned tar_sparse_major;
-extern unsigned tar_sparse_minor;
+extern intmax_t tar_sparse_major, tar_sparse_minor;
 
 enum hole_detection_method
   {
@@ -941,7 +940,7 @@ void sys_wait_command (void);
 int sys_exec_info_script (const char **archive_name, int volume_number);
 void sys_exec_checkpoint_script (const char *script_name,
 				 const char *archive_name,
-				 int checkpoint_number);
+				 intmax_t checkpoint_number);
 bool mtioseek (bool count_files, off_t count);
 int sys_exec_setmtime_script (const char *script_name,
 			      int dirfd,

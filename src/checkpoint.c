@@ -50,7 +50,7 @@ struct checkpoint_action
 };
 
 /* Checkpointing counter */
-static unsigned checkpoint;
+static intmax_t checkpoint;
 
 /* List of checkpoint actions */
 static struct checkpoint_action *checkpoint_action, *checkpoint_action_tail;
@@ -128,9 +128,10 @@ checkpoint_compile_action (const char *str)
   else if (strncmp (str, "sleep=", 6) == 0)
     {
       char *p;
-      time_t n = strtoul (str+6, &p, 10);
-      if (*p)
+      intmax_t sleepsec = strtoimax (str + 6, &p, 10);
+      if (*p || sleepsec < 0)
 	FATAL_ERROR ((0, 0, _("%s: not a valid timeout"), str));
+      time_t n = ckd_add (&n, sleepsec, 0) ? TYPE_MAXIMUM (time_t) : n;
       act = alloc_action (cop_sleep);
       act->v.time = n;
     }
@@ -231,7 +232,7 @@ static const char *def_format =
 static int
 format_checkpoint_string (FILE *fp, size_t len,
 			  const char *input, bool do_write,
-			  unsigned cpn)
+			  intmax_t cpn)
 {
   const char *opstr = do_write ? gettext ("write") : gettext ("read");
   const char *ip;
@@ -279,7 +280,7 @@ format_checkpoint_string (FILE *fp, size_t len,
 	      break;
 
 	    case 'u':
-	      len += fprintf (fp, "%u", cpn);
+	      len += fprintf (fp, "%jd", cpn);
 	      break;
 
 	    case 's':

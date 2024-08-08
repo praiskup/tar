@@ -1673,7 +1673,7 @@ sparse_major_decoder (struct tar_stat_info *st,
 		      MAYBE_UNUSED size_t size)
 {
   uintmax_t u;
-  if (decode_num (&u, arg, TYPE_MAXIMUM (unsigned), keyword))
+  if (decode_num (&u, arg, INTMAX_MAX, keyword))
     st->sparse_major = u;
 }
 
@@ -1691,7 +1691,7 @@ sparse_minor_decoder (struct tar_stat_info *st,
 		      MAYBE_UNUSED size_t size)
 {
   uintmax_t u;
-  if (decode_num (&u, arg, TYPE_MAXIMUM (unsigned), keyword))
+  if (decode_num (&u, arg, INTMAX_MAX, keyword))
     st->sparse_minor = u;
 }
 
