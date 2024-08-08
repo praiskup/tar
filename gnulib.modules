@@ -106,9 +106,6 @@ stdopen
 strdup-posix
 strerror
 strnlen
-strtoimax
-strtol
-strtoumax
 symlinkat
 sys_stat
 timespec
@@ -122,7 +119,6 @@ xalignalloc
 xalloc
 xalloc-die
 xgetcwd
-xstrtoimax
 xstrtoumax
 xvasprintf
 year2038-recommended

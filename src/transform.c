@@ -250,10 +250,7 @@ parse_transform_expr (const char *expr)
       case '5': case '6': case '7': case '8': case '9':
 	{
 	  char *endp;
-	  intmax_t match_number = strtoimax (p, &endp, 10);
-	  assume (0 <= match_number);
-	  if (ckd_add (&tf->match_number, match_number, 0))
-	    tf->match_number = IDX_MAX;
+	  tf->match_number = stoint (p, &endp, NULL, 0, IDX_MAX);
 	  p = endp - 1;
 	}
 	break;
@@ -302,8 +299,7 @@ parse_transform_expr (const char *expr)
 	    case '0': case '1': case '2': case '3': case '4':
 	    case '5': case '6': case '7': case '8': case '9':
 	      {
-		intmax_t n = strtoimax (cur, &cur, 10);
-		assume (0 <= n);
+		idx_t n = stoint (cur, &cur, NULL, 0, IDX_MAX);
 		if (tf->regex.re_nsub < n)
 		  USAGE_ERROR ((0, 0, _("Invalid transform replacement:"
 					" back reference out of range")));

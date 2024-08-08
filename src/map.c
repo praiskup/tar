@@ -45,28 +45,26 @@ map_compare (void const *entry1, void const *entry2)
   return map1->orig_id == map2->orig_id;
 }
 
-static int
+static bool
 parse_id (uintmax_t *retval,
 	  char const *arg, char const *what, uintmax_t maxval,
 	  char const *file, unsigned line)
 {
-  uintmax_t v;
   char *p;
-  
-  errno = 0;
-  v = strtoumax (arg, &p, 10);
-  if (*p || errno)
+  bool overflow;
+  *retval = stoint (arg, &p, &overflow, 0, maxval);
+
+  if ((p == arg) | *p)
     {
       error (0, 0, _("%s:%u: invalid %s: %s"),  file, line, what, arg);
-      return -1;
+      return false;
     }
-  if (v > maxval)
+  if (overflow)
     {
       error (0, 0, _("%s:%u: %s out of range: %s"), file, line, what, arg);
-      return -1;
+      return false;
     }
-  *retval = v;
-  return 0;
+  return true;
 }
 
 static void
@@ -82,7 +80,7 @@ map_read (Hash_table **ptab, char const *file,
   int wsopt;
   unsigned line;
   int err = 0;
-  
+
   fp = fopen (file, "r");
   if (!fp)
     open_fatal (file);
@@ -97,7 +95,7 @@ map_read (Hash_table **ptab, char const *file,
       uintmax_t orig_id, new_id;
       char *name = NULL;
       char *colon;
-      
+
       ++line;
       if (wordsplit (buf, &ws, wsopt))
 	FATAL_ERROR ((0, 0, _("%s:%u: cannot split line: %s"),
@@ -114,7 +112,7 @@ map_read (Hash_table **ptab, char const *file,
 
       if (ws.ws_wordv[0][0] == '+')
 	{
-	  if (parse_id (&orig_id, ws.ws_wordv[0]+1, what, maxval, file, line)) 
+	  if (!parse_id (&orig_id, ws.ws_wordv[0]+1, what, maxval, file, line))
 	    {
 	      err = 1;
 	      continue;
@@ -138,7 +136,7 @@ map_read (Hash_table **ptab, char const *file,
 	  if (colon > ws.ws_wordv[1])
 	    name = ws.ws_wordv[1];
 	  *colon++ = 0;
-	  if (parse_id (&new_id, colon, what, maxval, file, line)) 
+	  if (!parse_id (&new_id, colon, what, maxval, file, line))
 	    {
 	      err = 1;
 	      continue;
@@ -146,7 +144,7 @@ map_read (Hash_table **ptab, char const *file,
 	}
       else if (ws.ws_wordv[1][0] == '+')
 	{
-	  if (parse_id (&new_id, ws.ws_wordv[1], what, maxval, file, line)) 
+	  if (!parse_id (&new_id, ws.ws_wordv[1], what, maxval, file, line))
 	    {
 	      err = 1;
 	      continue;
@@ -169,7 +167,7 @@ map_read (Hash_table **ptab, char const *file,
       ent->orig_id = orig_id;
       ent->new_id = new_id;
       ent->new_name = name ? xstrdup (name) : NULL;
-      
+
       if (!((*ptab
 	     || (*ptab = hash_initialize (0, 0, map_hash, map_compare, 0)))
 	    && hash_insert (*ptab, ent)))
@@ -203,11 +201,11 @@ int
 owner_map_translate (uid_t uid, uid_t *new_uid, char const **new_name)
 {
   int rc = 1;
-  
+
   if (owner_map)
     {
       struct mapentry ent, *res;
-  
+
       ent.orig_id = uid;
       res = hash_lookup (owner_map, &ent);
       if (res)
@@ -253,11 +251,11 @@ int
 group_map_translate (gid_t gid, gid_t *new_gid, char const **new_name)
 {
   int rc = 1;
-  
+
   if (group_map)
     {
       struct mapentry ent, *res;
-  
+
       ent.orig_id = gid;
       res = hash_lookup (group_map, &ent);
       if (res)
@@ -278,6 +276,6 @@ group_map_translate (gid_t gid, gid_t *new_gid, char const **new_name)
       *new_name = group_name_option;
       rc = 0;
     }
-  
+
   return rc;
 }

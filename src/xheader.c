@@ -608,27 +608,30 @@ decode_record (struct xheader *xhdr,
 {
   char *start = *ptr;
   char *p = start;
-  size_t len;
   char *len_lim;
   char const *keyword;
   char *nextp;
-  size_t len_max = xhdr->buffer + xhdr->size - start;
+  idx_t len_max = xhdr->buffer + xhdr->size - start;
 
   while (*p == ' ' || *p == '\t')
     p++;
 
-  if (! c_isdigit (*p))
+  idx_t len = stoint (p, &len_lim, NULL, 0, IDX_MAX);
+
+  if (len_lim == p)
     {
+      /* The length is missing.
+	 FIXME: Comment why this is diagnosed only if (*p), or change code.  */
       if (*p)
 	ERROR ((0, 0, _("Malformed extended header: missing length")));
       return false;
     }
 
-  len = strtoumax (p, &len_lim, 10);
-
   if (len_max < len)
     {
-      int len_len = len_lim - p;
+      /* Avoid giant diagnostics, as this won't help user.  */
+      int len_len = min (len_lim - p, 1000);
+
       ERROR ((0, 0, _("Extended header length %.*s is out of range"),
 	      len_len, p));
       return false;
@@ -1087,16 +1090,17 @@ decode_signed_num (intmax_t *num, char const *arg,
 		   char const *keyword)
 {
   char *arg_lim;
-  intmax_t u = strtosysint (arg, &arg_lim, minval, maxval);
+  bool overflow;
+  intmax_t u = stoint (arg, &arg_lim, &overflow, minval, maxval);
 
-  if (errno == EINVAL || *arg_lim)
+  if ((arg_lim == arg) | *arg_lim)
     {
       ERROR ((0, 0, _("Malformed extended header: invalid %s=%s"),
 	      keyword, arg));
       return false;
     }
 
-  if (errno == ERANGE)
+  if (overflow)
     {
       out_of_range_header (keyword, arg, minval, maxval);
       return false;
@@ -1433,33 +1437,26 @@ sparse_map_decoder (struct tar_stat_info *st,
 		    char const *arg,
 		    MAYBE_UNUSED size_t size)
 {
-  int offset = 1;
+  bool offset = true;
   struct sp_array e;
 
   st->sparse_map_avail = 0;
-  while (1)
+  while (true)
     {
-      intmax_t u;
       char *delim;
-
-      if (!c_isdigit (*arg))
+      bool overflow;
+      off_t u = stoint (arg, &delim, &overflow, 0, TYPE_MAXIMUM (off_t));
+      if (delim == arg)
 	{
 	  ERROR ((0, 0, _("Malformed extended header: invalid %s=%s"),
 		  keyword, arg));
 	  return;
 	}
 
-      errno = 0;
-      u = strtoimax (arg, &delim, 10);
-      if (TYPE_MAXIMUM (off_t) < u)
-	{
-	  u = TYPE_MAXIMUM (off_t);
-	  errno = ERANGE;
-	}
       if (offset)
 	{
 	  e.offset = u;
-	  if (errno == ERANGE)
+	  if (overflow)
 	    {
 	      out_of_range_header (keyword, arg, 0, TYPE_MAXIMUM (off_t));
 	      return;
@@ -1468,7 +1465,7 @@ sparse_map_decoder (struct tar_stat_info *st,
       else
 	{
 	  e.numbytes = u;
-	  if (errno == ERANGE)
+	  if (overflow)
 	    {
 	      out_of_range_header (keyword, arg, 0, TYPE_MAXIMUM (off_t));
 	      return;

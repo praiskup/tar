@@ -190,8 +190,8 @@ extern bool keep_directory_symlink_option;
 
 /* Specified file name for incremental list.  */
 extern const char *listed_incremental_option;
-/* Incremental dump level */
-extern int incremental_level;
+/* Incremental dump level: either -1, 0, or 1.  */
+extern signed char incremental_level;
 /* Check device numbers when doing incremental dumps. */
 extern bool check_device_option;
 
@@ -701,7 +701,7 @@ enum { UINTMAX_STRSIZE_BOUND = INT_BUFSIZE_BOUND (intmax_t) };
 enum { SYSINT_BUFSIZE =
 	 max (UINTMAX_STRSIZE_BOUND, INT_BUFSIZE_BOUND (intmax_t)) };
 char *sysinttostr (uintmax_t, intmax_t, uintmax_t, char buf[SYSINT_BUFSIZE]);
-intmax_t strtosysint (char const *, char **, intmax_t, uintmax_t);
+intmax_t stoint (char const *, char **, bool *, intmax_t, uintmax_t);
 char *timetostr (time_t, char buf[SYSINT_BUFSIZE]);
 void code_ns_fraction (int ns, char *p);
 enum { BILLION = 1000000000, LOG10_BILLION = 9 };

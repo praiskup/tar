@@ -1249,20 +1249,10 @@ pax_dump_header (struct tar_sparse_file *file)
 static bool
 decode_num (uintmax_t *num, char const *arg, uintmax_t maxval)
 {
-  uintmax_t u;
   char *arg_lim;
-
-  if (!c_isdigit (*arg))
-    return false;
-
-  errno = 0;
-  u = strtoumax (arg, &arg_lim, 10);
-
-  if (! (u <= maxval && errno != ERANGE) || *arg_lim)
-    return false;
-
-  *num = u;
-  return true;
+  bool overflow;
+  *num = stoint (arg, &arg_lim, &overflow, 0, maxval);
+  return ! ((arg_lim == arg) | *arg_lim | overflow);
 }
 
 static bool

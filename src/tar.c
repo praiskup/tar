@@ -60,7 +60,7 @@ uintmax_t occurrence_option;
 enum old_files old_files_option;
 bool keep_directory_symlink_option;
 const char *listed_incremental_option;
-int incremental_level;
+signed char incremental_level;
 bool check_device_option;
 struct mode_change *mode_option;
 mode_t initial_umask;
@@ -1345,50 +1345,24 @@ expand_pax_option (struct tar_args *targs, const char *arg)
 static uintmax_t
 parse_owner_group (char *arg, uintmax_t field_max, char const **name_option)
 {
-  uintmax_t u = UINTMAX_MAX;
-  char *end;
-  char const *name = 0;
-  char const *invalid_num = 0;
+  char const *name = NULL;
+  char const *num = arg;
   char *colon = strchr (arg, ':');
-
   if (colon)
     {
-      char const *num = colon + 1;
+      num = colon + 1;
       *colon = '\0';
-      if (*arg)
+      if (arg != colon)
 	name = arg;
-      if (num && (! (xstrtoumax (num, &end, 10, &u, "") == LONGINT_OK
-		     && u <= field_max)))
-	invalid_num = num;
-    }
-  else
-    {
-      uintmax_t u1;
-      switch ('0' <= *arg && *arg <= '9'
-	      ? xstrtoumax (arg, &end, 10, &u1, "")
-	      : LONGINT_INVALID)
-	{
-	default:
-	  name = arg;
-	  break;
-
-	case LONGINT_OK:
-	  if (u1 <= field_max)
-	    {
-	      u = u1;
-	      break;
-	    }
-	  FALLTHROUGH;
-	case LONGINT_OVERFLOW:
-	  invalid_num = arg;
-	  break;
-	}
     }
 
-  if (invalid_num)
-    FATAL_ERROR ((0, 0, "%s: %s", quotearg_colon (invalid_num),
+  bool overflow;
+  char *end;
+  uintmax_t u = stoint (num, &end, &overflow, 0, field_max);
+  if ((end == num) | *end | overflow)
+    FATAL_ERROR ((0, 0, "%s: %s", quotearg_colon (num),
 		  _("Invalid owner or group ID")));
-  if (name)
+  if (name_option)
     *name_option = name;
   return u;
 }
@@ -1498,14 +1472,15 @@ parse_opt (int key, char *arg, struct argp_state *state)
 
     case 'b':
       {
-	uintmax_t u;
-	if (! (xstrtoumax (arg, 0, 10, &u, "") == LONGINT_OK
-	       && !ckd_add (&blocking_factor, u, 0)
-	       && 0 < blocking_factor
-	       && !ckd_mul (&record_size, u, BLOCKSIZE)
-	       && record_size <= min (SSIZE_MAX, SIZE_MAX)))
+	bool overflow;
+	char *end;
+	blocking_factor = stoint (arg, &end, &overflow, 0,
+				  (min (IDX_MAX, min (SSIZE_MAX, SIZE_MAX))
+				   / BLOCKSIZE));
+	if ((end == arg) | *end | overflow | !blocking_factor)
 	  USAGE_ERROR ((0, 0, "%s: %s", quotearg_colon (arg),
 			_("Invalid blocking factor")));
+	record_size = blocking_factor * BLOCKSIZE;
       }
       break;
 
@@ -1712,9 +1687,9 @@ parse_opt (int key, char *arg, struct argp_state *state)
 
     case LEVEL_OPTION:
       {
-	uintmax_t u;
-	if (! (xstrtoumax (arg, nullptr, 10, &u, "") == LONGINT_OK
-	       && ckd_add (&incremental_level, u, 0)))
+	char *end;
+	incremental_level = stoint (arg, &end, NULL, 0, 1);
+	if ((end == arg) | *end)
 	  USAGE_ERROR ((0, 0, _("Invalid incremental level value")));
       }
       break;
@@ -1832,26 +1807,11 @@ parse_opt (int key, char *arg, struct argp_state *state)
       sparse_option = true;
       {
 	char *p;
-	bool ok;
-	switch (xstrtoimax (arg, &p, 10, &tar_sparse_major, ""))
-	  {
-	  case LONGINT_OK:
-	    tar_sparse_minor = 0;
-	    ok = 0 <= tar_sparse_major;
-	    break;
-
-	  case LONGINT_INVALID_SUFFIX_CHAR:
-	    ok = (*p == '.'
-		  && (xstrtoimax (p + 1, nullptr, 10, &tar_sparse_minor, "")
-		      == LONGINT_OK)
-		  && 0 <= tar_sparse_minor && 0 <= tar_sparse_major);
-	    break;
-
-	  default:
-	    ok = false;
-	    break;
-	  }
-	if (!ok)
+	bool vmajor, vminor;
+	tar_sparse_major = stoint (arg, &p, &vmajor, 0, INTMAX_MAX);
+	if ((p != arg) & (*p == '.'))
+	  tar_sparse_minor = stoint (p + 1, &p, &vminor, 0, INTMAX_MAX);
+	if ((p == arg) | *p | vmajor | vminor)
 	  USAGE_ERROR ((0, 0, _("Invalid sparse version value")));
       }
       break;
@@ -1949,8 +1909,8 @@ parse_opt (int key, char *arg, struct argp_state *state)
 	      checkpoint_compile_action (".");
 	      arg++;
 	    }
-	  checkpoint_option = strtoimax (arg, &p, 0);
-	  if (*p || checkpoint_option <= 0)
+	  checkpoint_option = stoint (arg, &p, NULL, 0, INTMAX_MAX);
+	  if (*p | (checkpoint_option <= 0))
 	    FATAL_ERROR ((0, 0,
 			  _("invalid --checkpoint value")));
 	}
@@ -2058,10 +2018,9 @@ parse_opt (int key, char *arg, struct argp_state *state)
 	occurrence_option = 1;
       else
 	{
-	  uintmax_t u;
-	  if (xstrtoumax (arg, 0, 10, &u, "") == LONGINT_OK)
-	    occurrence_option = u;
-	  else
+	  char *end;
+	  occurrence_option = stoint (arg, &end, NULL, 0, UINTMAX_MAX);
+	  if (*end)
 	    FATAL_ERROR ((0, 0, "%s: %s", quotearg_colon (arg),
 			  _("Invalid number")));
 	}
@@ -2172,9 +2131,9 @@ parse_opt (int key, char *arg, struct argp_state *state)
 
     case STRIP_COMPONENTS_OPTION:
       {
-	uintmax_t u;
-	if (! (xstrtoumax (arg, 0, 10, &u, "") == LONGINT_OK
-	       && !ckd_add (&strip_name_components, u, 0)))
+	char *end;
+	strip_name_components = stoint (arg, &end, NULL, 0, SIZE_MAX);
+	if (*end)
 	  USAGE_ERROR ((0, 0, "%s: %s", quotearg_colon (arg),
 			_("Invalid number of elements")));
       }
