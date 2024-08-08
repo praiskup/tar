@@ -98,8 +98,8 @@ extern enum archive_format archive_format;
    are always related, the second being BLOCKSIZE times the first.  They do
    not have _option in their name, even if their values is derived from
    option decoding, as these are especially important in tar.  */
-extern int blocking_factor;
-extern size_t record_size;
+extern idx_t blocking_factor;
+extern idx_t record_size;
 
 extern bool absolute_names_option;
 

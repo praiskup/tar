@@ -34,8 +34,8 @@
 /* Define variables declared in common.h that belong to tar.c.  */
 enum subcommand subcommand_option;
 enum archive_format archive_format;
-int blocking_factor;
-size_t record_size;
+idx_t blocking_factor;
+idx_t record_size;
 bool absolute_names_option;
 bool utc_option;
 bool full_time_option;
@@ -1502,7 +1502,8 @@ parse_opt (int key, char *arg, struct argp_state *state)
 	if (! (xstrtoumax (arg, 0, 10, &u, "") == LONGINT_OK
 	       && !ckd_add (&blocking_factor, u, 0)
 	       && 0 < blocking_factor
-	       && !ckd_mul (&record_size, u, BLOCKSIZE)))
+	       && !ckd_mul (&record_size, u, BLOCKSIZE)
+	       && record_size <= min (SSIZE_MAX, SIZE_MAX)))
 	  USAGE_ERROR ((0, 0, "%s: %s", quotearg_colon (arg),
 			_("Invalid blocking factor")));
       }
@@ -2124,7 +2125,8 @@ parse_opt (int key, char *arg, struct argp_state *state)
 	uintmax_t u;
 
 	if (! (xstrtoumax (arg, NULL, 10, &u, TAR_SIZE_SUFFIXES) == LONGINT_OK
-	       && !ckd_add (&record_size, u, 0)))
+	       && !ckd_add (&record_size, u, 0)
+	       && record_size <= min (SSIZE_MAX, SIZE_MAX)))
 	  USAGE_ERROR ((0, 0, "%s: %s", quotearg_colon (arg),
 			_("Invalid record size")));
 	if (record_size % BLOCKSIZE != 0)

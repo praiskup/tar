@@ -985,11 +985,11 @@ short_read (size_t status)
 
       if (! read_full_records)
         {
-          unsigned long rest = record_size - left;
+          idx_t rest = record_size - left;
 
           FATAL_ERROR ((0, 0,
-                        ngettext ("Unaligned block (%lu byte) in archive",
-                                  "Unaligned block (%lu bytes) in archive",
+                        ngettext ("Unaligned block (%td byte) in archive",
+                                  "Unaligned block (%td bytes) in archive",
                                   rest),
                         rest));
         }

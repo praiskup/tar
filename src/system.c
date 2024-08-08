@@ -875,10 +875,10 @@ sys_exec_info_script (const char **archive_name, int volume_number)
   /* Child */
   setenv ("TAR_VERSION", PACKAGE_VERSION, 1);
   setenv ("TAR_ARCHIVE", *archive_name, 1);
-  char intbuf[INT_BUFSIZE_BOUND (int)];
+  char intbuf[INT_BUFSIZE_BOUND (intmax_t)];
   sprintf (intbuf, "%d", volume_number);
   setenv ("TAR_VOLUME", intbuf, 1);
-  sprintf (intbuf, "%d", blocking_factor);
+  sprintf (intbuf, "%jd", blocking_factor);
   setenv ("TAR_BLOCKING_FACTOR", intbuf, 1);
   setenv ("TAR_SUBCOMMAND", subcommand_string (subcommand_option), 1);
   setenv ("TAR_FORMAT",
@@ -922,7 +922,7 @@ sys_exec_checkpoint_script (const char *script_name,
   char intbuf[INT_BUFSIZE_BOUND (intmax_t)];
   sprintf (intbuf, "%jd", checkpoint_number);
   setenv ("TAR_CHECKPOINT", intbuf, 1);
-  sprintf (intbuf, "%d", blocking_factor);
+  sprintf (intbuf, "%td", blocking_factor);
   setenv ("TAR_BLOCKING_FACTOR", intbuf, 1);
   setenv ("TAR_SUBCOMMAND", subcommand_string (subcommand_option), 1);
   setenv ("TAR_FORMAT",
