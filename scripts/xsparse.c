@@ -160,8 +160,8 @@ get_var (FILE *fp, char **name, char **value)
 
 static char *outname;
 static off_t outsize;
-static unsigned int version_major;
-static unsigned int version_minor;
+static off_t version_major;
+static off_t version_minor;
 
 static void
 read_xheader (char *name)
@@ -190,11 +190,11 @@ read_xheader (char *name)
 	}
       else if (strcmp (kw, "major") == 0)
 	{
-	  version_major = string_to_size (val, NULL, SIZE_MAX);
+	  version_major = string_to_off (val, NULL);
 	}
       else if (strcmp (kw, "minor") == 0)
 	{
-	  version_minor = string_to_size (val, NULL, SIZE_MAX);
+	  version_minor = string_to_off (val, NULL);
 	}
       else if (strcmp (kw, "realsize") == 0
 	       || strcmp (kw, "size") == 0)
