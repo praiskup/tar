@@ -843,9 +843,9 @@ deref_stat (char const *name, struct stat *buf)
    opened O_NONBLOCK for security reasons, and on some file systems
    this can cause read to fail with errno == EAGAIN.  Return the
    actual number of bytes read, zero for EOF, or
-   SAFE_READ_ERROR upon error.  */
-size_t
-blocking_read (int fd, void *buf, size_t count)
+   -1 upon error.  */
+ptrdiff_t
+blocking_read (int fd, void *buf, idx_t count)
 {
   size_t bytes = full_read (fd, buf, count);
 
@@ -859,9 +859,7 @@ blocking_read (int fd, void *buf, size_t count)
     }
 #endif
 
-  if (bytes == 0 && errno != 0)
-    bytes = SAFE_READ_ERROR;
-  return bytes;
+  return bytes == SAFE_READ_ERROR || (bytes == 0 && errno != 0) ? -1 : bytes;
 }
 
 /* Write to FD from the buffer BUF with COUNT bytes.  Do a full write.
@@ -869,11 +867,11 @@ blocking_read (int fd, void *buf, size_t count)
    files are opened O_NONBLOCK for security reasons, and on some file
    systems this can cause write to fail with errno == EAGAIN.  Return
    the actual number of bytes written, setting errno if that is less
-   than COUNT.  */
-size_t
-blocking_write (int fd, void const *buf, size_t count)
+   than COUNT.  Return -1 on write error.  */
+idx_t
+blocking_write (int fd, void const *buf, idx_t count)
 {
-  size_t bytes = full_write (fd, buf, count);
+  idx_t bytes = full_write (fd, buf, count);
 
 #if defined F_SETFL && O_NONBLOCK
   if (bytes < count && errno == EAGAIN)
@@ -1118,7 +1116,7 @@ close_diag (char const *name)
 {
   if (ignore_failed_read_option)
     {
-      if (WARNING_ENABLED(WARN_FAILED_READ))
+      if (WARNING_ENABLED (WARN_FAILED_READ))
 	close_warn (name);
     }
   else
@@ -1130,7 +1128,7 @@ open_diag (char const *name)
 {
   if (ignore_failed_read_option)
     {
-      if (WARNING_ENABLED(WARN_FAILED_READ))
+      if (WARNING_ENABLED (WARN_FAILED_READ))
 	open_warn (name);
     }
   else
@@ -1142,7 +1140,7 @@ read_diag_details (char const *name, off_t offset, size_t size)
 {
   if (ignore_failed_read_option)
     {
-      if (WARNING_ENABLED(WARN_FAILED_READ))
+      if (WARNING_ENABLED (WARN_FAILED_READ))
 	read_warn_details (name, offset, size);
     }
   else
@@ -1154,7 +1152,7 @@ readlink_diag (char const *name)
 {
   if (ignore_failed_read_option)
     {
-      if (WARNING_ENABLED(WARN_FAILED_READ))
+      if (WARNING_ENABLED (WARN_FAILED_READ))
 	readlink_warn (name);
     }
   else
@@ -1166,7 +1164,7 @@ savedir_diag (char const *name)
 {
   if (ignore_failed_read_option)
     {
-      if (WARNING_ENABLED(WARN_FAILED_READ))
+      if (WARNING_ENABLED (WARN_FAILED_READ))
 	savedir_warn (name);
     }
   else
@@ -1178,7 +1176,7 @@ seek_diag_details (char const *name, off_t offset)
 {
   if (ignore_failed_read_option)
     {
-      if (WARNING_ENABLED(WARN_FAILED_READ))
+      if (WARNING_ENABLED (WARN_FAILED_READ))
 	seek_warn_details (name, offset);
     }
   else
@@ -1190,7 +1188,7 @@ stat_diag (char const *name)
 {
   if (ignore_failed_read_option)
     {
-      if (WARNING_ENABLED(WARN_FAILED_READ))
+      if (WARNING_ENABLED (WARN_FAILED_READ))
 	stat_warn (name);
     }
   else

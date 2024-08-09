@@ -740,8 +740,8 @@ void undo_last_backup (void);
 
 int deref_stat (char const *name, struct stat *buf);
 
-size_t blocking_read (int fd, void *buf, size_t count);
-size_t blocking_write (int fd, void const *buf, size_t count);
+ptrdiff_t blocking_read (int fd, void *buf, idx_t count);
+idx_t blocking_write (int fd, void const *buf, idx_t count);
 
 extern idx_t chdir_current;
 extern int chdir_fd;
@@ -1031,7 +1031,7 @@ extern int warning_option;
 #define WARNOPT(opt,args)			\
   do						\
     {						\
-      if (WARNING_ENABLED(opt)) WARN (args);	\
+      if (WARNING_ENABLED (opt)) WARN (args);	\
     }						\
   while (0)
 
