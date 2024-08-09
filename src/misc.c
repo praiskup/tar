@@ -31,7 +31,7 @@
 
 static void namebuf_add_dir (namebuf_t, char const *);
 static char *namebuf_finish (namebuf_t);
-static const char *tar_getcdpath (int);
+static const char *tar_getcdpath (idx_t);
 
 char const *
 quote_n_colon (int n, char const *arg)
@@ -315,7 +315,7 @@ normalize_filename_x (char *file_name)
    Return a normalized newly-allocated copy.  */
 
 char *
-normalize_filename (int cdidx, const char *name)
+normalize_filename (idx_t cdidx, const char *name)
 {
   char *copy = NULL;
 
@@ -372,18 +372,17 @@ replace_prefix (char **pname, const char *samp, size_t slen,
 /* Handling numbers.  */
 
 /* Convert VALUE, which is converted from a system integer type whose
-   minimum value is MINVAL and maximum MINVAL, to an decimal
+   minimum value is MINVAL and maximum MINVAL, to a decimal
    integer string.  Use the storage in BUF and return a pointer to the
    converted string.  If VALUE is converted from a negative integer in
    the range MINVAL .. -1, represent it with a string representation
    of the negative integer, using leading '-'.  */
-#if ! (INTMAX_MAX <= UINTMAX_MAX / 2)
-# error "sysinttostr: uintmax_t cannot represent all intmax_t values"
-#endif
 char *
 sysinttostr (uintmax_t value, intmax_t minval, uintmax_t maxval,
 	     char buf[SYSINT_BUFSIZE])
 {
+  static_assert (INTMAX_MAX <= UINTMAX_MAX / 2);
+
   if (value <= maxval)
     return umaxtostr (value, buf);
   else
@@ -391,6 +390,14 @@ sysinttostr (uintmax_t value, intmax_t minval, uintmax_t maxval,
       intmax_t i = value - minval;
       return imaxtostr (i + minval, buf);
     }
+}
+
+/* Convert T to a decimal integer string.  Use the storage in BUF and
+   return a pointer to the converted string.  */
+char *
+timetostr (time_t t, char buf[SYSINT_BUFSIZE])
+{
+  return sysinttostr (t, TYPE_MINIMUM (time_t), TYPE_MAXIMUM (time_t), buf);
 }
 
 /* Convert a prefix of the string ARG to a system integer type whose
@@ -406,12 +413,11 @@ sysinttostr (uintmax_t value, intmax_t minval, uintmax_t maxval,
    On a normal return, set errno = 0.
    On conversion error, return 0 and set errno = EINVAL.
    On overflow, return an extreme value and set errno = ERANGE.  */
-#if ! (INTMAX_MAX <= UINTMAX_MAX)
-# error "strtosysint: nonnegative intmax_t does not fit in uintmax_t"
-#endif
 intmax_t
 strtosysint (char const *arg, char **arglim, intmax_t minval, uintmax_t maxval)
 {
+  static_assert (INTMAX_MAX <= UINTMAX_MAX);
+
   errno = 0;
   if (maxval <= INTMAX_MAX)
     {
@@ -474,11 +480,10 @@ code_ns_fraction (int ns, char *p)
 }
 
 char const *
-code_timespec (struct timespec t, char sbuf[TIMESPEC_STRSIZE_BOUND])
+code_timespec (struct timespec t, char tsbuf[TIMESPEC_STRSIZE_BOUND])
 {
   time_t s = t.tv_sec;
   int ns = t.tv_nsec;
-  char *np;
   bool negative = s < 0;
 
   /* ignore invalid values of ns */
@@ -491,11 +496,12 @@ code_timespec (struct timespec t, char sbuf[TIMESPEC_STRSIZE_BOUND])
       ns = BILLION - ns;
     }
 
-  np = umaxtostr (negative ? - (uintmax_t) s : (uintmax_t) s, sbuf + 1);
-  if (negative)
-    *--np = '-';
-  code_ns_fraction (ns, sbuf + UINTMAX_STRSIZE_BOUND);
-  return np;
+  bool minus_zero = negative & !s;
+  char *sstr = timetostr (s, tsbuf + 1);
+  sstr[-1] = '-';
+  sstr -= minus_zero;
+  code_ns_fraction (ns, sstr + strlen (sstr));
+  return sstr;
 }
 
 struct timespec
@@ -897,7 +903,7 @@ struct wd
 static struct wd *wd;
 
 /* The number of working directories in the vector.  */
-static size_t wd_count;
+static idx_t wd_count;
 
 /* The allocated size of the vector.  */
 static size_t wd_alloc;
@@ -915,17 +921,15 @@ static int wdcache[CHDIR_CACHE_SIZE];
 /* Number of nonzero entries in WDCACHE.  */
 static size_t wdcache_count;
 
-int
+idx_t
 chdir_count (void)
 {
-  if (wd_count == 0)
-    return wd_count;
-  return wd_count - 1;
+  return wd_count - !!wd_count;
 }
 
 /* DIR is the operand of a -C option; add it to vector of chdir targets,
    and return the index of its location.  */
-int
+idx_t
 chdir_arg (char const *dir)
 {
   if (wd_count == wd_alloc)
@@ -961,7 +965,7 @@ chdir_arg (char const *dir)
 }
 
 /* Index of current directory.  */
-int chdir_current;
+idx_t chdir_current;
 
 /* Value suitable for use as the first argument to openat, and in
    similar locations for fstatat, etc.  This is an open file
@@ -975,7 +979,7 @@ int chdir_fd = AT_FDCWD;
    working directory; otherwise, I must be a value returned by
    chdir_arg.  */
 void
-chdir_do (int i)
+chdir_do (idx_t i)
 {
   if (chdir_current != i)
     {
@@ -1043,7 +1047,7 @@ tar_dirname (void)
    process's actual cwd.  (Note that in this case IDX is ignored,
    since it should always be 0.) */
 static const char *
-tar_getcdpath (int idx)
+tar_getcdpath (idx_t idx)
 {
   if (!wd)
     {
@@ -1059,14 +1063,11 @@ tar_getcdpath (int idx)
 
   if (!wd[idx].abspath)
     {
-      int i;
-      int save_cwdi = chdir_current;
+      idx_t save_cwdi = chdir_current, i = idx;
+      while (0 < i && !wd[i - 1].abspath)
+	i--;
 
-      for (i = idx; i >= 0; i--)
-	if (wd[i].abspath)
-	  break;
-
-      while (++i <= idx)
+      for (; i <= idx; i++)
 	{
 	  chdir_do (i);
 	  if (i == 0)
@@ -1197,7 +1198,7 @@ pid_t
 xfork (void)
 {
   pid_t p = fork ();
-  if (p == (pid_t) -1)
+  if (p < 0)
     call_arg_fatal ("fork", _("child process"));
   return p;
 }
@@ -1208,33 +1209,6 @@ xpipe (int fd[2])
 {
   if (pipe (fd) < 0)
     call_arg_fatal ("pipe", _("interprocess channel"));
-}
-
-/* Return PTR, aligned upward to the next multiple of ALIGNMENT.
-   ALIGNMENT must be nonzero.  The caller must arrange for ((char *)
-   PTR) through ((char *) PTR + ALIGNMENT - 1) to be addressable
-   locations.  */
-
-static void *
-ptr_align (void *ptr, size_t alignment)
-{
-  char *p0 = ptr;
-  char *p1 = p0 + alignment - 1;
-  return p1 - (size_t) p1 % alignment;
-}
-
-/* Return the address of a page-aligned buffer of at least SIZE bytes.
-   The caller should free *PTR when done with the buffer.  */
-
-void *
-page_aligned_alloc (void **ptr, size_t size)
-{
-  size_t alignment = getpagesize ();
-  size_t size1 = size + alignment;
-  if (size1 < size)
-    xalloc_die ();
-  *ptr = xmalloc (size1);
-  return ptr_align (*ptr, alignment);
 }
 
 

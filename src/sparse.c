@@ -301,7 +301,7 @@ sparse_scan_file_seek (struct tar_sparse_file *file)
       /* locate first chunk of data */
       data_offset = lseek (fd, offset, SEEK_DATA);
 
-      if (data_offset == (off_t)-1)
+      if (data_offset < 0)
         /* ENXIO == EOF; error otherwise */
         {
           if (errno == ENXIO)
@@ -439,9 +439,8 @@ sparse_dump_region (struct tar_sparse_file *file, size_t i)
 	    }
 	  else
 	    {
-	      char buf[UINTMAX_STRSIZE_BOUND];
 	      struct stat st;
-	      size_t n;
+	      off_t n;
 	      if (fstat (file->fd, &st) == 0)
 		n = file->stat_info->stat.st_size - st.st_size;
 	      else
@@ -452,11 +451,11 @@ sparse_dump_region (struct tar_sparse_file *file, size_t i)
 
 	      WARNOPT (WARN_FILE_SHRANK,
 		       (0, 0,
-			ngettext ("%s: File shrank by %s byte; padding with zeros",
-				  "%s: File shrank by %s bytes; padding with zeros",
+			ngettext ("%s: File shrank by %jd byte; padding with zeros",
+				  "%s: File shrank by %jd bytes; padding with zeros",
 				  n),
 			quotearg_colon (file->stat_info->orig_file_name),
-			STRINGIFY_BIGINT (n, buf)));
+			intmax (n)));
 	      if (! ignore_failed_read_option)
 		set_exit_status (TAREXIT_DIFFERS);
 	      return false;
@@ -795,9 +794,10 @@ oldgnu_add_sparse (struct tar_sparse_file *file, struct sparse *s)
     return add_finish;
   sp.offset = OFF_FROM_HEADER (s->offset);
   sp.numbytes = OFF_FROM_HEADER (s->numbytes);
+  off_t size;
   if (sp.offset < 0 || sp.numbytes < 0
-      || INT_ADD_OVERFLOW (sp.offset, sp.numbytes)
-      || file->stat_info->stat.st_size < sp.offset + sp.numbytes
+      || ckd_add (&size, sp.offset, sp.numbytes)
+      || file->stat_info->stat.st_size < size
       || file->stat_info->archive_file_size < 0)
     return add_fail;
 
@@ -1311,7 +1311,7 @@ pax_decode_header (struct tar_sparse_file *file)
         FATAL_ERROR ((0, 0, _("Unexpected EOF in archive")));
       p = blk->buffer;
       COPY_BUF (blk,nbuf,p);
-      if (!decode_num (&u, nbuf, TYPE_MAXIMUM (size_t)))
+      if (!decode_num (&u, nbuf, SIZE_MAX))
 	{
 	  ERROR ((0, 0, _("%s: malformed sparse archive member"),
 		  file->stat_info->orig_file_name));
@@ -1334,9 +1334,10 @@ pax_decode_header (struct tar_sparse_file *file)
 	    }
 	  sp.offset = u;
 	  COPY_BUF (blk,nbuf,p);
+	  off_t size;
 	  if (!decode_num (&u, nbuf, TYPE_MAXIMUM (off_t))
-	      || INT_ADD_OVERFLOW (sp.offset, u)
-	      || file->stat_info->stat.st_size < sp.offset + u)
+	      || ckd_add (&size, sp.offset, u)
+	      || file->stat_info->stat.st_size < size)
 	    {
 	      ERROR ((0, 0, _("%s: malformed sparse archive member"),
 		      file->stat_info->orig_file_name));

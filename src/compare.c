@@ -31,6 +31,7 @@
 #endif
 
 #include "common.h"
+#include <alignalloc.h>
 #include <quotearg.h>
 #include <rmt.h>
 #include <stdarg.h>
@@ -48,8 +49,7 @@ static char *diff_buffer;
 void
 diff_init (void)
 {
-  void *ptr;
-  diff_buffer = page_aligned_alloc (&ptr, record_size);
+  diff_buffer = xalignalloc (getpagesize (), record_size);
   if (listed_incremental_option)
     read_directory_file ();
 }
@@ -407,16 +407,13 @@ diff_dumpdir (struct tar_stat_info *dir)
 static void
 diff_multivol (void)
 {
-  struct stat stat_data;
-  int fd, status;
-  off_t offset;
-
   if (current_stat_info.had_trailing_slash)
     {
       diff_dir ();
       return;
     }
 
+  struct stat stat_data;
   if (!get_stat_data (current_stat_info.file_name, &stat_data))
     return;
 
@@ -427,10 +424,11 @@ diff_multivol (void)
       return;
     }
 
-  offset = OFF_FROM_HEADER (current_header->oldgnu_header.offset);
+  off_t offset = OFF_FROM_HEADER (current_header->oldgnu_header.offset);
+  off_t file_size;
   if (offset < 0
-      || INT_ADD_OVERFLOW (current_stat_info.stat.st_size, offset)
-      || stat_data.st_size != current_stat_info.stat.st_size + offset)
+      || ckd_add (&file_size, current_stat_info.stat.st_size, offset)
+      || stat_data.st_size != file_size)
     {
       report_difference (&current_stat_info, _("Size differs"));
       skip_member ();
@@ -438,7 +436,7 @@ diff_multivol (void)
     }
 
 
-  fd = openat (chdir_fd, current_stat_info.file_name, open_read_flags);
+  int fd = openat (chdir_fd, current_stat_info.file_name, open_read_flags);
 
   if (fd < 0)
     {
@@ -456,8 +454,7 @@ diff_multivol (void)
   else
     read_and_process (&current_stat_info, process_rawdata);
 
-  status = close (fd);
-  if (status != 0)
+  if (close (fd) < 0)
     close_error (current_stat_info.file_name);
 }
 
@@ -568,7 +565,7 @@ verify_volume (void)
   ioctl (archive, FDFLUSH);
 #endif
 
-  if (!mtioseek (true, -1) && rmtlseek (archive, 0, SEEK_SET) != 0)
+  if (!mtioseek (true, -1) && rmtlseek (archive, 0, SEEK_SET) < 0)
     {
       /* Lseek failed.  Try a different method.  */
       seek_warn (archive_name_array[0]);
@@ -610,15 +607,13 @@ verify_volume (void)
 	  set_next_block_after (current_header);
           if (!ignore_zeros_option)
             {
-	      char buf[UINTMAX_STRSIZE_BOUND];
-
 	      status = read_header (&current_header, &current_stat_info,
 	                            read_header_auto);
 	      if (status == HEADER_ZERO_BLOCK)
 	        break;
 	      WARNOPT (WARN_ALONE_ZERO_BLOCK,
-		       (0, 0, _("A lone zero block at %s"),
-			STRINGIFY_BIGINT (current_block_ordinal (), buf)));
+		       (0, 0, _("A lone zero block at %jd"),
+			intmax (current_block_ordinal ())));
             }
 	  continue;
 	}

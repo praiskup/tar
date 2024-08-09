@@ -100,9 +100,9 @@ decode_xform (char *file_name, void *data)
 
   if (strip_name_components)
     {
-      size_t prefix_len = stripped_prefix_len (file_name,
-					       strip_name_components);
-      if (prefix_len == (size_t) -1)
+      ptrdiff_t prefix_len = stripped_prefix_len (file_name,
+						  strip_name_components);
+      if (prefix_len < 0)
 	prefix_len = strlen (file_name);
       file_name += prefix_len;
     }
@@ -232,25 +232,20 @@ read_and (void (*do_something) (void))
 
 	case HEADER_ZERO_BLOCK:
 	  if (block_number_option)
-	    {
-	      char buf[UINTMAX_STRSIZE_BOUND];
-	      fprintf (stdlis, _("block %s: ** Block of NULs **\n"),
-		       STRINGIFY_BIGINT (current_block_ordinal (), buf));
-	    }
+	    fprintf (stdlis, _("block %jd: ** Block of NULs **\n"),
+		     intmax (current_block_ordinal ()));
 
 	  set_next_block_after (current_header);
 
 	  if (!ignore_zeros_option)
 	    {
-	      char buf[UINTMAX_STRSIZE_BOUND];
-
 	      status = read_header (&current_header, &current_stat_info,
 	                            read_header_auto);
 	      if (status == HEADER_ZERO_BLOCK)
 		break;
 	      WARNOPT (WARN_ALONE_ZERO_BLOCK,
-		       (0, 0, _("A lone zero block at %s"),
-			STRINGIFY_BIGINT (current_block_ordinal (), buf)));
+		       (0, 0, _("A lone zero block at %jd"),
+			intmax (current_block_ordinal ())));
 	      break;
 	    }
 	  status = prev_status;
@@ -258,18 +253,12 @@ read_and (void (*do_something) (void))
 
 	case HEADER_END_OF_FILE:
 	  if (!ignore_zeros_option)
-	    {
-	      char buf[UINTMAX_STRSIZE_BOUND];
-	      WARNOPT (WARN_MISSING_ZERO_BLOCKS,
-		       (0, 0, _("Terminating zero blocks missing at %s"),
-			STRINGIFY_BIGINT (current_block_ordinal (), buf)));
-	    }
+	    WARNOPT (WARN_MISSING_ZERO_BLOCKS,
+		     (0, 0, _("Terminating zero blocks missing at %jd"),
+		      intmax (current_block_ordinal ())));
 	  if (block_number_option)
-	    {
-	      char buf[UINTMAX_STRSIZE_BOUND];
-	      fprintf (stdlis, _("block %s: ** End of File **\n"),
-		       STRINGIFY_BIGINT (current_block_ordinal (), buf));
-	    }
+	    fprintf (stdlis, _("block %jd: ** End of File **\n"),
+		     intmax (current_block_ordinal ()));
 	  break;
 
 	case HEADER_FAILURE:
@@ -285,12 +274,11 @@ read_and (void (*do_something) (void))
 	    case HEADER_SUCCESS:
 	      if (block_number_option)
 		{
-		  char buf[UINTMAX_STRSIZE_BOUND];
 		  off_t block_ordinal = current_block_ordinal ();
 		  block_ordinal -= recent_long_name_blocks;
 		  block_ordinal -= recent_long_link_blocks;
-		  fprintf (stdlis, _("block %s: "),
-			   STRINGIFY_BIGINT (block_ordinal, buf));
+		  fprintf (stdlis, _("block %jd: "),
+			   intmax (block_ordinal));
 		}
 	      ERROR ((0, 0, _("Skipping to next header")));
 	      break;
@@ -467,14 +455,9 @@ read_header (union block **return_block, struct tar_stat_info *info,
 		   || header->header.typeflag == GNUTYPE_LONGLINK)
 	    {
 	      union block *header_copy;
-	      size_t name_size = info->stat.st_size;
-	      size_t n = name_size % BLOCKSIZE;
-	      size = name_size + BLOCKSIZE;
-	      if (n)
-		size += BLOCKSIZE - n;
-
-	      if (name_size != info->stat.st_size || size < name_size)
+	      if (ckd_add (&size, info->stat.st_size, 2 * BLOCKSIZE - 1))
 		xalloc_die ();
+	      size -= size % BLOCKSIZE;
 
 	      header_copy = xmalloc (size + 1);
 
@@ -746,17 +729,17 @@ decode_header (union block *header, struct tar_stat_info *stat_info,
    (uintmax_t) V yields the correct result.  If OCTAL_ONLY, allow only octal
    numbers instead of the other GNU extensions.  Return -1 on error,
    diagnosing the error if TYPE is nonnull and if !SILENT.  */
-#if ! (INTMAX_MAX <= UINTMAX_MAX && - (INTMAX_MIN + 1) <= UINTMAX_MAX)
-# error "from_header internally represents intmax_t as uintmax_t + sign"
-#endif
-#if ! (UINTMAX_MAX / 2 <= INTMAX_MAX)
-# error "from_header returns intmax_t to represent uintmax_t"
-#endif
 static intmax_t
 from_header (char const *where0, size_t digs, char const *type,
 	     intmax_t minval, uintmax_t maxval,
 	     bool octal_only, bool silent)
 {
+  /* from_header internally represents intmax_t as uintmax_t + sign.  */
+  static_assert (INTMAX_MAX <= UINTMAX_MAX
+		 && - (INTMAX_MIN + 1) <= UINTMAX_MAX);
+  /* from_header returns intmax_t to represent uintmax_t.  */
+  static_assert (UINTMAX_MAX / 2 <= INTMAX_MAX);
+
   uintmax_t value;
   uintmax_t uminval = minval;
   uintmax_t minus_minval = - uminval;
@@ -797,8 +780,7 @@ from_header (char const *where0, size_t digs, char const *type,
 	  value += *where++ - '0';
 	  if (where == lim || ! is_octal_digit (*where))
 	    break;
-	  overflow |= value != (value << LG_8 >> LG_8);
-	  value <<= LG_8;
+	  overflow |= ckd_mul (&value, value, 8);
 	}
 
       /* Parse the output of older, unportable tars, which generate
@@ -811,7 +793,7 @@ from_header (char const *where0, size_t digs, char const *type,
 	  /* Compute the negative of the input value, assuming two's
 	     complement.  */
 	  int digit = (*where1 - '0') | 4;
-	  overflow = 0;
+	  overflow = false;
 	  value = 0;
 	  where = where1;
 	  for (;;)
@@ -821,11 +803,9 @@ from_header (char const *where0, size_t digs, char const *type,
 	      if (where == lim || ! is_octal_digit (*where))
 		break;
 	      digit = *where - '0';
-	      overflow |= value != (value << LG_8 >> LG_8);
-	      value <<= LG_8;
+	      overflow |= ckd_mul (&value, value, 8);
 	    }
-	  value++;
-	  overflow |= !value;
+	  overflow |= ckd_add (&value, value, 1);
 
 	  if (!overflow && value <= minus_minval)
 	    {
@@ -871,7 +851,7 @@ from_header (char const *where0, size_t digs, char const *type,
       while (where != lim
 	     && (dig = base64_map[(unsigned char) *where]) < 64)
 	{
-	  if (value << LG_64 >> LG_64 != value)
+	  if (ckd_mul (&value, value, 64))
 	    {
 	      if (type && !silent)
 		ERROR ((0, 0,
@@ -879,7 +859,7 @@ from_header (char const *where0, size_t digs, char const *type,
 			quote_mem (where0, digs), type));
 	      return -1;
 	    }
-	  value = (value << LG_64) | dig;
+	  value |= dig;
 	  where++;
 	}
     }
@@ -895,8 +875,7 @@ from_header (char const *where0, size_t digs, char const *type,
 	 others (assuming ASCII bytes of 8 bits or more).  */
       int signbit = *where & (1 << (LG_256 - 2));
       uintmax_t topbits = (((uintmax_t) - signbit)
-			   << (CHAR_BIT * sizeof (uintmax_t)
-			       - LG_256 - (LG_256 - 2)));
+			   << (UINTMAX_WIDTH - LG_256 - (LG_256 - 2)));
       value = (*where++ & ((1 << (LG_256 - 2)) - 1)) - signbit;
       for (;;)
 	{
@@ -948,19 +927,10 @@ from_header (char const *where0, size_t digs, char const *type,
 
   if (type && !silent)
     {
-      char minval_buf[UINTMAX_STRSIZE_BOUND + 1];
-      char maxval_buf[UINTMAX_STRSIZE_BOUND];
-      char value_buf[UINTMAX_STRSIZE_BOUND + 1];
-      char *minval_string = STRINGIFY_BIGINT (minus_minval, minval_buf + 1);
-      char *value_string = STRINGIFY_BIGINT (value, value_buf + 1);
-      if (negative)
-	*--value_string = '-';
-      if (minus_minval)
-	*--minval_string = '-';
+      char const *value_sign = &"-"[!negative];
       /* TRANSLATORS: Second %s is type name (gid_t,uid_t,etc.) */
-      ERROR ((0, 0, _("Archive value %s is out of %s range %s..%s"),
-	      value_string, type,
-	      minval_string, STRINGIFY_BIGINT (maxval, maxval_buf)));
+      ERROR ((0, 0, _("Archive value %s%ju is out of %s range %jd..%ju"),
+	      value_sign, value, type, minval, maxval));
     }
 
   return -1;
@@ -1076,8 +1046,8 @@ tartime (struct timespec t, bool full_time)
     {
       if (full_time)
 	{
-	  strftime (buffer, sizeof buffer, "%Y-%m-%d %H:%M:%S", tm);
-	  code_ns_fraction (ns, buffer + strlen (buffer));
+	  size_t n = strftime (buffer, sizeof buffer, "%Y-%m-%d %H:%M:%S", tm);
+	  code_ns_fraction (ns, buffer + n);
 	}
       else
 	strftime (buffer, sizeof buffer, "%Y-%m-%d %H:%M", tm);
@@ -1135,12 +1105,11 @@ simple_print_header (struct tar_stat_info *st, union block *blk,
   char *temp_name;
 
   /* These hold formatted ints.  */
-  char uform[max (INT_BUFSIZE_BOUND (intmax_t), UINTMAX_STRSIZE_BOUND)];
-  char gform[sizeof uform];
+  char uform[SYSINT_BUFSIZE];
+  char gform[SYSINT_BUFSIZE];
   char *user, *group;
   char size[2 * UINTMAX_STRSIZE_BOUND];
   				/* holds formatted size or major,minor */
-  char uintbuf[UINTMAX_STRSIZE_BOUND];
   int pad;
   int sizelen;
 
@@ -1151,13 +1120,11 @@ simple_print_header (struct tar_stat_info *st, union block *blk,
 
   if (block_number_option)
     {
-      char buf[UINTMAX_STRSIZE_BOUND];
       if (block_ordinal < 0)
 	block_ordinal = current_block_ordinal ();
       block_ordinal -= recent_long_name_blocks;
       block_ordinal -= recent_long_link_blocks;
-      fprintf (stdlis, _("block %s: "),
-	       STRINGIFY_BIGINT (block_ordinal, buf));
+      fprintf (stdlis, _("block %jd: "), intmax (block_ordinal));
     }
 
   if (verbose_option <= 1)
@@ -1241,7 +1208,8 @@ simple_print_header (struct tar_stat_info *st, union block *blk,
 	  && !numeric_owner_option)
 	user = st->uname;
       else
-	user = STRINGIFY_BIGINT (st->stat.st_uid, uform);
+	user = sysinttostr (st->stat.st_uid, TYPE_MINIMUM (uid_t),
+			    TYPE_MAXIMUM (uid_t), uform);
 
       if (st->gname
 	  && st->gname[0]
@@ -1249,7 +1217,8 @@ simple_print_header (struct tar_stat_info *st, union block *blk,
 	  && !numeric_owner_option)
 	group = st->gname;
       else
-	group = STRINGIFY_BIGINT (st->stat.st_gid, gform);
+	group = sysinttostr (st->stat.st_gid, TYPE_MINIMUM (gid_t),
+			     TYPE_MAXIMUM (gid_t), gform);
 
       /* Format the file size or major/minor device numbers.  */
 
@@ -1257,22 +1226,24 @@ simple_print_header (struct tar_stat_info *st, union block *blk,
 	{
 	case CHRTYPE:
 	case BLKTYPE:
-	  strcpy (size,
-		  STRINGIFY_BIGINT (major (st->stat.st_rdev), uintbuf));
-	  strcat (size, ",");
-	  strcat (size,
-		  STRINGIFY_BIGINT (minor (st->stat.st_rdev), uintbuf));
+	  sizelen = ((EXPR_SIGNED (major (st->stat.st_rdev))
+		      && EXPR_SIGNED (minor (st->stat.st_rdev)))
+		     ? sprintf (size, "%jd,%jd",
+				(intmax) (major (st->stat.st_rdev)),
+				(intmax) (minor (st->stat.st_rdev)))
+		     : sprintf (size, "%ju,%ju",
+				(uintmax) (major (st->stat.st_rdev)),
+				(uintmax) (minor (st->stat.st_rdev))));
 	  break;
 
 	default:
 	  /* st->stat.st_size keeps stored file size */
-	  strcpy (size, STRINGIFY_BIGINT (st->stat.st_size, uintbuf));
+	  sizelen = sprintf (size, "%jd", intmax (st->stat.st_size));
 	  break;
 	}
 
       /* Figure out padding and print the whole line.  */
 
-      sizelen = strlen (size);
       pad = strlen (user) + 1 + strlen (group) + 1 + sizelen;
       if (pad > ugswidth)
 	ugswidth = pad;
@@ -1330,11 +1301,8 @@ simple_print_header (struct tar_stat_info *st, union block *blk,
 	  break;
 
 	case GNUTYPE_MULTIVOL:
-	  strcpy (size,
-		  STRINGIFY_BIGINT
-		  (UINTMAX_FROM_HEADER (blk->oldgnu_header.offset),
-		   uintbuf));
-	  fprintf (stdlis, _("--Continued at byte %s--\n"), size);
+	  fprintf (stdlis, _("--Continued at byte %ju--\n"),
+		   UINTMAX_FROM_HEADER (blk->oldgnu_header.offset));
 	  break;
 	}
     }
@@ -1390,11 +1358,8 @@ print_for_mkdir (char *dirname, mode_t mode)
       pax_decode_mode (mode, modes + 1);
 
       if (block_number_option)
-	{
-	  char buf[UINTMAX_STRSIZE_BOUND];
-	  fprintf (stdlis, _("block %s: "),
-		   STRINGIFY_BIGINT (current_block_ordinal (), buf));
-	}
+	fprintf (stdlis, _("block %jd: "),
+		 intmax (current_block_ordinal ()));
 
       fprintf (stdlis, "%s %*s %s\n", modes, ugswidth + 1 + datewidth,
 	       _("Creating directory:"), quotearg (dirname));

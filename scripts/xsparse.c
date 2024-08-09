@@ -20,16 +20,17 @@
 
    Written by Sergey Poznyakoff  */
 
-#include <stdlib.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdarg.h>
-#include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <limits.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <inttypes.h>
+#include <limits.h>
+#include <stdarg.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 /* Bound on length of the string representing an off_t.
    See INT_STRLEN_BOUND in intprops.h for explanation */
@@ -44,10 +45,10 @@ struct sp_array
   off_t numbytes;
 };
 
-char *progname;
-int verbose;
+static char *progname;
+static bool verbose;
 
-void
+static void
 die (int code, char *fmt, ...)
 {
   va_list ap;
@@ -60,7 +61,7 @@ die (int code, char *fmt, ...)
   exit (code);
 }
 
-void *
+static void *
 emalloc (size_t size)
 {
   char *p = malloc (size);
@@ -69,49 +70,33 @@ emalloc (size_t size)
   return p;
 }
 
-off_t
+static off_t
 string_to_off (char *p, char **endp)
 {
-  off_t v = 0;
-
-  for (; *p; p++)
-    {
-      int digit = *p - '0';
-      off_t x = v * 10;
-      if (9 < (unsigned) digit)
-	{
-	  if (endp)
-	    {
-	      *endp = p;
-	      break;
-	    }
-	  die (1, "number parse error near %s", p);
-	}
-      else if (x / 10 != v)
-	die (1, "number out of allowed range, near %s", p);
-      v = x + digit;
-      if (v < 0)
-	die (1, "negative number");
-    }
-  if (endp)
-    *endp = p;
+  errno = 0;
+  intmax_t i = strtoimax (p, endp, 10);
+  off_t v = i;
+  if (i < 0 || v != i || errno == ERANGE)
+    die (1, "number out of allowed range, near %s", p);
+  if (errno || p == *endp)
+    die (1, "number parse error near %s", p);
   return v;
 }
 
-size_t
-string_to_size (char *p, char **endp)
+static size_t
+string_to_size (char *p, char **endp, size_t maxsize)
 {
   off_t v = string_to_off (p, endp);
   size_t ret = v;
-  if (ret != v)
+  if (! (ret == v && ret <= maxsize))
     die (1, "number too big");
   return ret;
 }
 
-size_t sparse_map_size;
-struct sp_array *sparse_map;
+static size_t sparse_map_size;
+static struct sp_array *sparse_map;
 
-void
+static void
 get_line (char *s, int size, FILE *stream)
 {
   char *p = fgets (s, size, stream);
@@ -121,11 +106,11 @@ get_line (char *s, int size, FILE *stream)
     die (1, "unexpected end of file");
   len = strlen (p);
   if (s[len - 1] != '\n')
-    die (1, "buffer overflow");
-  s[len - 1] = 0;
+    die (1, "invalid or too-long data");
+  s[len - 1] = '\0';
 }
 
-int
+static bool
 get_var (FILE *fp, char **name, char **value)
 {
   static char *buffer;
@@ -138,12 +123,12 @@ get_var (FILE *fp, char **name, char **value)
       size_t len, s;
 
       if (!fgets (buffer, bufsize, fp))
-	return 0;
+	return false;
       len = strlen (buffer);
       if (len == 0)
-	return 0;
+	return false;
 
-      s = string_to_size (buffer, &p);
+      s = string_to_size (buffer, &p, SIZE_MAX - 1);
       if (*p != ' ')
 	die (1, "malformed header: expected space but found %s", p);
       if (buffer[len-1] != '\n')
@@ -160,7 +145,7 @@ get_var (FILE *fp, char **name, char **value)
 	}
       p++;
     }
-  while (memcmp (p, "GNU.sparse.", 11));
+  while (strncmp (p, "GNU.sparse.", 11) != 0);
 
   p += 11;
   q = strchr (p, '=');
@@ -170,15 +155,15 @@ get_var (FILE *fp, char **name, char **value)
   q[strlen (q) - 1] = 0;
   *name = p;
   *value = q;
-  return 1;
+  return true;
 }
 
-char *outname;
-off_t outsize;
-unsigned version_major;
-unsigned version_minor;
+static char *outname;
+static off_t outsize;
+static unsigned int version_major;
+static unsigned int version_minor;
 
-void
+static void
 read_xheader (char *name)
 {
   char *kw, *val;
@@ -205,11 +190,11 @@ read_xheader (char *name)
 	}
       else if (strcmp (kw, "major") == 0)
 	{
-	  version_major = string_to_size (val, NULL);
+	  version_major = string_to_size (val, NULL, SIZE_MAX);
 	}
       else if (strcmp (kw, "minor") == 0)
 	{
-	  version_minor = string_to_size (val, NULL);
+	  version_minor = string_to_size (val, NULL, SIZE_MAX);
 	}
       else if (strcmp (kw, "realsize") == 0
 	       || strcmp (kw, "size") == 0)
@@ -218,7 +203,8 @@ read_xheader (char *name)
 	}
       else if (strcmp (kw, "numblocks") == 0)
 	{
-	  sparse_map_size = string_to_size (val, NULL);
+	  sparse_map_size = string_to_size (val, NULL,
+					    SIZE_MAX / sizeof *sparse_map);
 	  sparse_map = emalloc (sparse_map_size * sizeof *sparse_map);
 	}
       else if (strcmp (kw, "offset") == 0)
@@ -258,10 +244,11 @@ read_xheader (char *name)
     die (1, "size of the sparse map unknown");
   if (i != sparse_map_size)
     die (1, "not all sparse entries supplied");
-  fclose (fp);
+  if (ferror (fp) || fclose (fp) < 0)
+    die (1, "read error: %s", name);
 }
 
-void
+static void
 read_map (FILE *ifp)
 {
   size_t i;
@@ -271,7 +258,7 @@ read_map (FILE *ifp)
     printf ("Reading v.1.0 sparse map\n");
 
   get_line (nbuf, sizeof nbuf, ifp);
-  sparse_map_size = string_to_size (nbuf, NULL);
+  sparse_map_size = string_to_size (nbuf, NULL, SIZE_MAX / sizeof *sparse_map);
   sparse_map = emalloc (sparse_map_size * sizeof *sparse_map);
 
   for (i = 0; i < sparse_map_size; i++)
@@ -282,11 +269,15 @@ read_map (FILE *ifp)
       sparse_map[i].numbytes = string_to_off (nbuf, NULL);
     }
 
-  fseeko (ifp, ((ftell (ifp) + BLOCKSIZE - 1) / BLOCKSIZE) * BLOCKSIZE,
-	  SEEK_SET);
+  off_t ifp_offset = ftello (ifp);
+  if (ifp_offset < 0)
+    die (1, "ftello");
+  if (ifp_offset % BLOCKSIZE != 0
+      && fseeko (ifp, BLOCKSIZE - ifp_offset % BLOCKSIZE, SEEK_CUR) < 0)
+    die (1, "fseeko");
 }
 
-void
+static void
 expand_sparse (FILE *sfp, int ofd)
 {
   size_t i;
@@ -309,17 +300,25 @@ expand_sparse (FILE *sfp, int ofd)
       off_t size = sparse_map[i].numbytes;
 
       if (size == 0)
-	ftruncate (ofd, sparse_map[i].offset);
+	{
+	  if (0 <= ofd && ftruncate (ofd, sparse_map[i].offset) < 0)
+	    die (1, "ftruncate error (%d)", errno);
+	}
       else
 	{
-	  lseek (ofd, sparse_map[i].offset, SEEK_SET);
+	  if (0 <= ofd && lseek (ofd, sparse_map[i].offset, SEEK_SET) < 0)
+	    die (1, "lseek error (%d)", errno);
 	  while (size)
 	    {
 	      size_t rdsize = (size < maxbytes) ? size : maxbytes;
 	      if (rdsize != fread (buffer, 1, rdsize, sfp))
 		die (1, "read error (%d)", errno);
-	      if (rdsize != write (ofd, buffer, rdsize))
-		die (1, "write error (%d)", errno);
+	      if (0 <= ofd)
+		{
+		  ssize_t written = write (ofd, buffer, rdsize);
+		  if (written != rdsize)
+		    die (1, "write error (%d)", written < 0 ? errno : 0);
+		}
 	      size -= rdsize;
 	    }
 	}
@@ -327,7 +326,7 @@ expand_sparse (FILE *sfp, int ofd)
   free (buffer);
 }
 
-void
+static void
 usage (int code)
 {
   printf ("Usage: %s [OPTIONS] infile [outfile]\n", progname);
@@ -342,58 +341,26 @@ usage (int code)
   exit (code);
 }
 
-void
+static void
 guess_outname (char *name)
 {
-  char *p;
-  char *s;
-
-  if (name[0] == '.' && name[1] == '/')
-    name += 2;
-
-  p = name + strlen (name) - 1;
-  s = NULL;
-
-  for (; p > name && *p != '/'; p--)
-    ;
-  if (*p == '/')
-    s = p + 1;
-  if (p != name)
-    {
-      for (p--; p > name && *p != '/'; p--)
-	;
-    }
-
-  if (*p != '/')
-    {
-      if (s)
-	outname = s;
-      else
-	{
-	  outname = emalloc (4 + strlen (name));
-	  strcpy (outname, "../");
-	  strcpy (outname + 3, name);
-	}
-    }
-  else
-    {
-      size_t len = p - name + 1;
-      outname = emalloc (len + strlen (s) + 1);
-      memcpy (outname, name, len);
-      strcpy (outname + len, s);
-    }
+  char *base = strrchr (name, '/');
+  base = base ? base + 1 : name;
+  size_t dirlen = base - name, baselen = strlen (base);
+  static char const parentdir[] = "../";
+  int parentdirlen = sizeof parentdir - 1;
+  outname = emalloc (dirlen + parentdirlen + baselen + 1);
+  memcpy (outname, name, dirlen);
+  memcpy (outname + dirlen, parentdir, parentdirlen);
+  memcpy (outname + dirlen + parentdirlen, base, baselen + 1);
 }
 
 int
 main (int argc, char **argv)
 {
   int c;
-  int dry_run = 0;
+  bool dry_run = false;
   char *xheader_file = NULL;
-  char *inname;
-  FILE *ifp;
-  struct stat st;
-  int ofd;
 
   progname = argv[0];
   while ((c = getopt (argc, argv, "hnvx:")) != EOF)
@@ -409,9 +376,9 @@ main (int argc, char **argv)
 	  break;
 
 	case 'n':
-	  dry_run = 1;
+	  dry_run = true;
 	case 'v':
-	  verbose++;
+	  verbose = true;
 	  break;
 
 	default:
@@ -428,15 +395,16 @@ main (int argc, char **argv)
   if (xheader_file)
     read_xheader (xheader_file);
 
-  inname = argv[0];
+  char *inname = argv[0];
   if (argv[1])
     outname = argv[1];
 
-  if (stat (inname, &st))
+  struct stat st;
+  if (stat (inname, &st) < 0)
     die (1, "cannot stat %s (%d)", inname, errno);
 
-  ifp = fopen (inname, "r");
-  if (ifp == NULL)
+  FILE *ifp = fopen (inname, "r");
+  if (!ifp)
     die (1, "cannot open file %s (%d)", inname, errno);
 
   if (!xheader_file || version_major == 1)
@@ -445,12 +413,26 @@ main (int argc, char **argv)
   if (!outname)
     guess_outname (inname);
 
-  ofd = open (outname, O_RDWR|O_CREAT|O_TRUNC, st.st_mode);
-  if (ofd == -1)
-    die (1, "cannot open file %s (%d)", outname, errno);
-
   if (verbose)
     printf ("Expanding file '%s' to '%s'\n", inname, outname);
+
+  int ofd = -1;
+  if (!dry_run)
+    {
+      ofd = open (outname, O_RDWR | O_CREAT | O_TRUNC, st.st_mode);
+      if (ofd < 0)
+	die (1, "cannot open file %s (%d)", outname, errno);
+    }
+
+  expand_sparse (ifp, ofd);
+
+  if (ferror (ifp) || fclose (ifp) < 0)
+    die (1, "input error: %s", inname);
+  if (close (ofd) < 0)
+    die (1, "output error: %s", outname);
+
+  if (verbose)
+    printf ("Done\n");
 
   if (dry_run)
     {
@@ -458,17 +440,9 @@ main (int argc, char **argv)
       return 0;
     }
 
-  expand_sparse (ifp, ofd);
-
-  fclose (ifp);
-  close (ofd);
-
-  if (verbose)
-    printf ("Done\n");
-
   if (outsize)
     {
-      if (stat (outname, &st))
+      if (stat (outname, &st) < 0)
 	die (1, "cannot stat output file %s (%d)", outname, errno);
       if (st.st_size != outsize)
 	die (1, "expanded file has wrong size");

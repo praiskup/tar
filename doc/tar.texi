@@ -11014,17 +11014,12 @@ will deduce the name for the resulting expanded file using the
 following algorithm:
 
 @enumerate 1
-@item If @file{cond-file} does not contain any directories,
-@file{../cond-file} will be used;
+@item
+If @file{cond-file} has the form @file{@var{dir}/@var{name}},
+the output file name will be @file{@var{dir}/../@var{name}}.
 
-@item If @file{cond-file} has the form
-@file{@var{dir}/@var{t}/@var{name}}, where both @var{t} and @var{name}
-are simple names, with no @samp{/} characters in them, the output file
-name will be @file{@var{dir}/@var{name}}.
-
-@item Otherwise, if @file{cond-file} has the form
-@file{@var{dir}/@var{name}}, the output file name will be
-@file{@var{name}}.
+@item
+Otherwise, the output file name will be @file{../cond-file}.
 @end enumerate
 
 In the unlikely case when this algorithm does not suit your needs,

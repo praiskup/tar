@@ -15,7 +15,7 @@ Suggestions for improving GNU tar.
 * Add support for a 'pax' command that conforms to POSIX 1003.1-2001.
   This would unify paxutils with tar.
 
-* Interoperate better with Joerg Schilling's star implementation.
+* Interoperate better with Jörg Schilling's star implementation.
 
 * Add an option to remove files that compare successfully.
 

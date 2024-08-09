@@ -52,9 +52,9 @@ move_archive (off_t count)
       idx_t short_size = position0 % record_size;
       idx_t start_offset = short_size ? record_size - short_size : 0;
       off_t increment, move_start;
-      if (INT_MULTIPLY_WRAPV (record_size, count, &increment)
-	  || INT_ADD_WRAPV (position0, start_offset, &move_start)
-	  || INT_ADD_WRAPV (move_start, increment, &position)
+      if (ckd_mul (&increment, record_size, count)
+	  || ckd_add (&move_start, position0, start_offset)
+	  || ckd_add (&position, move_start, increment)
 	  || position < 0)
 	{
 	  ERROR ((0, EOVERFLOW, "lseek: %s", archive_name_array[0]));
@@ -116,7 +116,7 @@ static void
 write_recent_bytes (char *data, size_t bytes)
 {
   size_t blocks = bytes / BLOCKSIZE;
-  size_t rest = bytes - blocks * BLOCKSIZE;
+  size_t rest = bytes % BLOCKSIZE;
 
   write_recent_blocks ((union block *)data, blocks);
   memcpy (new_record[new_blocks].buffer, data + blocks * BLOCKSIZE, rest);
@@ -154,7 +154,7 @@ delete_archive_members (void)
   /* FIXME: Should clean the routine before cleaning these variables :-( */
   struct name *name;
   off_t blocks_to_keep = 0;
-  int kept_blocks_in_record;
+  ptrdiff_t kept_blocks_in_record;
 
   name_gather ();
   open_archive (ACCESS_UPDATE);
@@ -307,7 +307,7 @@ delete_archive_members (void)
 
 	      while (blocks_to_keep)
 		{
-		  int count;
+		  ptrdiff_t count;
 
 		  if (current_block == record_end)
 		    {

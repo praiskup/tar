@@ -59,11 +59,11 @@ check_seek_hole (int fd)
     return EX_BAD;
 
   offset = lseek (fd, 0, SEEK_DATA);
-  if (offset == (off_t)-1)
+  if (offset < 0)
     return EX_FAIL;
 
   offset = lseek (fd, offset, SEEK_HOLE);
-  if (offset == (off_t)-1 || offset == stat.st_size)
+  if (offset < 0 || offset == stat.st_size)
     return EX_FAIL;
 
   return EX_OK;
@@ -79,7 +79,7 @@ main ()
   int rc;
   char template[] = "testseekhole-XXXXXX";
   int fd = mkstemp (template);
-  if (fd == -1)
+  if (fd < 0)
     return EX_BAD;
   rc = check_seek_hole (fd);
   close (fd);

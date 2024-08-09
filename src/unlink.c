@@ -24,7 +24,7 @@
 struct deferred_unlink
   {
     struct deferred_unlink *next;   /* Next unlink in the queue */
-    int dir_idx;                    /* Directory index in wd */
+    idx_t dir_idx;		    /* Directory index in wd */
     char *file_name;                /* Name of the file to unlink, relative
 				       to dir_idx */
     bool is_dir;                    /* True if file_name is a directory */
@@ -72,7 +72,7 @@ dunlink_insert (struct deferred_unlink *anchor, struct deferred_unlink *p)
       p->next = anchor->next;
       anchor->next = p;
     }
-  else 
+  else
     {
       p->next = dunlink_head;
       dunlink_head = p;
@@ -94,8 +94,8 @@ static void
 flush_deferred_unlinks (bool force)
 {
   struct deferred_unlink *p, *prev = NULL;
-  int saved_chdir = chdir_current;
-  
+  idx_t saved_chdir = chdir_current;
+
   for (p = dunlink_head; p; )
     {
       struct deferred_unlink *next = p->next;
@@ -188,8 +188,8 @@ flush_deferred_unlinks (bool force)
 	  p = next;
 	}
       dunlink_head = dunlink_tail = NULL;
-    }	  
-	    
+    }
+
   chdir_do (saved_chdir);
 }
 
@@ -197,7 +197,7 @@ void
 finish_deferred_unlinks (void)
 {
   flush_deferred_unlinks (true);
-  
+
   while (dunlink_avail)
     {
       struct deferred_unlink *next = dunlink_avail->next;

@@ -39,29 +39,31 @@
 
 
 #include "arith.h"
-#include <attribute.h>
-#include <backupfile.h>
-#include <exclude.h>
-#include <full-write.h>
-#include <idx.h>
-#include <inttostr.h>
-#include <modechange.h>
-#include <quote.h>
-#include <safe-read.h>
-#include <full-read.h>
-#include <stat-time.h>
-#include <timespec.h>
+
 #define obstack_chunk_alloc xmalloc
 #define obstack_chunk_free free
 #include <obstack.h>
-#include <progname.h>
-#include <xvasprintf.h>
 
+#include <attribute.h>
+#include <backupfile.h>
+#include <exclude.h>
+#include <full-read.h>
+#include <full-write.h>
+#include <idx.h>
+#include <intprops.h>
+#include <inttostr.h>
+#include <modechange.h>
 #include <paxlib.h>
+#include <progname.h>
+#include <quote.h>
+#include <safe-read.h>
+#include <stat-time.h>
+#include <timespec.h>
+#include <verify.h>
+#include <xvasprintf.h>
 
 /* Log base 2 of common values.  */
 #define LG_8 3
-#define LG_64 6
 #define LG_256 8
 
 _GL_INLINE_HEADER_BEGIN
@@ -365,7 +367,7 @@ struct name
     bool cmdline;               /* true if this name was given in the
 				   command line */
 
-    int change_dir;		/* Number of the directory to change to.
+    idx_t change_dir;		/* Number of the directory to change to.
 				   Set with the -C option. */
     uintmax_t found_count;	/* number of times a matching file has
 				   been found */
@@ -455,7 +457,7 @@ size_t available_space_after (union block *pointer);
 off_t current_block_ordinal (void);
 void close_archive (void);
 void closeout_volume_number (void);
-double compute_duration (void);
+double compute_duration_ns (void);
 union block *find_next_block (void);
 void flush_read (void);
 void flush_write (void);
@@ -513,8 +515,8 @@ union block *start_header (struct tar_stat_info *st);
 void finish_header (struct tar_stat_info *st, union block *header,
 		    off_t block_ordinal);
 void simple_finish_header (union block *header);
-union block * write_extended (bool global, struct tar_stat_info *st,
-			      union block *old_header);
+union block *write_extended (bool global, struct tar_stat_info *st,
+			     union block *old_header);
 union block *start_private_header (const char *name, size_t size, time_t t);
 void write_eot (void);
 void check_links (void);
@@ -648,7 +650,7 @@ void assign_string_n (char **string, const char *value, size_t n);
 #define ASSIGN_STRING_N(s,v) assign_string_n (s, v, sizeof (v))
 int unquote_string (char *str);
 char *zap_slashes (char *name);
-char *normalize_filename (int cdidx, const char *name);
+char *normalize_filename (idx_t, char const *);
 void normalize_filename_x (char *name);
 void replace_prefix (char **pname, const char *samp, size_t slen,
 		     const char *repl, size_t rlen);
@@ -661,15 +663,31 @@ char *namebuf_name (namebuf_t buf, const char *name);
 
 const char *tar_dirname (void);
 
+/* intmax (N) is like ((intmax_t) (N)) except without a cast so
+   that it is an error if N is a pointer.  Similarly for uintmax.  */
+COMMON_INLINE intmax_t
+intmax (intmax_t n)
+{
+  return n;
+}
+COMMON_INLINE uintmax_t
+uintmax (uintmax_t n)
+{
+  return n;
+}
+/* intmax should be used only with signed types, and uintmax for unsigned.
+   To bypass this check parenthesize the function, e.g., (intmax) (n).  */
+#define intmax(n) verify_expr (EXPR_SIGNED (n), (intmax) (n))
+#define uintmax(n) verify_expr (!EXPR_SIGNED (n), (uintmax) (n))
+
 /* Represent N using a signed integer I such that (uintmax_t) I == N.
    With a good optimizing compiler, this is equivalent to (intmax_t) i
    and requires zero machine instructions.  */
-#if ! (UINTMAX_MAX / 2 <= INTMAX_MAX)
-# error "represent_uintmax returns intmax_t to represent uintmax_t"
-#endif
 COMMON_INLINE intmax_t
 represent_uintmax (uintmax_t n)
 {
+  static_assert (UINTMAX_MAX / 2 <= INTMAX_MAX);
+
   if (n <= INTMAX_MAX)
     return n;
   else
@@ -680,18 +698,18 @@ represent_uintmax (uintmax_t n)
     }
 }
 
-#define STRINGIFY_BIGINT(i, b) umaxtostr (i, b)
 enum { UINTMAX_STRSIZE_BOUND = INT_BUFSIZE_BOUND (intmax_t) };
 enum { SYSINT_BUFSIZE =
 	 max (UINTMAX_STRSIZE_BOUND, INT_BUFSIZE_BOUND (intmax_t)) };
 char *sysinttostr (uintmax_t, intmax_t, uintmax_t, char buf[SYSINT_BUFSIZE]);
 intmax_t strtosysint (char const *, char **, intmax_t, uintmax_t);
+char *timetostr (time_t, char buf[SYSINT_BUFSIZE]);
 void code_ns_fraction (int ns, char *p);
 enum { BILLION = 1000000000, LOG10_BILLION = 9 };
 enum { TIMESPEC_STRSIZE_BOUND =
-         UINTMAX_STRSIZE_BOUND + LOG10_BILLION + sizeof "-." - 1 };
+         SYSINT_BUFSIZE + LOG10_BILLION + sizeof "." - 1 };
 char const *code_timespec (struct timespec ts,
-			   char sbuf[TIMESPEC_STRSIZE_BOUND]);
+			   char tsbuf[TIMESPEC_STRSIZE_BOUND]);
 struct timespec decode_timespec (char const *, char **, bool);
 
 /* Return true if T does not represent an out-of-range or invalid value.  */
@@ -726,11 +744,11 @@ int deref_stat (char const *name, struct stat *buf);
 size_t blocking_read (int fd, void *buf, size_t count);
 size_t blocking_write (int fd, void const *buf, size_t count);
 
-extern int chdir_current;
+extern idx_t chdir_current;
 extern int chdir_fd;
-int chdir_arg (char const *dir);
-void chdir_do (int dir);
-int chdir_count (void);
+idx_t chdir_arg (char const *dir);
+void chdir_do (idx_t dir);
+idx_t chdir_count (void);
 
 void close_diag (char const *name);
 void open_diag (char const *name);
@@ -747,7 +765,6 @@ _Noreturn void write_fatal (char const *name);
 pid_t xfork (void);
 void xpipe (int fd[2]);
 
-void *page_aligned_alloc (void **ptr, size_t size);
 int set_file_atime (int fd, int parentfd, char const *file,
 		    struct timespec atime);
 
@@ -777,10 +794,9 @@ int uname_to_uid (char const *uname, uid_t *puid);
 void name_init (void);
 void name_add_name (const char *name);
 void name_term (void);
-const char *name_next (int change_dirs);
+char const *name_next (bool);
 void name_gather (void);
-struct name *addname (char const *string, int change_dir,
-		      bool cmdline, struct name *parent);
+struct name *addname (char const *, idx_t, bool, struct name *);
 void add_starting_file (char const *file_name);
 void remname (struct name *name);
 bool name_match (const char *name);
@@ -791,7 +807,7 @@ struct name *name_scan (const char *name, bool exact);
 struct name const *name_from_list (void);
 void blank_name_list (void);
 char *make_file_name (const char *dir_name, const char *name);
-size_t stripped_prefix_len (char const *file_name, size_t num);
+ptrdiff_t stripped_prefix_len (char const *file_name, size_t num);
 bool all_names_found (struct tar_stat_info *st);
 
 void add_avoided_name (char const *name);

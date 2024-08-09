@@ -21,15 +21,19 @@
 #include <wordsplit.h>
 
 #include <errno.h>
-#include <unistd.h>
+#include <glob.h>
+#include <limits.h>
+#include <pwd.h>
+#include <stdarg.h>
+#include <stdckdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
-#include <stdarg.h>
-#include <pwd.h>
-#include <glob.h>
+#include <unistd.h>
 
+#include <attribute.h>
 #include <c-ctype.h>
+#include <ialloc.h>
 
 #if ENABLE_NLS
 # include <gettext.h>
@@ -39,9 +43,8 @@
 #define _(msgid) gettext (msgid)
 #define N_(msgid) msgid
 
-#define ISWS(c) ((c)==' '||(c)=='\t'||(c)=='\n')
-#define ISDELIM(ws,c) \
-  (strchr ((ws)->ws_delim, (c)) != NULL)
+#define ISWS(c) ((c) == ' ' || (c) == '\t' || (c) == '\n')
+#define ISDELIM(ws, c) ((c) && strchr ((ws)->ws_delim, c))
 
 #define ISVARBEG(c) (c_isalpha (c) || c == '_')
 #define ISVARCHR(c) (c_isalnum (c) || c == '_')
@@ -49,8 +52,31 @@
 #define WSP_RETURN_DELIMS(wsp) \
  ((wsp)->ws_flags & WRDSF_RETURN_DELIMS || ((wsp)->ws_options & WRDSO_MAXWORDS))
 
-#define ALLOC_INIT 128
-#define ALLOC_INCR 128
+/* Set escape option F in WS for words (Q==0) or quoted strings (Q==1).  */
+#define WRDSO_ESC_SET(ws,q,f) ((ws)->ws_options |= ((f) << 4*(q)))
+/* Test WS for escape option F for words (Q==0) or quoted strings (Q==1).  */
+#define WRDSO_ESC_TEST(ws,q,f) ((ws)->ws_options & ((f) << 4*(q)))
+
+/* When printing diagnostics with %.*s, output at most this many bytes.
+   Users typically don't want super-long strings in diagnostics,
+   and anyway printf fails if it outputs more than INT_MAX bytes.
+   printflen (LEN) returns LEN as an int, but at most PRINTMAX;
+   printfdots (LEN) returns "..." if LEN exceeds PRINTMAX, "" otherwise.  */
+
+enum { PRINTMAX = 10 * 1024 };
+
+static int
+printflen (idx_t len)
+{
+  return len <= PRINTMAX ? len : PRINTMAX;
+}
+
+static char const *
+printfdots (idx_t len)
+{
+  return &"..."[3 * (len <= PRINTMAX)];
+}
+
 
 static void
 _wsplt_alloc_die (struct wordsplit *wsp)
@@ -69,6 +95,16 @@ _wsplt_error (const char *fmt, ...)
   va_end (ap);
   fputc ('\n', stderr);
 }
+
+#ifdef _WORDSPLIT_EXTRAS
+# define WORDSPLIT_EXTRAS_extern extern
+#else
+# define WORDSPLIT_EXTRAS_extern static
+static void wordsplit_clearerr (struct wordsplit *);
+static void wordsplit_free_envbuf (struct wordsplit *);
+static void wordsplit_free_words (struct wordsplit *);
+static void wordsplit_perror (struct wordsplit *);
+#endif
 
 static void wordsplit_free_nodes (struct wordsplit *);
 
@@ -96,19 +132,15 @@ _wsplt_nomem (struct wordsplit *wsp)
   return wsp->ws_errno;
 }
 
-static int wordsplit_run (const char *command, size_t length,
-			  struct wordsplit *wsp,
-			  unsigned flags, int lvl);
-
-static int wordsplit_init (struct wordsplit *wsp, const char *input, size_t len,
-			   unsigned flags);
-static int wordsplit_process_list (struct wordsplit *wsp, size_t start);
+static int wordsplit_init (struct wordsplit *wsp, char const *input,
+			   idx_t len, unsigned flags);
+static int wordsplit_process_list (struct wordsplit *wsp, idx_t start);
 static int wordsplit_finish (struct wordsplit *wsp);
 
 static int
 _wsplt_subsplit (struct wordsplit *wsp, struct wordsplit *wss,
-		 char const *str, int len,
-		 unsigned flags, int finalize)
+		 char const *str, idx_t len,
+		 unsigned flags, bool finalize)
 {
   int rc;
 
@@ -145,7 +177,7 @@ _wsplt_subsplit (struct wordsplit *wsp, struct wordsplit *wss,
   rc = wordsplit_init (wss, str, len, flags);
   if (rc)
     return rc;
-  wss->ws_lvl = wsp->ws_lvl + 1;
+  wss->ws_lvl++;
   rc = wordsplit_process_list (wss, 0);
   if (rc)
     {
@@ -196,7 +228,7 @@ wordsplit_init0 (struct wordsplit *wsp)
 static char wordsplit_c_escape_tab[] = "\\\\\"\"a\ab\bf\fn\nr\rt\tv\v";
 
 static int
-wordsplit_init (struct wordsplit *wsp, const char *input, size_t len,
+wordsplit_init (struct wordsplit *wsp, char const *input, idx_t len,
 		unsigned flags)
 {
   wsp->ws_flags = flags;
@@ -287,38 +319,55 @@ wordsplit_init (struct wordsplit *wsp, const char *input, size_t len,
 
   wordsplit_init0 (wsp);
 
-  return 0;
+  return WRDSE_OK;
 }
 
 static int
-alloc_space (struct wordsplit *wsp, size_t count)
+alloc_space (struct wordsplit *wsp, idx_t count)
 {
-  size_t offs = (wsp->ws_flags & WRDSF_DOOFFS) ? wsp->ws_offs : 0;
-  char **ptr;
-  size_t newalloc;
-
-  if (wsp->ws_wordv == NULL)
-    {
-      newalloc = offs + count > ALLOC_INIT ? count : ALLOC_INIT;
-      ptr = calloc (newalloc, sizeof (ptr[0]));
-    }
-  else if (wsp->ws_wordn < offs + wsp->ws_wordc + count)
-    {
-      newalloc = offs + wsp->ws_wordc +
-	(count > ALLOC_INCR ? count : ALLOC_INCR);
-      ptr = realloc (wsp->ws_wordv, newalloc * sizeof (ptr[0]));
-    }
-  else
-    return 0;
-
-  if (ptr)
-    {
-      wsp->ws_wordn = newalloc;
-      wsp->ws_wordv = ptr;
-    }
-  else
+  idx_t offs_plus_count;
+  if (ckd_add (&offs_plus_count, count,
+	       wsp->ws_flags & WRDSF_DOOFFS ? wsp->ws_offs : 0))
     return _wsplt_nomem (wsp);
-  return 0;
+
+  idx_t wordn;
+  char **wordv;
+
+  if (!wsp->ws_wordv)
+    {
+      /* The default largest "small, fast" request for glibc malloc.  */
+      enum { DEFAULT_MXFAST = 64 * sizeof (size_t) / 4 };
+
+      enum { ALLOC_INIT = DEFAULT_MXFAST / sizeof *wordv };
+      wordn = offs_plus_count <= ALLOC_INIT ? ALLOC_INIT : offs_plus_count;
+
+      /* Use calloc so that the initial ws_offs words are zero.  */
+      wordv = icalloc (wordn, sizeof *wordv);
+    }
+  else
+    {
+      idx_t wordroom = wsp->ws_wordn - wsp->ws_wordc;
+      if (offs_plus_count <= wordroom)
+	return WRDSE_OK;
+
+      /* Grow the allocation by at least MININCR.  To avoid quadratic
+	 behavior, also grow it by at least 50% if possible. */
+      idx_t minincr = offs_plus_count - wordroom;
+      idx_t halfn = wsp->ws_wordn >> 1;
+      wordv = (halfn <= minincr || ckd_add (&wordn, wsp->ws_wordn, halfn)
+	       ? nullptr
+	       : ireallocarray (wsp->ws_wordv, wordn, sizeof *wordv));
+      if (!wordv)
+	wordv = (ckd_add (&wordn, wsp->ws_wordn, minincr)
+		 ? nullptr
+		 : ireallocarray (wsp->ws_wordv, wordn, sizeof *wordv));
+    }
+
+  if (!wordv)
+    return _wsplt_nomem (wsp);
+  wsp->ws_wordn = wordn;
+  wsp->ws_wordv = wordv;
+  return WRDSE_OK;
 }
 
 
@@ -344,8 +393,8 @@ struct wordsplit_node
   {
     struct
     {
-      size_t beg;		/* Start of word in ws_input */
-      size_t end;		/* End of word in ws_input */
+      idx_t beg;		/* Start of word in ws_input */
+      idx_t end;		/* End of word in ws_input */
     } segm;
     char *word;
   } v;
@@ -383,7 +432,7 @@ wsnode_flagstr (unsigned flags)
     *p++ = 'd';
   else
     *p++ = '-';
-  *p = 0;
+  *p = '\0';
   return retbuf;
 }
 
@@ -398,7 +447,7 @@ wsnode_ptr (struct wordsplit *wsp, struct wordsplit_node *p)
     return wsp->ws_input + p->v.segm.beg;
 }
 
-static size_t
+static idx_t
 wsnode_len (struct wordsplit_node *p)
 {
   if (p->flags & _WSNF_NULL)
@@ -412,7 +461,7 @@ wsnode_len (struct wordsplit_node *p)
 static struct wordsplit_node *
 wsnode_new (struct wordsplit *wsp)
 {
-  struct wordsplit_node *node = calloc (1, sizeof (*node));
+  struct wordsplit_node *node = calloc (1, sizeof *node);
   if (!node)
     _wsplt_nomem (wsp);
   return node;
@@ -472,25 +521,12 @@ wsnode_tail (struct wordsplit_node *p)
 
 static void
 wsnode_insert (struct wordsplit *wsp, struct wordsplit_node *node,
-	       struct wordsplit_node *anchor, int before)
+	       struct wordsplit_node *anchor)
 {
   if (!wsp->ws_head)
     {
       node->next = node->prev = NULL;
       wsp->ws_head = wsp->ws_tail = node;
-    }
-  else if (before)
-    {
-      if (anchor->prev)
-	wsnode_insert (wsp, node, anchor->prev, 0);
-      else
-	{
-	  struct wordsplit_node *tail = wsnode_tail (node);
-	  node->prev = NULL;
-	  tail->next = anchor;
-	  anchor->prev = tail;
-	  wsp->ws_head = node;
-	}
     }
   else
     {
@@ -508,19 +544,19 @@ wsnode_insert (struct wordsplit *wsp, struct wordsplit_node *node,
     }
 }
 
-static int
-wordsplit_add_segm (struct wordsplit *wsp, size_t beg, size_t end, int flg)
+static bool
+wordsplit_add_segm (struct wordsplit *wsp, idx_t beg, idx_t end, unsigned flg)
 {
   if (end == beg && !(flg & _WSNF_EMPTYOK))
-    return 0;
+    return true;
   struct wordsplit_node *node = wsnode_new (wsp);
   if (!node)
-    return 1;
+    return false;
   node->flags = flg & ~(_WSNF_WORD | _WSNF_EMPTYOK);
   node->v.segm.beg = beg;
   node->v.segm.end = end;
   wsnode_append (wsp, node);
-  return 0;
+  return true;
 }
 
 static void
@@ -540,21 +576,22 @@ wordsplit_free_nodes (struct wordsplit *wsp)
 static void
 wordsplit_dump_nodes (struct wordsplit *wsp)
 {
-  struct wordsplit_node *p;
-  int n = 0;
-
-  for (p = wsp->ws_head, n = 0; p; p = p->next, n++)
+  intmax_t n = 0;
+  for (struct wordsplit_node *p = wsp->ws_head; p; p = p->next, n++)
     {
       if (p->flags & _WSNF_WORD)
-	wsp->ws_debug ("(%02d) %4d: %p: %#04x (%s):%s;",
+	wsp->ws_debug ("(%02td) %4jd: %p: %#04x (%s):%s;",
 		       wsp->ws_lvl,
 		       n, p, p->flags, wsnode_flagstr (p->flags), p->v.word);
       else
-	wsp->ws_debug ("(%02d) %4d: %p: %#04x (%s):%.*s;",
-		       wsp->ws_lvl,
-		       n, p, p->flags, wsnode_flagstr (p->flags),
-		       (int) (p->v.segm.end - p->v.segm.beg),
-		       wsp->ws_input + p->v.segm.beg);
+	{
+	  idx_t seglen = p->v.segm.end - p->v.segm.beg;
+	  wsp->ws_debug ("(%02td) %4jd: %p: %#04x (%s):%.*s%s;",
+			 wsp->ws_lvl,
+			 n, p, p->flags, wsnode_flagstr (p->flags),
+			 printflen (seglen), wsp->ws_input + p->v.segm.beg,
+			 printfdots (seglen));
+	}
     }
 }
 
@@ -562,11 +599,11 @@ static int
 coalesce_segment (struct wordsplit *wsp, struct wordsplit_node *node)
 {
   struct wordsplit_node *p, *end;
-  size_t len = 0;
+  idx_t len = 0;
   char *buf, *cur;
 
   if (!(node->flags & _WSNF_JOIN))
-    return 0;
+    return WRDSE_OK;
 
   for (p = node; p && (p->flags & _WSNF_JOIN); p = p->next)
     {
@@ -576,7 +613,7 @@ coalesce_segment (struct wordsplit *wsp, struct wordsplit_node *node)
     len += wsnode_len (p);
   end = p;
 
-  buf = malloc (len + 1);
+  buf = imalloc (len + 1);
   if (!buf)
     return _wsplt_nomem (wsp);
   cur = buf;
@@ -586,7 +623,7 @@ coalesce_segment (struct wordsplit *wsp, struct wordsplit_node *node)
     {
       struct wordsplit_node *next = p->next;
       const char *str = wsnode_ptr (wsp, p);
-      size_t slen = wsnode_len (p);
+      idx_t slen = wsnode_len (p);
 
       memcpy (cur, str, slen);
       cur += slen;
@@ -605,7 +642,7 @@ coalesce_segment (struct wordsplit *wsp, struct wordsplit_node *node)
       p = next;
     }
 
-  *cur = 0;
+  *cur = '\0';
 
   node->flags &= ~_WSNF_JOIN;
 
@@ -614,12 +651,12 @@ coalesce_segment (struct wordsplit *wsp, struct wordsplit_node *node)
   else
     node->flags |= _WSNF_WORD;
   node->v.word = buf;
-  return 0;
+  return WRDSE_OK;
 }
 
-static void wordsplit_string_unquote_copy (struct wordsplit *ws, int inquote,
+static void wordsplit_string_unquote_copy (struct wordsplit *ws, bool inquote,
 					   char *dst, const char *src,
-					   size_t n);
+					   idx_t n);
 
 static int
 wsnode_quoteremoval (struct wordsplit *wsp)
@@ -628,36 +665,33 @@ wsnode_quoteremoval (struct wordsplit *wsp)
 
   for (p = wsp->ws_head; p; p = p->next)
     {
-      const char *str = wsnode_ptr (wsp, p);
-      size_t slen = wsnode_len (p);
-      int unquote;
-
-      if (wsp->ws_flags & WRDSF_QUOTE)
-	unquote = !(p->flags & _WSNF_NOEXPAND);
-      else
-	unquote = 0;
+      bool unquote = (wsp->ws_flags & WRDSF_QUOTE
+		      && !(p->flags & _WSNF_NOEXPAND));
 
       if (unquote)
 	{
+	  const char *str = wsnode_ptr (wsp, p);
+	  idx_t slen = wsnode_len (p);
+
 	  if (!(p->flags & _WSNF_WORD))
 	    {
-	      char *newstr = malloc (slen + 1);
+	      char *newstr = imalloc (slen + 1);
 	      if (!newstr)
 		return _wsplt_nomem (wsp);
 	      memcpy (newstr, str, slen);
-	      newstr[slen] = 0;
+	      newstr[slen] = '\0';
 	      p->v.word = newstr;
 	      p->flags |= _WSNF_WORD;
 	    }
 
-	  wordsplit_string_unquote_copy (wsp, p->flags & _WSNF_QUOTE,
+	  wordsplit_string_unquote_copy (wsp, !!(p->flags & _WSNF_QUOTE),
 					 p->v.word, str, slen);
 	}
     }
-  return 0;
+  return WRDSE_OK;
 }
 
-static int
+static bool
 wsnode_coalesce (struct wordsplit *wsp)
 {
   struct wordsplit_node *p;
@@ -666,12 +700,12 @@ wsnode_coalesce (struct wordsplit *wsp)
     {
       if (p->flags & _WSNF_JOIN)
 	if (coalesce_segment (wsp, p))
-	  return 1;
+	  return true;
     }
-  return 0;
+  return false;
 }
 
-static int
+static bool
 wsnode_tail_coalesce (struct wordsplit *wsp, struct wordsplit_node *p)
 {
   if (p->next)
@@ -683,19 +717,19 @@ wsnode_tail_coalesce (struct wordsplit *wsp, struct wordsplit_node *p)
 	  np = np->next;
 	}
       if (coalesce_segment (wsp, p))
-	return 1;
+	return true;
     }
-  return 0;
+  return false;
 }
 
-static size_t skip_delim (struct wordsplit *wsp);
+static idx_t skip_delim (struct wordsplit *wsp);
 
 static int
 wordsplit_finish (struct wordsplit *wsp)
 {
   struct wordsplit_node *p;
-  size_t n;
-  int delim;
+  idx_t n;
+  char delim;
 
   /* Postprocess delimiters. It would be rather simple, if it weren't for
      the incremental operation.
@@ -723,7 +757,7 @@ wordsplit_finish (struct wordsplit *wsp)
 	is set.
   */
  again:
-  delim = 0;         /* Delimiter being processed (if any) */
+  delim = '\0';      /* Delimiter being processed (if any) */
   n = 0;             /* Number of words processed so far */
   p = wsp->ws_head;  /* Current node */
 
@@ -747,7 +781,7 @@ wordsplit_finish (struct wordsplit *wsp)
 			}
 		      else
 			{
-			  delim = 0;
+			  delim = '\0';
 			  n++; /* Count this node; it will be returned */
 			}
 		    }
@@ -773,7 +807,7 @@ wordsplit_finish (struct wordsplit *wsp)
 	      /* Last node was a delimiter or a compressed run of delimiters;
 		 Count it, and clear the delimiter marker */
 	      n++;
-	      delim = 0;
+	      delim = '\0';
 	    }
 	  if (wsp->ws_options & WRDSO_MAXWORDS)
 	    {
@@ -825,8 +859,8 @@ wordsplit_finish (struct wordsplit *wsp)
   while (wsp->ws_head)
     {
       const char *str = wsnode_ptr (wsp, wsp->ws_head);
-      size_t slen = wsnode_len (wsp->ws_head);
-      char *newstr = malloc (slen + 1);
+      idx_t slen = wsnode_len (wsp->ws_head);
+      char *newstr = imalloc (slen + 1);
 
       /* Assign newstr first, even if it is NULL.  This way
          wordsplit_free will work even if we return
@@ -835,7 +869,7 @@ wordsplit_finish (struct wordsplit *wsp)
       if (!newstr)
 	return _wsplt_nomem (wsp);
       memcpy (newstr, str, slen);
-      newstr[slen] = 0;
+      newstr[slen] = '\0';
 
       wsnode_remove (wsp, wsp->ws_head);
 
@@ -846,14 +880,15 @@ wordsplit_finish (struct wordsplit *wsp)
 	break;
     }
   wsp->ws_wordv[wsp->ws_offs + wsp->ws_wordc] = NULL;
-  return 0;
+  return WRDSE_OK;
 }
 
+#ifdef _WORDSPLIT_EXTRAS
 int
 wordsplit_append (wordsplit_t *wsp, int argc, char **argv)
 {
   int rc;
-  size_t i;
+  idx_t i;
 
   rc = alloc_space (wsp, wsp->ws_wordc + argc + 1);
   if (rc)
@@ -875,31 +910,31 @@ wordsplit_append (wordsplit_t *wsp, int argc, char **argv)
     }
   wsp->ws_wordc += i;
   wsp->ws_wordv[wsp->ws_offs + wsp->ws_wordc] = NULL;
-  return 0;
+  return WRDSE_OK;
 }
+#endif
 
 /* Variable expansion */
 static int
 node_split_prefix (struct wordsplit *wsp,
 		   struct wordsplit_node **ptail,
 		   struct wordsplit_node *node,
-		   size_t beg, size_t len, int flg)
+		   idx_t beg, idx_t len, unsigned flg)
 {
-
   if (len == 0)
     return 0;
   struct wordsplit_node *newnode = wsnode_new (wsp);
   if (!newnode)
     return 1;
-  wsnode_insert (wsp, newnode, *ptail, 0);
+  wsnode_insert (wsp, newnode, *ptail);
   if (node->flags & _WSNF_WORD)
     {
       const char *str = wsnode_ptr (wsp, node);
-      char *newstr = malloc (len + 1);
+      char *newstr = imalloc (len + 1);
       if (!newstr)
 	return _wsplt_nomem (wsp);
       memcpy (newstr, str + beg, len);
-      newstr[len] = 0;
+      newstr[len] = '\0';
       newnode->flags = _WSNF_WORD;
       newnode->v.word = newstr;
     }
@@ -913,12 +948,12 @@ node_split_prefix (struct wordsplit *wsp,
   return 0;
 }
 
-static int
-find_closing_paren (const char *str, size_t i, size_t len, size_t *poff,
+static bool
+find_closing_paren (char const *str, idx_t i, idx_t len, idx_t *poff,
 		    char const *paren)
 {
   enum { st_init, st_squote, st_dquote } state = st_init;
-  size_t level = 1;
+  idx_t level = 1;
 
   for (; i < len; i++)
     {
@@ -938,7 +973,7 @@ find_closing_paren (const char *str, size_t i, size_t len, size_t *poff,
 		  if (--level == 0)
 		    {
 		      *poff = i;
-		      return 0;
+		      return false;
 		    }
 		  break;
 		}
@@ -967,14 +1002,14 @@ find_closing_paren (const char *str, size_t i, size_t len, size_t *poff,
 	  break;
 	}
     }
-  return 1;
+  return true;
 }
 
 static int
-wordsplit_find_env (struct wordsplit *wsp, const char *name, size_t len,
+wordsplit_find_env (struct wordsplit *wsp, char const *name, idx_t len,
 		    char const **ret)
 {
-  size_t i;
+  idx_t i;
 
   if (!(wsp->ws_flags & WRDSF_ENV))
     return WRDSE_UNDEF;
@@ -984,7 +1019,7 @@ wordsplit_find_env (struct wordsplit *wsp, const char *name, size_t len,
       /* A key-value pair environment */
       for (i = 0; wsp->ws_env[i]; i++)
 	{
-	  size_t elen = strlen (wsp->ws_env[i]);
+	  idx_t elen = strlen (wsp->ws_env[i]);
 	  if (elen == len && memcmp (wsp->ws_env[i], name, elen) == 0)
 	    {
 	      *ret = wsp->ws_env[i + 1];
@@ -1001,7 +1036,7 @@ wordsplit_find_env (struct wordsplit *wsp, const char *name, size_t len,
       /* Usual (A=B) environment. */
       for (i = 0; wsp->ws_env[i]; i++)
 	{
-	  size_t j;
+	  idx_t j;
 	  const char *var = wsp->ws_env[i];
 
 	  for (j = 0; j < len; j++)
@@ -1017,23 +1052,26 @@ wordsplit_find_env (struct wordsplit *wsp, const char *name, size_t len,
   return WRDSE_UNDEF;
 }
 
+/* Initial size for ws_env, if allocated automatically */
+enum { WORDSPLIT_ENV_INIT = 16 };
+
 static int
-wsplt_assign_var (struct wordsplit *wsp, const char *name, size_t namelen,
+wsplt_assign_var (struct wordsplit *wsp, char const *name, idx_t namelen,
 		  char *value)
 {
   int n = (wsp->ws_flags & WRDSF_ENV_KV) ? 2 : 1;
   char *v;
 
-  if (wsp->ws_envidx + n >= wsp->ws_envsiz)
+  if (wsp->ws_envsiz - wsp->ws_envidx <= n)
     {
-      size_t sz;
+      idx_t sz;
       char **newenv;
 
       if (!wsp->ws_envbuf)
 	{
 	  if (wsp->ws_flags & WRDSF_ENV)
 	    {
-	      size_t i = 0, j;
+	      idx_t i = 0, j;
 
 	      if (wsp->ws_env)
 		{
@@ -1043,7 +1081,7 @@ wsplt_assign_var (struct wordsplit *wsp, const char *name, size_t namelen,
 
 	      sz = i + n + 1;
 
-	      newenv = calloc (sz, sizeof(newenv[0]));
+	      newenv = icalloc (sz, sizeof *newenv);
 	      if (!newenv)
 		return _wsplt_nomem (wsp);
 
@@ -1064,40 +1102,52 @@ wsplt_assign_var (struct wordsplit *wsp, const char *name, size_t namelen,
 	      wsp->ws_envbuf = newenv;
 	      wsp->ws_envidx = i;
 	      wsp->ws_envsiz = sz;
-	      wsp->ws_env = (const char**) wsp->ws_envbuf;
+	      wsp->ws_env = (char const **) newenv;
 	    }
 	  else
 	    {
-	      newenv = calloc (WORDSPLIT_ENV_INIT, sizeof(newenv[0]));
+	      newenv = calloc (WORDSPLIT_ENV_INIT, sizeof *newenv);
 	      if (!newenv)
 		return _wsplt_nomem (wsp);
 	      wsp->ws_envbuf = newenv;
 	      wsp->ws_envidx = 0;
 	      wsp->ws_envsiz = WORDSPLIT_ENV_INIT;
-	      wsp->ws_env = (const char**) wsp->ws_envbuf;
+	      wsp->ws_env = (char const **) newenv;
 	      wsp->ws_flags |= WRDSF_ENV;
 	    }
 	}
       else
 	{
-	  wsp->ws_envsiz *= 2;
-	  newenv = realloc (wsp->ws_envbuf,
-			    wsp->ws_envsiz * sizeof (wsp->ws_envbuf[0]));
-	  if (!newenv)
+	  idx_t envsiz, envsiz2;
+	  if (ckd_add (&envsiz, wsp->ws_envidx, n + 1))
 	    return _wsplt_nomem (wsp);
+	  newenv = ((!ckd_add (&envsiz2, wsp->ws_envsiz, wsp->ws_envsiz >> 1)
+		     && envsiz < envsiz2)
+		    ? ireallocarray (wsp->ws_envbuf, envsiz2, sizeof *newenv)
+		    : NULL);
+	  if (newenv)
+	    envsiz = envsiz2;
+	  else
+	    {
+	      newenv = ireallocarray (wsp->ws_envbuf, envsiz, sizeof *newenv);
+	      if (!newenv)
+		return _wsplt_nomem (wsp);
+	    }
+
 	  wsp->ws_envbuf = newenv;
-	  wsp->ws_env = (const char**) wsp->ws_envbuf;
+	  wsp->ws_envsiz = envsiz;
+	  wsp->ws_env = (char const **) wsp->ws_envbuf;
 	}
     }
 
   if (wsp->ws_flags & WRDSF_ENV_KV)
     {
       /* A key-value pair environment */
-      char *p = malloc (namelen + 1);
+      char *p = imalloc (namelen + 1);
       if (!p)
 	return _wsplt_nomem (wsp);
       memcpy (p, name, namelen);
-      p[namelen] = 0;
+      p[namelen] = '\0';
 
       v = strdup (value);
       if (!v)
@@ -1110,12 +1160,12 @@ wsplt_assign_var (struct wordsplit *wsp, const char *name, size_t namelen,
     }
   else
     {
-      v = malloc (namelen + strlen(value) + 2);
+      v = imalloc (namelen + strlen (value) + 2);
       if (!v)
 	return _wsplt_nomem (wsp);
       memcpy (v, name, namelen);
       v[namelen++] = '=';
-      strcpy(v + namelen, value);
+      strcpy (v + namelen, value);
       wsp->ws_env[wsp->ws_envidx++] = v;
     }
   wsp->ws_env[wsp->ws_envidx++] = NULL;
@@ -1123,10 +1173,10 @@ wsplt_assign_var (struct wordsplit *wsp, const char *name, size_t namelen,
 }
 
 static int
-expvar (struct wordsplit *wsp, const char *str, size_t len,
+expvar (struct wordsplit *wsp, char const *str, idx_t len,
 	struct wordsplit_node **ptail, const char **pend, unsigned flg)
 {
-  size_t i = 0;
+  idx_t i = 0;
   const char *defstr = NULL;
   char *value;
   const char *vptr;
@@ -1150,7 +1200,7 @@ expvar (struct wordsplit *wsp, const char *str, size_t len,
 	{
 	  if (str[i] == ':')
 	    {
-	      size_t j;
+	      idx_t j;
 
 	      defstr = str + i + 1;
 	      if (find_closing_paren (str, i + 1, len, &j, "{}"))
@@ -1164,9 +1214,9 @@ expvar (struct wordsplit *wsp, const char *str, size_t len,
 	      *pend = str + i;
 	      break;
 	    }
-	  else if (strchr ("-+?=", str[i]))
+	  else if (str[i] && strchr ("-+?=", str[i]))
 	    {
-	      size_t j;
+	      idx_t j;
 
 	      defstr = str + i;
 	      if (find_closing_paren (str, i, len, &j, "{}"))
@@ -1183,7 +1233,7 @@ expvar (struct wordsplit *wsp, const char *str, size_t len,
       newnode = wsnode_new (wsp);
       if (!newnode)
 	return 1;
-      wsnode_insert (wsp, newnode, *ptail, 0);
+      wsnode_insert (wsp, newnode, *ptail);
       *ptail = newnode;
       newnode->flags = _WSNF_WORD | flg;
       newnode->v.word = malloc (3);
@@ -1191,7 +1241,7 @@ expvar (struct wordsplit *wsp, const char *str, size_t len,
 	return _wsplt_nomem (wsp);
       newnode->v.word[0] = '$';
       newnode->v.word[1] = str[0];
-      newnode->v.word[2] = 0;
+      newnode->v.word[2] = '\0';
       *pend = str;
       return 0;
     }
@@ -1201,7 +1251,7 @@ expvar (struct wordsplit *wsp, const char *str, size_t len,
      i   - its length
      defstr - default replacement str */
 
-  if (defstr && strchr("-+?=", defstr[0]) == 0)
+  if (defstr && ! (defstr[0] && strchr ("-+?=", defstr[0])))
     {
       rc = WRDSE_UNDEF;
       defstr = NULL;
@@ -1226,7 +1276,7 @@ expvar (struct wordsplit *wsp, const char *str, size_t len,
 	rc = WRDSE_UNDEF;
 
       if (rc == WRDSE_OK
-	  && (!value || value[0] == 0)
+	  && !(value && *value)
 	  && defstr && defstr[-1] == ':')
 	{
 	  free (value);
@@ -1239,12 +1289,13 @@ expvar (struct wordsplit *wsp, const char *str, size_t len,
     case WRDSE_OK:
       if (defstr && *defstr == '+')
 	{
-	  size_t size = *pend - ++defstr;
+	  idx_t size = *pend - ++defstr;
 
 	  rc = _wsplt_subsplit (wsp, &ws, defstr, size,
 				WRDSF_NOSPLIT | WRDSF_WS | WRDSF_QUOTE |
 				(wsp->ws_flags &
-				 (WRDSF_NOVAR | WRDSF_NOCMD)), 1);
+				 (WRDSF_NOVAR | WRDSF_NOCMD)),
+				true);
 	  if (rc)
 	    return rc;
 	  free (value);
@@ -1257,7 +1308,7 @@ expvar (struct wordsplit *wsp, const char *str, size_t len,
     case WRDSE_UNDEF:
       if (defstr)
 	{
-	  size_t size;
+	  idx_t size;
 	  if (*defstr == '-' || *defstr == '=')
 	    {
 	      size = *pend - ++defstr;
@@ -1266,7 +1317,7 @@ expvar (struct wordsplit *wsp, const char *str, size_t len,
 				    WRDSF_NOSPLIT | WRDSF_WS | WRDSF_QUOTE |
 				    (wsp->ws_flags &
 				     (WRDSF_NOVAR | WRDSF_NOCMD)),
-				    1);
+				    true);
 	      if (rc)
 		return rc;
 
@@ -1283,8 +1334,8 @@ expvar (struct wordsplit *wsp, const char *str, size_t len,
 		{
 		  size = *pend - ++defstr;
 		  if (size == 0)
-		    wsp->ws_error (_("%.*s: variable null or not set"),
-				   (int) i, str);
+		    wsp->ws_error (_("%.*s%s: variable null or not set"),
+				   printflen (i), str, printfdots (i));
 		  else
 		    {
 		      rc = _wsplt_subsplit (wsp, &ws, defstr, size,
@@ -1292,13 +1343,16 @@ expvar (struct wordsplit *wsp, const char *str, size_t len,
 					    WRDSF_QUOTE |
 					    (wsp->ws_flags &
 					     (WRDSF_NOVAR | WRDSF_NOCMD)),
-					    1);
+					    true);
 		      if (rc == 0)
-			wsp->ws_error ("%.*s: %s",
-				       (int) i, str, ws.ws_wordv[0]);
+			wsp->ws_error ("%.*s%s: %s",
+				       printflen (i), str, printfdots (i),
+				       ws.ws_wordv[0]);
 		      else
-			wsp->ws_error ("%.*s: %.*s",
-				       (int) i, str, (int) size, defstr);
+			wsp->ws_error ("%.*s%s: %.*s%s",
+				       printflen (i), str, printfdots (i),
+				       printflen (size), defstr,
+				       printfdots (size));
 		      wordsplit_free (&ws);
 		    }
 		}
@@ -1313,8 +1367,8 @@ expvar (struct wordsplit *wsp, const char *str, size_t len,
       else
 	{
 	  if (wsp->ws_flags & WRDSF_WARNUNDEF)
-	    wsp->ws_error (_("warning: undefined variable `%.*s'"),
-			   (int) i, str);
+	    wsp->ws_error (_("warning: undefined variable '%.*s%s'"),
+			   printflen (i), str, printfdots (i));
 	  if (wsp->ws_flags & WRDSF_KEEPUNDEF)
 	    value = NULL;
 	  else
@@ -1349,19 +1403,19 @@ expvar (struct wordsplit *wsp, const char *str, size_t len,
 	      free (value);
 	      return 1;
 	    }
-	  wsnode_insert (wsp, newnode, *ptail, 0);
+	  wsnode_insert (wsp, newnode, *ptail);
 	  *ptail = newnode;
 	  newnode->flags = _WSNF_WORD | _WSNF_NOEXPAND | flg;
 	  newnode->v.word = value;
 	}
-      else if (*value == 0)
+      else if (!*value)
 	{
 	  free (value);
 	  /* Empty string is a special case */
 	  newnode = wsnode_new (wsp);
 	  if (!newnode)
 	    return 1;
-	  wsnode_insert (wsp, newnode, *ptail, 0);
+	  wsnode_insert (wsp, newnode, *ptail);
 	  *ptail = newnode;
 	  newnode->flags = _WSNF_NULL;
 	}
@@ -1371,10 +1425,10 @@ expvar (struct wordsplit *wsp, const char *str, size_t len,
 	  int rc;
 
 	  rc = _wsplt_subsplit (wsp, &ws, value, strlen (value),
-				WRDSF_NOVAR | WRDSF_NOCMD |
-				WRDSF_QUOTE
-				| (WSP_RETURN_DELIMS (wsp) ? WRDSF_RETURN_DELIMS : 0) ,
-				0);
+				(WRDSF_NOVAR | WRDSF_NOCMD | WRDSF_QUOTE
+				 | (WSP_RETURN_DELIMS (wsp)
+				    ? WRDSF_RETURN_DELIMS : 0)),
+				false);
 	  free (value);
 	  if (rc)
 	    {
@@ -1382,7 +1436,7 @@ expvar (struct wordsplit *wsp, const char *str, size_t len,
 	      wordsplit_free (&ws);
 	      return 1;
 	    }
-	  wsnode_insert (wsp, ws.ws_head, *ptail, 0);
+	  wsnode_insert (wsp, ws.ws_head, *ptail);
 	  *ptail = ws.ws_tail;
 	  ws.ws_head = ws.ws_tail = NULL;
 	  wordsplit_free (&ws);
@@ -1390,52 +1444,52 @@ expvar (struct wordsplit *wsp, const char *str, size_t len,
     }
   else if (wsp->ws_flags & WRDSF_KEEPUNDEF)
     {
-      size_t size = *pend - start + 1;
+      idx_t size = *pend - start + 1;
 
       newnode = wsnode_new (wsp);
       if (!newnode)
 	return 1;
-      wsnode_insert (wsp, newnode, *ptail, 0);
+      wsnode_insert (wsp, newnode, *ptail);
       *ptail = newnode;
       newnode->flags = _WSNF_WORD | _WSNF_NOEXPAND | flg;
-      newnode->v.word = malloc (size + 1);
+      newnode->v.word = imalloc (size + 1);
       if (!newnode->v.word)
 	return _wsplt_nomem (wsp);
       memcpy (newnode->v.word, start, size);
-      newnode->v.word[size] = 0;
+      newnode->v.word[size] = '\0';
     }
   else
     {
       newnode = wsnode_new (wsp);
       if (!newnode)
 	return 1;
-      wsnode_insert (wsp, newnode, *ptail, 0);
+      wsnode_insert (wsp, newnode, *ptail);
       *ptail = newnode;
       newnode->flags = _WSNF_NULL;
     }
   return 0;
 }
 
-static int
-begin_var_p (int c)
+static bool
+begin_var_p (char c)
 {
   return c == '{' || ISVARBEG (c);
 }
 
-static int
+static bool
 node_expand (struct wordsplit *wsp, struct wordsplit_node *node,
-	     int (*beg_p) (int),
+	     bool (*beg_p) (char),
 	     int (*ws_exp_fn) (struct wordsplit *wsp,
-			       const char *str, size_t len,
+			       char const *str, idx_t len,
 			       struct wordsplit_node **ptail,
 			       const char **pend,
 			       unsigned flg))
 {
   const char *str = wsnode_ptr (wsp, node);
-  size_t slen = wsnode_len (node);
+  idx_t slen = wsnode_len (node);
   const char *end = str + slen;
   const char *p;
-  size_t off = 0;
+  idx_t off = 0;
   struct wordsplit_node *tail = node;
 
   for (p = str; p < end; p++)
@@ -1447,16 +1501,16 @@ node_expand (struct wordsplit *wsp, struct wordsplit_node *node,
 	}
       if (*p == '$' && beg_p (p[1]))
 	{
-	  size_t n = p - str;
+	  idx_t n = p - str;
 
 	  if (tail != node)
 	    tail->flags |= _WSNF_JOIN;
 	  if (node_split_prefix (wsp, &tail, node, off, n, _WSNF_JOIN))
-	    return 1;
+	    return false;
 	  p++;
 	  if (ws_exp_fn (wsp, p, slen - n, &tail, &p,
 			 node->flags & (_WSNF_JOIN | _WSNF_QUOTE)))
-	    return 1;
+	    return false;
 	  off += p - str + 1;
 	  str = p + 1;
 	}
@@ -1467,14 +1521,14 @@ node_expand (struct wordsplit *wsp, struct wordsplit_node *node,
 	tail->flags |= _WSNF_JOIN;
       if (node_split_prefix (wsp, &tail, node, off, p - str,
 			     node->flags & (_WSNF_JOIN|_WSNF_QUOTE)))
-	return 1;
+	return false;
     }
   if (tail != node)
     {
       wsnode_remove (wsp, node);
       wsnode_free (node);
     }
-  return 0;
+  return true;
 }
 
 /* Remove NULL nodes from the list */
@@ -1506,7 +1560,7 @@ wordsplit_varexp (struct wordsplit *wsp)
     {
       struct wordsplit_node *next = p->next;
       if (!(p->flags & (_WSNF_NOEXPAND|_WSNF_DELIM)))
-	if (node_expand (wsp, p, begin_var_p, expvar))
+	if (!node_expand (wsp, p, begin_var_p, expvar))
 	  return 1;
       p = next;
     }
@@ -1515,18 +1569,18 @@ wordsplit_varexp (struct wordsplit *wsp)
   return 0;
 }
 
-static int
-begin_cmd_p (int c)
+static bool
+begin_cmd_p (char c)
 {
   return c == '(';
 }
 
 static int
-expcmd (struct wordsplit *wsp, const char *str, size_t len,
+expcmd (struct wordsplit *wsp, char const *str, idx_t len,
 	struct wordsplit_node **ptail, const char **pend, unsigned flg)
 {
   int rc;
-  size_t j;
+  idx_t j;
   char *value;
   struct wordsplit_node *newnode;
 
@@ -1544,7 +1598,7 @@ expcmd (struct wordsplit *wsp, const char *str, size_t len,
     {
       struct wordsplit ws;
 
-      rc = _wsplt_subsplit (wsp, &ws, str, j, WRDSF_WS | WRDSF_QUOTE, 1);
+      rc = _wsplt_subsplit (wsp, &ws, str, j, WRDSF_WS | WRDSF_QUOTE, true);
       if (rc)
 	{
 	  _wsplt_seterr_sub (wsp, &ws);
@@ -1578,19 +1632,19 @@ expcmd (struct wordsplit *wsp, const char *str, size_t len,
 	  newnode = wsnode_new (wsp);
 	  if (!newnode)
 	    return 1;
-	  wsnode_insert (wsp, newnode, *ptail, 0);
+	  wsnode_insert (wsp, newnode, *ptail);
 	  *ptail = newnode;
 	  newnode->flags = _WSNF_WORD | _WSNF_NOEXPAND | flg;
 	  newnode->v.word = value;
 	}
-      else if (*value == 0)
+      else if (!*value)
 	{
 	  free (value);
 	  /* Empty string is a special case */
 	  newnode = wsnode_new (wsp);
 	  if (!newnode)
 	    return 1;
-	  wsnode_insert (wsp, newnode, *ptail, 0);
+	  wsnode_insert (wsp, newnode, *ptail);
 	  *ptail = newnode;
 	  newnode->flags = _WSNF_NULL;
 	}
@@ -1600,10 +1654,11 @@ expcmd (struct wordsplit *wsp, const char *str, size_t len,
 	  int rc;
 
 	  rc = _wsplt_subsplit (wsp, &ws, value, strlen (value),
-				WRDSF_NOVAR | WRDSF_NOCMD
-				| WRDSF_WS | WRDSF_QUOTE
-				| (WSP_RETURN_DELIMS (wsp) ? WRDSF_RETURN_DELIMS : 0),
-				0);
+				(WRDSF_NOVAR | WRDSF_NOCMD | WRDSF_WS
+				 | WRDSF_QUOTE
+				 | (WSP_RETURN_DELIMS (wsp)
+				    ? WRDSF_RETURN_DELIMS : 0)),
+				false);
 	  free (value);
 	  if (rc)
 	    {
@@ -1611,7 +1666,7 @@ expcmd (struct wordsplit *wsp, const char *str, size_t len,
 	      wordsplit_free (&ws);
 	      return 1;
 	    }
-	  wsnode_insert (wsp, ws.ws_head, *ptail, 0);
+	  wsnode_insert (wsp, ws.ws_head, *ptail);
 	  *ptail = ws.ws_tail;
 	  ws.ws_head = ws.ws_tail = NULL;
 	  wordsplit_free (&ws);
@@ -1622,7 +1677,7 @@ expcmd (struct wordsplit *wsp, const char *str, size_t len,
       newnode = wsnode_new (wsp);
       if (!newnode)
 	return 1;
-      wsnode_insert (wsp, newnode, *ptail, 0);
+      wsnode_insert (wsp, newnode, *ptail);
       *ptail = newnode;
       newnode->flags = _WSNF_NULL;
     }
@@ -1638,7 +1693,7 @@ wordsplit_cmdexp (struct wordsplit *wsp)
     {
       struct wordsplit_node *next = p->next;
       if (!(p->flags & _WSNF_NOEXPAND))
-	if (node_expand (wsp, p, begin_cmd_p, expcmd))
+	if (!node_expand (wsp, p, begin_cmd_p, expcmd))
 	  return 1;
       p = next;
     }
@@ -1657,7 +1712,7 @@ wordsplit_trimws (struct wordsplit *wsp)
 
   for (p = wsp->ws_head; p; p = p->next)
     {
-      size_t n;
+      idx_t n;
 
       if (!(p->flags & _WSNF_QUOTE))
 	{
@@ -1691,7 +1746,7 @@ wordsplit_tildexpand (struct wordsplit *wsp)
 {
   struct wordsplit_node *p;
   char *uname = NULL;
-  size_t usize = 0;
+  idx_t usize = 0;
 
   for (p = wsp->ws_head; p; p = p->next)
     {
@@ -1703,10 +1758,9 @@ wordsplit_tildexpand (struct wordsplit *wsp)
       str = wsnode_ptr (wsp, p);
       if (str[0] == '~')
 	{
-	  size_t i, size, dlen;
-	  size_t slen = wsnode_len (p);
+	  idx_t i;
+	  idx_t slen = wsnode_len (p);
 	  struct passwd *pw;
-	  char *newstr;
 
 	  for (i = 1; i < slen && str[i] != '/'; i++)
 	    ;
@@ -1716,18 +1770,19 @@ wordsplit_tildexpand (struct wordsplit *wsp)
 	    {
 	      if (i > usize)
 		{
-		  char *p = realloc (uname, i);
+		  if (ckd_add (&usize, usize, usize >> 1) || usize < i)
+		    usize = i;
+		  char *p = irealloc (uname, usize);
 		  if (!p)
 		    {
 		      free (uname);
 		      return _wsplt_nomem (wsp);
 		    }
 		  uname = p;
-		  usize = i;
 		}
 	      --i;
 	      memcpy (uname, str + 1, i);
-	      uname[i] = 0;
+	      uname[i] = '\0';
 	      pw = getpwnam (uname);
 	    }
 	  else
@@ -1736,9 +1791,9 @@ wordsplit_tildexpand (struct wordsplit *wsp)
 	  if (!pw)
 	    continue;
 
-	  dlen = strlen (pw->pw_dir);
-	  size = slen - i + dlen;
-	  newstr = malloc (size);
+	  idx_t dlen = strlen (pw->pw_dir);
+	  idx_t size = slen - i + dlen;
+	  char *newstr = imalloc (size);
 	  if (!newstr)
 	    {
 	      free (uname);
@@ -1748,7 +1803,7 @@ wordsplit_tildexpand (struct wordsplit *wsp)
 
 	  memcpy (newstr, pw->pw_dir, dlen);
 	  memcpy (newstr + dlen, str + i + 1, slen - i - 1);
-	  newstr[size] = 0;
+	  newstr[size] = '\0';
 	  if (p->flags & _WSNF_WORD)
 	    free (p->v.word);
 	  p->v.word = newstr;
@@ -1759,22 +1814,23 @@ wordsplit_tildexpand (struct wordsplit *wsp)
   return 0;
 }
 
-static int
-isglob (const char *s, int l)
+static bool
+isglob (char const *s, idx_t l)
 {
-  while (l--)
+  for (ptrdiff_t i = l; i--; )
     {
-      if (strchr ("*?[", *s++))
-	return 1;
+      char c = *s++;
+      if (c && strchr ("*?[", c))
+	return true;
     }
-  return 0;
+  return false;
 }
 
 static int
 wordsplit_pathexpand (struct wordsplit *wsp)
 {
   struct wordsplit_node *p, *next;
-  size_t slen;
+  idx_t slen;
   int flags = 0;
 
 #ifdef GLOB_PERIOD
@@ -1799,13 +1855,12 @@ wordsplit_pathexpand (struct wordsplit *wsp)
 	  int i;
 	  glob_t g;
 	  struct wordsplit_node *prev;
-	  char *pattern;
 
-	  pattern = malloc (slen + 1);
+	  char *pattern = imalloc (slen + 1);
 	  if (!pattern)
 	    return _wsplt_nomem (wsp);
 	  memcpy (pattern, str, slen);
-	  pattern[slen] = 0;
+	  pattern[slen] = '\0';
 
 	  switch (glob (pattern, flags, NULL, &g))
 	    {
@@ -1825,17 +1880,19 @@ wordsplit_pathexpand (struct wordsplit *wsp)
 		}
 	      else if (wsp->ws_options & WRDSO_FAILGLOB)
 		{
-		  char buf[128];
 		  if (wsp->ws_errno == WRDSE_USERERR)
 		    free (wsp->ws_usererr);
-		  snprintf (buf, sizeof (buf), _("no files match pattern %s"),
-			    pattern);
-		  free (pattern);
-		  wsp->ws_usererr = strdup (buf);
-		  if (!wsp->ws_usererr)
-		    return _wsplt_nomem (wsp);
-		  else
-		    return _wsplt_seterr (wsp, WRDSE_USERERR);
+		  char const *msg = _("no files match pattern ");
+		  idx_t msglen = strlen (msg);
+		  char *usererr = irealloc (pattern, msglen + slen + 1);
+		  if (!usererr)
+		    {
+		      free (pattern);
+		      return _wsplt_nomem (wsp);
+		    }
+		  memmove (usererr + msglen, usererr, slen + 1);
+		  wsp->ws_usererr = memcpy (usererr, msg, msglen);
+		  return _wsplt_seterr (wsp, WRDSE_USERERR);
 		}
 	      free (pattern);
 	      continue;
@@ -1861,7 +1918,7 @@ wordsplit_pathexpand (struct wordsplit *wsp)
 		}
 	      newnode->v.word = newstr;
 	      newnode->flags |= _WSNF_WORD|_WSNF_QUOTE;
-	      wsnode_insert (wsp, newnode, prev, 0);
+	      wsnode_insert (wsp, newnode, prev);
 	      prev = newnode;
 	    }
 	  globfree (&g);
@@ -1874,13 +1931,13 @@ wordsplit_pathexpand (struct wordsplit *wsp)
 }
 
 static int
-skip_sed_expr (const char *command, size_t i, size_t len)
+skip_sed_expr (char const *command, idx_t i, idx_t len)
 {
   int state;
 
   do
     {
-      int delim;
+      char delim;
 
       if (command[i] == ';')
 	i++;
@@ -1908,34 +1965,34 @@ skip_sed_expr (const char *command, size_t i, size_t len)
 
 /* wsp->ws_endp points to a delimiter character. If RETURN_DELIMS
    is true, return its value, otherwise return the index past it. */
-static size_t
-skip_delim_internal (struct wordsplit *wsp, int return_delims)
+static idx_t
+skip_delim_internal (struct wordsplit *wsp, bool return_delims)
 {
-  return return_delims ? wsp->ws_endp : wsp->ws_endp + 1;
+  return wsp->ws_endp + !return_delims;
 }
 
-static size_t
+static idx_t
 skip_delim (struct wordsplit *wsp)
 {
   return skip_delim_internal (wsp, WSP_RETURN_DELIMS (wsp));
 }
 
-static size_t
+static idx_t
 skip_delim_real (struct wordsplit *wsp)
 {
-  return skip_delim_internal (wsp, wsp->ws_flags & WRDSF_RETURN_DELIMS);
+  return skip_delim_internal (wsp, !!(wsp->ws_flags & WRDSF_RETURN_DELIMS));
 }
 
 #define _WRDS_EOF   0
 #define _WRDS_OK    1
 #define _WRDS_ERR   2
 
-static int
-scan_qstring (struct wordsplit *wsp, size_t start, size_t *end)
+static bool
+scan_qstring (struct wordsplit *wsp, idx_t start, idx_t *end)
 {
-  size_t j;
+  idx_t j;
   const char *command = wsp->ws_input;
-  size_t len = wsp->ws_len;
+  idx_t len = wsp->ws_len;
   char q = command[start];
 
   for (j = start + 1; j < len && command[j] != q; j++)
@@ -1946,30 +2003,30 @@ scan_qstring (struct wordsplit *wsp, size_t start, size_t *end)
       unsigned flags = _WSNF_QUOTE | _WSNF_EMPTYOK;
       if (q == '\'')
 	flags |= _WSNF_NOEXPAND;
-      if (wordsplit_add_segm (wsp, start + 1, j, flags))
-	return _WRDS_ERR;
+      if (!wordsplit_add_segm (wsp, start + 1, j, flags))
+	return false;
       *end = j;
     }
   else
     {
       wsp->ws_endp = start;
       _wsplt_seterr (wsp, WRDSE_QUOTE);
-      return _WRDS_ERR;
+      return false;
     }
-  return 0;
+  return true;
 }
 
 static int
-scan_word (struct wordsplit *wsp, size_t start, int consume_all)
+scan_word (struct wordsplit *wsp, idx_t start, bool consume_all)
 {
-  size_t len = wsp->ws_len;
+  idx_t len = wsp->ws_len;
   const char *command = wsp->ws_input;
   const char *comment = wsp->ws_comment;
-  int join = 0;
+  bool join = false;
   unsigned flags = 0;
   struct wordsplit_node *np = wsp->ws_tail;
 
-  size_t i = start;
+  idx_t i = start;
 
   if (i >= len)
     {
@@ -1989,12 +2046,12 @@ scan_word (struct wordsplit *wsp, size_t start, int consume_all)
     {
       while (i < len)
 	{
-	  if (comment && strchr (comment, command[i]) != NULL)
+	  if (comment && command[i] && strchr (comment, command[i]) != NULL)
 	    {
-	      size_t j;
+	      idx_t j;
 	      for (j = i + 1; j < len && command[j] != '\n'; j++)
 		;
-	      if (wordsplit_add_segm (wsp, start, i, 0))
+	      if (!wordsplit_add_segm (wsp, start, i, 0))
 		return _WRDS_ERR;
 	      wsp->ws_endp = j;
 	      return _WRDS_OK;
@@ -2015,12 +2072,12 @@ scan_word (struct wordsplit *wsp, size_t start, int consume_all)
 		{
 		  if (join && wsp->ws_tail)
 		    wsp->ws_tail->flags |= _WSNF_JOIN;
-		  if (wordsplit_add_segm (wsp, start, i, _WSNF_JOIN))
+		  if (!wordsplit_add_segm (wsp, start, i, _WSNF_JOIN))
 		    return _WRDS_ERR;
-		  if (scan_qstring (wsp, i, &i))
+		  if (!scan_qstring (wsp, i, &i))
 		    return _WRDS_ERR;
 		  start = i + 1;
-		  join = 1;
+		  join = true;
 		}
 	    }
 
@@ -2028,11 +2085,11 @@ scan_word (struct wordsplit *wsp, size_t start, int consume_all)
 	    {
 	      if (!(wsp->ws_flags & WRDSF_NOVAR)
 		  && command[i+1] == '{'
-		  && find_closing_paren (command, i + 2, len, &i, "{}") == 0)
+		  && !find_closing_paren (command, i + 2, len, &i, "{}"))
 		continue;
 	      if (!(wsp->ws_flags & WRDSF_NOCMD)
 		  && command[i+1] == '('
-		  && find_closing_paren (command, i + 2, len, &i, "()") == 0)
+		  && !find_closing_paren (command, i + 2, len, &i, "()"))
 		continue;
 	    }
 
@@ -2052,7 +2109,7 @@ scan_word (struct wordsplit *wsp, size_t start, int consume_all)
 
   if (join && i > start && wsp->ws_tail)
     wsp->ws_tail->flags |= _WSNF_JOIN;
-  if (wordsplit_add_segm (wsp, start, i, flags))
+  if (!wordsplit_add_segm (wsp, start, i, flags))
     return _WRDS_ERR;
   wsp->ws_endp = i;
   if (wsp->ws_flags & WRDSF_INCREMENTAL)
@@ -2072,35 +2129,48 @@ scan_word (struct wordsplit *wsp, size_t start, int consume_all)
   return _WRDS_OK;
 }
 
-#define to_num(c) \
-  (c_isdigit(c) ? c - '0' : c_isxdigit (c) ? c_toupper (c) - 'A' + 10 : 255)
-
 static int
-xtonum (int *pval, const char *src, int base, int cnt)
+xtonum (char *pval, char const *src, int base, int cnt)
 {
-  int i, val;
+  int i;
+  unsigned char val = 0;
 
-  for (i = 0, val = 0; i < cnt; i++, src++)
+  /* The maximum value that a prefix of a number can represent.
+     This is 31 if base is 8 and UCHAR_MAX == 255,
+     so that "\400" is treated as "\40" followed by "0", not as "\000".  */
+  unsigned char max_prefix = UCHAR_MAX / base;
+
+  for (i = 0; i < cnt && val <= max_prefix; i++)
     {
-      int n = *(unsigned char *) src;
-      if (n > 127 || (n = to_num (n)) >= base)
+      unsigned char c = src[i];
+      unsigned char digit;
+
+      if (c_isdigit (c))
+	digit = c - '0';
+      else if (c_isxdigit (c))
+	digit = c_toupper (c) - 'A' + 10;
+      else
 	break;
-      val = val * base + n;
+
+      if (base <= digit)
+	break;
+      val = val * base + digit;
     }
   *pval = val;
   return i;
 }
 
-size_t
-wordsplit_c_quoted_length (const char *str, int quote_hex, int *quote)
+#ifdef _WORDSPLIT_EXTRAS
+idx_t
+wordsplit_c_quoted_length (const char *str, bool quote_hex, bool *quote)
 {
-  size_t len = 0;
+  idx_t len = 0;
 
-  *quote = 0;
+  *quote = false;
   for (; *str; str++)
     {
       if (strchr (" \"", *str))
-	*quote = 1;
+	*quote = true;
 
       if (*str == ' ')
 	len++;
@@ -2120,9 +2190,10 @@ wordsplit_c_quoted_length (const char *str, int quote_hex, int *quote)
     }
   return len;
 }
+#endif
 
-static int
-wsplt_unquote_char (const char *transtab, int c)
+static char
+wsplt_unquote_char (const char *transtab, char c)
 {
   while (*transtab && transtab[1])
     {
@@ -2130,44 +2201,43 @@ wsplt_unquote_char (const char *transtab, int c)
 	return *transtab;
       ++transtab;
     }
-  return 0;
+  return '\0';
 }
 
-static int
-wsplt_quote_char (const char *transtab, int c)
+#ifdef _WORDSPLIT_EXTRAS
+static char
+wsplt_quote_char (const char *transtab, char c)
 {
   for (; *transtab && transtab[1]; transtab += 2)
     {
       if (transtab[1] == c)
 	return *transtab;
     }
-  return 0;
+  return '\0';
 }
 
-int
-wordsplit_c_unquote_char (int c)
+char
+wordsplit_c_unquote_char (char c)
 {
   return wsplt_unquote_char (wordsplit_c_escape_tab, c);
 }
 
-int
-wordsplit_c_quote_char (int c)
+char
+wordsplit_c_quote_char (char c)
 {
   return wsplt_quote_char (wordsplit_c_escape_tab, c);
 }
+#endif
 
 void
-wordsplit_string_unquote_copy (struct wordsplit *ws, int inquote,
-			       char *dst, const char *src, size_t n)
+wordsplit_string_unquote_copy (struct wordsplit *ws, bool inquote,
+			       char *dst, char const *src, idx_t n)
 {
-  int i = 0;
-  int c;
-
-  inquote = !!inquote;
-  while (i < n)
+  for (idx_t i = 0; i < n; )
     {
       if (src[i] == '\\')
 	{
+	  char c;
 	  ++i;
 	  if (WRDSO_ESC_TEST (ws, inquote, WRDSO_XESC)
 	      && (src[i] == 'x' || src[i] == 'X'))
@@ -2179,8 +2249,7 @@ wordsplit_string_unquote_copy (struct wordsplit *ws, int inquote,
 		}
 	      else
 		{
-		  int off = xtonum (&c, src + i + 1,
-				    16, 2);
+		  int off = xtonum (&c, src + i + 1, 16, 2);
 		  if (off == 0)
 		    {
 		      *dst++ = '\\';
@@ -2231,11 +2300,12 @@ wordsplit_string_unquote_copy (struct wordsplit *ws, int inquote,
       else
 	*dst++ = src[i++];
     }
-  *dst = 0;
+  *dst = '\0';
 }
 
+#ifdef _WORDSPLIT_EXTRAS
 void
-wordsplit_c_quote_copy (char *dst, const char *src, int quote_hex)
+wordsplit_c_quote_copy (char *dst, const char *src, bool quote_hex)
 {
   for (; *src; src++)
     {
@@ -2248,30 +2318,29 @@ wordsplit_c_quote_copy (char *dst, const char *src, int quote_hex)
 	*dst++ = *src;
       else
 	{
-	  char tmp[4];
+	  unsigned char uc = *src;
 
 	  if (quote_hex)
 	    {
-	      snprintf (tmp, sizeof tmp, "%%%02X", *(unsigned char *) src);
-	      memcpy (dst, tmp, 3);
-	      dst += 3;
+	      static char const hexdigit[16] = "0123456789ABCDEF";
+	      *dst++ = '%';
+	      for (int i = 4; 0 <= i; i -= 4)
+		*dst++ = hexdigit[(uc >> i) & 0xf];
 	    }
 	  else
 	    {
-	      int c = wordsplit_c_quote_char (*src);
+	      char c = wordsplit_c_quote_char (*src);
 	      *dst++ = '\\';
 	      if (c)
 		*dst++ = c;
 	      else
-		{
-		  snprintf (tmp, sizeof tmp, "%03o", *(unsigned char *) src);
-		  memcpy (dst, tmp, 3);
-		  dst += 3;
-		}
+		for (int i = 6; 0 <= i; i -= 3)
+		  *dst++ = '0' + ((uc >> i) & 7);
 	    }
 	}
     }
 }
+#endif
 
 
 /* This structure describes a single expansion phase */
@@ -2313,7 +2382,7 @@ static struct exptab exptab[] = {
   { NULL }
 };
 
-static int
+static bool
 exptab_matches (struct exptab *p, struct wordsplit *wsp)
 {
   int result;
@@ -2324,31 +2393,32 @@ exptab_matches (struct exptab *p, struct wordsplit *wsp)
   if (p->opt & EXPOPT_NEG)
     result = !result;
 
-  return result;
+  return !!result;
 }
 
 static int
-wordsplit_process_list (struct wordsplit *wsp, size_t start)
+wordsplit_process_list (struct wordsplit *wsp, idx_t start)
 {
   struct exptab *p;
 
   if (wsp->ws_flags & WRDSF_SHOWDBG)
-    wsp->ws_debug (_("(%02d) Input:%.*s;"),
-		   wsp->ws_lvl, (int) wsp->ws_len, wsp->ws_input);
+    wsp->ws_debug (_("(%02td) Input:%.*s%s;"),
+		   wsp->ws_lvl, printflen (wsp->ws_len), wsp->ws_input,
+		   printfdots (wsp->ws_len));
 
   if ((wsp->ws_flags & WRDSF_NOSPLIT)
       || ((wsp->ws_options & WRDSO_MAXWORDS)
 	  && wsp->ws_wordi + 1 == wsp->ws_maxwords))
     {
       /* Treat entire input as a single word */
-      if (scan_word (wsp, start, 1) == _WRDS_ERR)
+      if (scan_word (wsp, start, true) == _WRDS_ERR)
 	return wsp->ws_errno;
     }
   else
     {
       int rc;
 
-      while ((rc = scan_word (wsp, start, 0)) == _WRDS_OK)
+      while ((rc = scan_word (wsp, start, false)) == _WRDS_OK)
 	start = skip_delim (wsp);
       /* Make sure tail element is not joinable */
       if (wsp->ws_tail)
@@ -2359,13 +2429,13 @@ wordsplit_process_list (struct wordsplit *wsp, size_t start)
 
   if (wsp->ws_flags & WRDSF_SHOWDBG)
     {
-      wsp->ws_debug ("(%02d) %s", wsp->ws_lvl, _("Initial list:"));
+      wsp->ws_debug ("(%02td) %s", wsp->ws_lvl, _("Initial list:"));
       wordsplit_dump_nodes (wsp);
     }
 
   for (p = exptab; p->descr; p++)
     {
-      if (exptab_matches(p, wsp))
+      if (exptab_matches (p, wsp))
 	{
 	  if (p->opt & EXPOPT_COALESCE)
 	    {
@@ -2373,7 +2443,7 @@ wordsplit_process_list (struct wordsplit *wsp, size_t start)
 		break;
 	      if (wsp->ws_flags & WRDSF_SHOWDBG)
 		{
-		  wsp->ws_debug ("(%02d) %s", wsp->ws_lvl,
+		  wsp->ws_debug ("(%02td) %s", wsp->ws_lvl,
 				 _("Coalesced list:"));
 		  wordsplit_dump_nodes (wsp);
 		}
@@ -2384,7 +2454,7 @@ wordsplit_process_list (struct wordsplit *wsp, size_t start)
 		break;
 	      if (wsp->ws_flags & WRDSF_SHOWDBG)
 		{
-		  wsp->ws_debug ("(%02d) %s", wsp->ws_lvl, _(p->descr));
+		  wsp->ws_debug ("(%02td) %s", wsp->ws_lvl, _(p->descr));
 		  wordsplit_dump_nodes (wsp);
 		}
 	    }
@@ -2393,12 +2463,13 @@ wordsplit_process_list (struct wordsplit *wsp, size_t start)
   return wsp->ws_errno;
 }
 
-static int
-wordsplit_run (const char *command, size_t length, struct wordsplit *wsp,
-               unsigned flags, int lvl)
+WORDSPLIT_EXTRAS_extern
+int
+wordsplit_len (char const *command, idx_t length, struct wordsplit *wsp,
+	       unsigned flags)
 {
   int rc;
-  size_t start;
+  idx_t start;
 
   if (!command)
     {
@@ -2421,7 +2492,7 @@ wordsplit_run (const char *command, size_t length, struct wordsplit *wsp,
       rc = wordsplit_init (wsp, command, length, flags);
       if (rc)
 	return rc;
-      wsp->ws_lvl = lvl;
+      wsp->ws_lvl = 0;
     }
 
   rc = wordsplit_process_list (wsp, start);
@@ -2431,22 +2502,16 @@ wordsplit_run (const char *command, size_t length, struct wordsplit *wsp,
 }
 
 int
-wordsplit_len (const char *command, size_t length, struct wordsplit *wsp,
-               unsigned flags)
-{
-  return wordsplit_run (command, length, wsp, flags, 0);
-}
-
-int
 wordsplit (const char *command, struct wordsplit *ws, unsigned flags)
 {
   return wordsplit_len (command, command ? strlen (command) : 0, ws, flags);
 }
 
+WORDSPLIT_EXTRAS_extern
 void
 wordsplit_free_words (struct wordsplit *ws)
 {
-  size_t i;
+  idx_t i;
 
   for (i = 0; i < ws->ws_wordc; i++)
     {
@@ -2460,6 +2525,7 @@ wordsplit_free_words (struct wordsplit *ws)
   ws->ws_wordc = 0;
 }
 
+WORDSPLIT_EXTRAS_extern
 void
 wordsplit_free_envbuf (struct wordsplit *ws)
 {
@@ -2467,7 +2533,7 @@ wordsplit_free_envbuf (struct wordsplit *ws)
     return;
   if (ws->ws_envbuf)
     {
-      size_t i;
+      idx_t i;
 
       for (i = 0; ws->ws_envbuf[i]; i++)
 	free (ws->ws_envbuf[i]);
@@ -2477,6 +2543,7 @@ wordsplit_free_envbuf (struct wordsplit *ws)
     }
 }
 
+WORDSPLIT_EXTRAS_extern
 void
 wordsplit_clearerr (struct wordsplit *ws)
 {
@@ -2496,22 +2563,21 @@ wordsplit_free (struct wordsplit *ws)
   wordsplit_free_envbuf (ws);
 }
 
-int
-wordsplit_get_words (struct wordsplit *ws, size_t *wordc, char ***wordv)
+#ifdef _WORDSPLIT_EXTRAS
+void
+wordsplit_get_words (struct wordsplit *ws, idx_t *wordc, char ***wordv)
 {
-  char **p = realloc (ws->ws_wordv,
-		      (ws->ws_wordc + 1) * sizeof (ws->ws_wordv[0]));
-  if (!p)
-    return -1;
-  *wordv = p;
+  /* Tell the memory manager that ws->ws_wordv can be shrunk.  */
+  char **p = irealloc (ws->ws_wordv,
+		       (ws->ws_wordc + 1) * sizeof (ws->ws_wordv[0]));
+  *wordv = p ? p : ws->ws_wordv;
   *wordc = ws->ws_wordc;
 
   ws->ws_wordv = NULL;
   ws->ws_wordc = 0;
   ws->ws_wordn = 0;
-
-  return 0;
 }
+#endif
 
 static char const *const wordsplit_errstr[] = {
   N_("no error"),
@@ -2527,7 +2593,7 @@ static char const *const wordsplit_errstr[] = {
 enum { wordsplit_nerrs = sizeof wordsplit_errstr / sizeof *wordsplit_errstr };
 
 const char *
-wordsplit_strerror (struct wordsplit *ws)
+wordsplit_strerror (struct wordsplit const *ws)
 {
   if (ws->ws_errno == WRDSE_USERERR)
     return ws->ws_usererr;
@@ -2536,15 +2602,16 @@ wordsplit_strerror (struct wordsplit *ws)
   return N_("unknown error");
 }
 
+WORDSPLIT_EXTRAS_extern
 void
 wordsplit_perror (struct wordsplit *wsp)
 {
   switch (wsp->ws_errno)
     {
     case WRDSE_QUOTE:
-      wsp->ws_error (_("missing closing %c (start near #%lu)"),
+      wsp->ws_error (_("missing closing %c (start near #%td)"),
 		     wsp->ws_input[wsp->ws_endp],
-		     (unsigned long) wsp->ws_endp);
+		     wsp->ws_endp);
       break;
 
     default:

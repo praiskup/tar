@@ -22,6 +22,7 @@ areadlinkat-with-size
 argmatch
 argp
 argp-version-etc
+assert-h
 attribute
 backupfile
 c-ctype
@@ -61,7 +62,9 @@ gettime
 gitlog-to-changelog
 hash
 human
+ialloc
 idx
+intprops
 inttostr
 inttypes
 largefile
@@ -84,6 +87,7 @@ progname
 quote
 quotearg
 readlinkat
+reallocarray
 renameat
 root-uid
 rpmatch
@@ -92,7 +96,6 @@ safe-read
 savedir
 selinux-at
 setenv
-snprintf
 stat-time
 std-gnu23
 stdbool
@@ -116,6 +119,7 @@ unlinkdir
 unlocked-io
 utimensat
 version-etc-fsf
+xalignalloc
 xalloc
 xalloc-die
 xgetcwd

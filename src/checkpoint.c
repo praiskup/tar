@@ -234,8 +234,6 @@ format_checkpoint_string (FILE *fp, size_t len,
 			  unsigned cpn)
 {
   const char *opstr = do_write ? gettext ("write") : gettext ("read");
-  char uintbuf[UINTMAX_STRSIZE_BOUND];
-  char *cps = STRINGIFY_BIGINT (cpn, uintbuf);
   const char *ip;
 
   static char *argbuf = NULL;
@@ -247,14 +245,14 @@ format_checkpoint_string (FILE *fp, size_t len,
       if (do_write)
 	/* TRANSLATORS: This is a "checkpoint of write operation",
 	 *not* "Writing a checkpoint".
-	 E.g. in Spanish "Punto de comprobaci@'on de escritura",
-	 *not* "Escribiendo un punto de comprobaci@'on" */
+	 E.g. in Spanish "Punto de comprobación de escritura",
+	 *not* "Escribiendo un punto de comprobación" */
 	input = gettext ("Write checkpoint %u");
       else
 	/* TRANSLATORS: This is a "checkpoint of read operation",
 	 *not* "Reading a checkpoint".
-	 E.g. in Spanish "Punto de comprobaci@'on de lectura",
-	 *not* "Leyendo un punto de comprobaci@'on" */
+	 E.g. in Spanish "Punto de comprobación de lectura",
+	 *not* "Leyendo un punto de comprobación" */
 	input = gettext ("Read checkpoint %u");
     }
 
@@ -281,8 +279,7 @@ format_checkpoint_string (FILE *fp, size_t len,
 	      break;
 
 	    case 'u':
-	      fputs (cps, fp);
-	      len += strlen (cps);
+	      len += fprintf (fp, "%u", cpn);
 	      break;
 
 	    case 's':
@@ -291,22 +288,25 @@ format_checkpoint_string (FILE *fp, size_t len,
 	      break;
 
 	    case 'd':
-	      len += fprintf (fp, "%.0f", compute_duration ());
+	      len += fprintf (fp, "%.0f", compute_duration_ns () / BILLION);
 	      break;
 
 	    case 'T':
 	      {
 		const char **fmt = checkpoint_total_format, *fmtbuf[3];
 		struct wordsplit ws;
-		compute_duration ();
+		compute_duration_ns ();
 
 		if (arg)
 		  {
 		    ws.ws_delim = ",";
-		    if (wordsplit (arg, &ws, WRDSF_NOVAR | WRDSF_NOCMD |
-				           WRDSF_QUOTE | WRDSF_DELIM))
+		    if (wordsplit (arg, &ws,
+				   (WRDSF_NOVAR | WRDSF_NOCMD
+				    | WRDSF_QUOTE | WRDSF_DELIM)))
 		      ERROR ((0, 0, _("cannot split string '%s': %s"),
 			      arg, wordsplit_strerror (&ws)));
+		    else if (3 < ws.ws_wordc)
+		      ERROR ((0, 0, _("too many words in '%s'"), arg));
 		    else
 		      {
 			int i;
@@ -420,7 +420,7 @@ run_checkpoint_actions (bool do_write)
 	  break;
 
 	case cop_totals:
-	  compute_duration ();
+	  compute_duration_ns ();
 	  print_total_stats ();
 	  break;
 

@@ -73,9 +73,9 @@ tar --acls -cf acl.tar -C pure d1
 
 # Directory names are chosen based on "how the files were extracted from
 # archive".  Equivalent no* tags are used also:
-#   ^sacl_    — extracted archive has stored ACLs
-#   _def_     — target directory (-C) has default ACLs
-#   _optacl$  — extraction was done with --acls option
+#   ^sacl_    - extracted archive has stored ACLs
+#   _def_     - target directory (-C) has default ACLs
+#   _optacl$  - extraction was done with --acls option
 
 mkdir sacl_def_optacl
 mkdir sacl_def_optnoacl

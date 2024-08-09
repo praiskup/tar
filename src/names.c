@@ -250,7 +250,7 @@ static int include_anchored = EXCLUDE_ANCHORED;
   | matching_flags						    \
   | recursion_option)
 
-static char const * const vcs_file_table[] = {
+static char const *const vcs_file_table[] = {
   /* CVS: */
   "CVS",
   ".cvsignore",
@@ -284,7 +284,7 @@ static char const * const vcs_file_table[] = {
   NULL
 };
 
-static char const * const backup_file_table[] = {
+static char const *const backup_file_table[] = {
   ".#*",
   "*~",
   "#*#",
@@ -292,7 +292,7 @@ static char const * const backup_file_table[] = {
 };
 
 static void
-add_exclude_array (char const * const * fv, int opts)
+add_exclude_array (char const *const *fv, int opts)
 {
   int i;
 
@@ -988,7 +988,6 @@ static int
 handle_option (const char *str, struct name_elt const *ent)
 {
   struct wordsplit ws;
-  int i;
   struct option_locus loc;
 
   while (*str && c_isspace (*str))
@@ -1000,14 +999,15 @@ handle_option (const char *str, struct name_elt const *ent)
   if (wordsplit (str, &ws, WRDSF_DEFFLAGS|WRDSF_DOOFFS))
     FATAL_ERROR ((0, 0, _("cannot split string '%s': %s"),
 		  str, wordsplit_strerror (&ws)));
+  int argc;
+  if (ckd_add (&argc, ws.ws_wordc, ws.ws_offs))
+    FATAL_ERROR ((0, 0, _("too many options")));
   ws.ws_wordv[0] = (char *) program_name;
   loc.source = OPTS_FILE;
   loc.name = ent->v.file.name;
   loc.line = ent->v.file.line;
-  more_options (ws.ws_wordc+ws.ws_offs, ws.ws_wordv, &loc);
-  for (i = 0; i < ws.ws_wordc+ws.ws_offs; i++)
-    ws.ws_wordv[i] = NULL;
-
+  more_options (argc, ws.ws_wordv, &loc);
+  memset (ws.ws_wordv, 0, argc * sizeof *ws.ws_wordv);
   wordsplit_free (&ws);
   return 0;
 }
@@ -1100,7 +1100,7 @@ copy_name (struct name_elt *ep)
 
 */
 static struct name_elt *
-name_next_elt (int change_dirs)
+name_next_elt (bool change_dirs)
 {
   static struct name_elt entry;
   struct name_elt *ep;
@@ -1148,7 +1148,7 @@ name_next_elt (int change_dirs)
 }
 
 const char *
-name_next (int change_dirs)
+name_next (bool change_dirs)
 {
   struct name_elt *nelt = name_next_elt (change_dirs);
   return nelt ? nelt->v.name : NULL;
@@ -1181,9 +1181,9 @@ name_gather (void)
 
   if (same_order_option)
     {
-      static int change_dir;
+      static idx_t change_dir;
 
-      while ((ep = name_next_elt (0)) && ep->type == NELT_CHDIR)
+      while ((ep = name_next_elt (false)) && ep->type == NELT_CHDIR)
 	change_dir = chdir_arg (xstrdup (ep->v.name));
 
       if (ep)
@@ -1207,12 +1207,12 @@ name_gather (void)
   else
     {
       /* Non sorted names -- read them all in.  */
-      int change_dir = 0;
+      idx_t change_dir = 0;
 
       for (;;)
 	{
-	  int change_dir0 = change_dir;
-	  while ((ep = name_next_elt (0)) && ep->type == NELT_CHDIR)
+	  idx_t change_dir0 = change_dir;
+	  while ((ep = name_next_elt (false)) && ep->type == NELT_CHDIR)
 	    change_dir = chdir_arg (xstrdup (ep->v.name));
 
 	  if (ep)
@@ -1229,7 +1229,8 @@ name_gather (void)
 
 /*  Add a name to the namelist.  */
 struct name *
-addname (char const *string, int change_dir, bool cmdline, struct name *parent)
+addname (char const *string, idx_t change_dir, bool cmdline,
+	 struct name *parent)
 {
   struct name *name = make_name (string);
 
@@ -1443,7 +1444,7 @@ names_notfound (void)
     {
       const char *name;
 
-      while ((name = name_next (1)) != NULL)
+      while ((name = name_next (true)))
 	{
 	  regex_usage_warning (name);
 	  ERROR ((0, 0, _("%s: Not found in archive"),
@@ -1482,7 +1483,7 @@ label_notfound (void)
     {
       const char *name;
 
-      while ((name = name_next (1)) != NULL
+      while ((name = name_next (true))
 	     && regex_usage_warning (name) == 0)
 	;
     }
@@ -1620,7 +1621,7 @@ add_hierarchy_to_namelist (struct tar_stat_info *st, struct name *name)
       char *namebuf = xmalloc (allocated_length);
       const char *string;
       size_t string_length;
-      int change_dir = name->change_dir;
+      idx_t change_dir = name->change_dir;
 
       strcpy (namebuf, name->name);
       if (! ISSLASH (namebuf[name_length - 1]))
@@ -1964,9 +1965,10 @@ make_file_name (const char *directory_name, const char *name)
 
 /* Return the size of the prefix of FILE_NAME that is removed after
    stripping NUM leading file name components.  NUM must be
-   positive.  */
+   positive.  Return a negative number if FILE_NAME does not have
+   enough components.  */
 
-size_t
+ptrdiff_t
 stripped_prefix_len (char const *file_name, size_t num)
 {
   char const *p = file_name + FILE_SYSTEM_PREFIX_LEN (file_name);

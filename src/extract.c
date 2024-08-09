@@ -115,7 +115,7 @@ struct delayed_set_stat
     bool after_links;
 
     /* Directory that the name is relative to.  */
-    int change_dir;
+    idx_t change_dir;
 
     /* extended attributes*/
     char *cntx_name;
@@ -165,7 +165,7 @@ struct delayed_link
     struct timespec mtime;
 
     /* The directory that the sources and target are relative to.  */
-    int change_dir;
+    idx_t change_dir;
 
     /* A list of sources for this link.  The sources are all to be
        hard-linked together.  */
@@ -1850,7 +1850,7 @@ extract_archive (void)
      (see NOTICE in the comment to delay_set_stat above) */
   if (!delay_directory_restore_option)
     {
-      int dir = chdir_current;
+      idx_t dir = chdir_current;
       apply_nonancestor_delayed_set_stat (current_stat_info.file_name, false);
       chdir_do (dir);
     }

@@ -35,7 +35,8 @@
 # define iconv_open(tocode, fromcode) ((iconv_t) -1)
 
 # undef iconv
-# define iconv(cd, inbuf, inbytesleft, outbuf, outbytesleft) (errno = ENOSYS, (size_t) -1)
+# define iconv(cd, inbuf, inbytesleft, outbuf, outbytesleft) \
+    (errno = ENOSYS, SIZE_MAX)
 
 # undef iconv_close
 # define iconv_close(cd) 0
@@ -77,11 +78,14 @@ utf8_convert (bool to_utf, char const *input, char **output)
       *output = xstrdup (input);
       return true;
     }
-  else if (cd == (iconv_t)-1)
+  else if (cd == (iconv_t) -1)
     return false;
 
   inlen = strlen (input) + 1;
-  outlen = inlen * MB_LEN_MAX + 1;
+  bool overflow = ckd_mul (&outlen, inlen, MB_LEN_MAX);
+  overflow |= ckd_add (&outlen, outlen, 1);
+  if (overflow)
+    xalloc_die ();
   ob = ret = xmalloc (outlen);
   ib = (char ICONV_CONST *) input;
   /* According to POSIX, "if iconv() encounters a character in the input
@@ -90,7 +94,7 @@ utf8_convert (bool to_utf, char const *input, char **output)
      implementation-defined conversion on this character." It will "update
      the variables pointed to by the arguments to reflect the extent of the
      conversion and return the number of non-identical conversions performed".
-     On error, it returns -1. 
+     On error, it returns SIZE_MAX.
      In other words, non-zero return always indicates failure, either because
      the input was not fully converted, or because it was converted in a
      non-reversible way.

@@ -62,8 +62,8 @@ mtioseek (bool count_files, off_t count)
 			 ? (count < 0 ? MTBSF : MTFSF)
 			 : (count < 0 ? MTBSR : MTFSR));
       if (! (count < 0
-	     ? INT_SUBTRACT_WRAPV (0, count, &operation.mt_count)
-	     : INT_ADD_WRAPV (count, 0, &operation.mt_count))
+	     ? ckd_sub (&operation.mt_count, 0, count)
+	     : ckd_add (&operation.mt_count, count, 0))
 	  && (0 <= rmtioctl (archive, MTIOCTOP, &operation)
 	      || (errno == EIO
 		  && 0 <= rmtioctl (archive, MTIOCTOP, &operation))))
@@ -222,7 +222,7 @@ sys_wait_for_child (pid_t child_pid, bool eof)
     {
       int wait_status;
 
-      while (waitpid (child_pid, &wait_status, 0) == -1)
+      while (waitpid (child_pid, &wait_status, 0) < 0)
 	if (errno != EINTR)
 	  {
 	    waitpid_error (use_compress_program_option);
@@ -258,7 +258,7 @@ sys_spawn_shell (void)
   else
     {
       int wait_status;
-      while (waitpid (child, &wait_status, 0) == -1)
+      while (waitpid (child, &wait_status, 0) < 0)
 	if (errno != EINTR)
 	  {
 	    waitpid_error (shell);
@@ -343,7 +343,7 @@ wait_for_grandchild (pid_t pid)
   int wait_status;
   int exit_code = 0;
 
-  while (waitpid (pid, &wait_status, 0) == -1)
+  while (waitpid (pid, &wait_status, 0) < 0)
     if (errno != EINTR)
       {
 	waitpid_error (use_compress_program_option);
@@ -526,8 +526,8 @@ run_decompress_program (void)
 	FATAL_ERROR ((0, 0, _("cannot split string '%s': %s"),
 		      p, wordsplit_strerror (&ws)));
       wsflags |= WRDSF_REUSE;
-      memmove(ws.ws_wordv, ws.ws_wordv + ws.ws_offs,
-	      sizeof(ws.ws_wordv[0])*ws.ws_wordc);
+      memmove (ws.ws_wordv, ws.ws_wordv + ws.ws_offs,
+	       ws.ws_wordc * sizeof *ws.ws_wordv);
       ws.ws_wordv[ws.ws_wordc] = (char *) "-d";
       prog = p;
       execvp (ws.ws_wordv[0], ws.ws_wordv);
@@ -662,10 +662,8 @@ sys_child_open_for_uncompress (void)
 static void
 dec_to_env (char const *envar, uintmax_t num)
 {
-  char buf[UINTMAX_STRSIZE_BOUND];
-  char *numstr;
-
-  numstr = STRINGIFY_BIGINT (num, buf);
+  char numstr[UINTMAX_STRSIZE_BOUND];
+  sprintf (numstr, "%ju", num);
   if (setenv (envar, numstr, 1) != 0)
     xalloc_die ();
 }
@@ -679,11 +677,13 @@ time_to_env (char const *envar, struct timespec t)
 }
 
 static void
-oct_to_env (char const *envar, unsigned long num)
+oct_to_env (char const *envar, mode_t m)
 {
-  char buf[1+1+(sizeof(unsigned long)*CHAR_BIT+2)/3];
-
-  snprintf (buf, sizeof buf, "0%lo", num);
+  char buf[sizeof "0" + (UINTMAX_WIDTH + 2) / 3];
+  uintmax_t um = m;
+  if (EXPR_SIGNED (m) && sizeof m < sizeof um)
+    um &= ~ (UINTMAX_MAX << TYPE_WIDTH (m));
+  sprintf (buf, "%#"PRIoMAX, um);
   if (setenv (envar, buf, 1) != 0)
     xalloc_die ();
 }
@@ -794,7 +794,7 @@ sys_wait_command (void)
     return;
 
   signal (SIGPIPE, pipe_handler);
-  while (waitpid (global_pid, &status, 0) == -1)
+  while (waitpid (global_pid, &status, 0) < 0)
     if (errno != EINTR)
       {
         global_pid = -1;
@@ -823,15 +823,13 @@ sys_wait_command (void)
 int
 sys_exec_info_script (const char **archive_name, int volume_number)
 {
-  pid_t pid;
-  char uintbuf[UINTMAX_STRSIZE_BOUND];
   int p[2];
   static void (*saved_handler) (int sig);
 
   xpipe (p);
   saved_handler = signal (SIGPIPE, SIG_IGN);
 
-  pid = xfork ();
+  pid_t pid = xfork ();
 
   if (pid != 0)
     {
@@ -851,7 +849,7 @@ sys_exec_info_script (const char **archive_name, int volume_number)
       if (rc > 0 && buf[rc-1] == '\n')
 	buf[--rc] = 0;
 
-      while (waitpid (pid, &status, 0) == -1)
+      while (waitpid (pid, &status, 0) < 0)
 	if (errno != EINTR)
 	  {
 	    signal (SIGPIPE, saved_handler);
@@ -877,14 +875,17 @@ sys_exec_info_script (const char **archive_name, int volume_number)
   /* Child */
   setenv ("TAR_VERSION", PACKAGE_VERSION, 1);
   setenv ("TAR_ARCHIVE", *archive_name, 1);
-  setenv ("TAR_VOLUME", STRINGIFY_BIGINT (volume_number, uintbuf), 1);
-  setenv ("TAR_BLOCKING_FACTOR",
-	  STRINGIFY_BIGINT (blocking_factor, uintbuf), 1);
+  char intbuf[INT_BUFSIZE_BOUND (int)];
+  sprintf (intbuf, "%d", volume_number);
+  setenv ("TAR_VOLUME", intbuf, 1);
+  sprintf (intbuf, "%d", blocking_factor);
+  setenv ("TAR_BLOCKING_FACTOR", intbuf, 1);
   setenv ("TAR_SUBCOMMAND", subcommand_string (subcommand_option), 1);
   setenv ("TAR_FORMAT",
 	  archive_format_string (current_format == DEFAULT_FORMAT ?
 				 archive_format : current_format), 1);
-  setenv ("TAR_FD", STRINGIFY_BIGINT (p[PWRITE], uintbuf), 1);
+  sprintf (intbuf, "%d", p[PWRITE]);
+  setenv ("TAR_FD", intbuf, 1);
 
   xclose (p[PREAD]);
 
@@ -897,10 +898,7 @@ sys_exec_checkpoint_script (const char *script_name,
 			    const char *archive_name,
 			    int checkpoint_number)
 {
-  pid_t pid;
-  char uintbuf[UINTMAX_STRSIZE_BOUND];
-
-  pid = xfork ();
+  pid_t pid = xfork ();
 
   if (pid != 0)
     {
@@ -908,7 +906,7 @@ sys_exec_checkpoint_script (const char *script_name,
 
       int status;
 
-      while (waitpid (pid, &status, 0) == -1)
+      while (waitpid (pid, &status, 0) < 0)
 	if (errno != EINTR)
 	  {
 	    waitpid_error (script_name);
@@ -921,9 +919,11 @@ sys_exec_checkpoint_script (const char *script_name,
   /* Child */
   setenv ("TAR_VERSION", PACKAGE_VERSION, 1);
   setenv ("TAR_ARCHIVE", archive_name, 1);
-  setenv ("TAR_CHECKPOINT", STRINGIFY_BIGINT (checkpoint_number, uintbuf), 1);
-  setenv ("TAR_BLOCKING_FACTOR",
-	  STRINGIFY_BIGINT (blocking_factor, uintbuf), 1);
+  char intbuf[INT_BUFSIZE_BOUND (int)];
+  sprintf (intbuf, "%d", checkpoint_number);
+  setenv ("TAR_CHECKPOINT", intbuf, 1);
+  sprintf (intbuf, "%d", blocking_factor);
+  setenv ("TAR_BLOCKING_FACTOR", intbuf, 1);
   setenv ("TAR_SUBCOMMAND", subcommand_string (subcommand_option), 1);
   setenv ("TAR_FORMAT",
 	  archive_format_string (current_format == DEFAULT_FORMAT ?
@@ -988,7 +988,7 @@ sys_exec_setmtime_script (const char *script_name,
   while (1)
     {
       int n = poll (&pfd, 1, -1);
-      if (n == -1)
+      if (n < 0)
 	{
 	  if (errno != EINTR)
 	    {
@@ -1007,14 +1007,14 @@ sys_exec_setmtime_script (const char *script_name,
 		bufsize = BUFSIZ;
 	      buffer = x2nrealloc (buffer, &bufsize, 1);
 	    }
-	  n = read (pfd.fd, buffer + buflen, bufsize - buflen);
-	  if (n == -1)
+	  ssize_t nread = read (pfd.fd, buffer + buflen, bufsize - buflen);
+	  if (nread < 0)
 	    {
 	      ERROR ((0, errno, _("error reading output of %s"), script_name));
 	      stop = 1;
 	      break;
 	    }
-	  if (n == 0)
+	  if (nread == 0)
 	    break;
 	  buflen += n;
 	}
@@ -1069,8 +1069,9 @@ sys_exec_setmtime_script (const char *script_name,
 	}
       else
 	{
+	  tm.tm_wday = -1;
 	  t = mktime (&tm);
-	  if (t == (time_t) -1)
+	  if (tm.tm_wday < 0)
 	    {
 	      ERROR ((0, errno, _("mktime failed")));
 	      rc = -1;

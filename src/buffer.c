@@ -23,12 +23,12 @@
 
 #include <signal.h>
 
+#include <alignalloc.h>
 #include <c-ctype.h>
 #include <closeout.h>
 #include <fnmatch.h>
 #include <human.h>
 #include <quotearg.h>
-#include <verify.h>
 
 #include "common.h"
 #include <rmt.h>
@@ -46,7 +46,6 @@
 static tarlong prev_written;    /* bytes written on previous volumes */
 static tarlong bytes_written;   /* bytes written on this volume */
 static void *record_buffer[2];  /* allocated memory */
-static union block *record_buffer_aligned[2];
 static int record_index;
 
 /* FIXME: The following variables should ideally be static to this
@@ -195,7 +194,7 @@ bufmap_free (struct bufmap *mark)
 }
 
 static void
-bufmap_reset (struct bufmap *map, ssize_t fixup)
+bufmap_reset (struct bufmap *map, ptrdiff_t fixup)
 {
   bufmap_free (map);
   if (map)
@@ -249,7 +248,8 @@ clear_read_error_count (void)
 
 /* Time-related functions */
 
-static double duration;
+/* Time consumed during run.  It is counted in ns to lessen rounding error.  */
+static double duration_ns;
 
 void
 set_start_time (void)
@@ -267,14 +267,18 @@ set_volume_start_time (void)
 }
 
 double
-compute_duration (void)
+compute_duration_ns (void)
 {
-  struct timespec now;
-  gettime (&now);
-  duration += ((now.tv_sec - last_stat_time.tv_sec)
-               + (now.tv_nsec - last_stat_time.tv_nsec) / 1e9);
-  gettime (&last_stat_time);
-  return duration;
+  struct timespec now = current_timespec ();
+
+  /* If the clock moves back, treat it as duration 0.
+     This works even if time_t is unsigned.  */
+  if (timespec_cmp (last_stat_time, now) < 0)
+    duration_ns += (1e9 * (now.tv_sec - last_stat_time.tv_sec)
+		    + (now.tv_nsec - last_stat_time.tv_nsec));
+
+  last_stat_time = current_timespec ();
+  return duration_ns;
 }
 
 
@@ -438,7 +442,7 @@ open_compressed_archive (void)
 {
   archive = rmtopen (archive_name_array[0], O_RDONLY | O_BINARY,
                      MODE_RW, rsh_command_option);
-  if (archive == -1)
+  if (archive < 0)
     return archive;
 
   if (!multi_volume_option)
@@ -491,19 +495,29 @@ static int
 print_stats (FILE *fp, const char *text, tarlong numbytes)
 {
   char abbr[LONGEST_HUMAN_READABLE + 1];
-  char rate[LONGEST_HUMAN_READABLE + 1];
-  int n = 0;
-
   int human_opts = human_autoscale | human_base_1024 | human_SI | human_B;
+  double ulim = UINTMAX_MAX + 1.0;
 
-  if (text && text[0])
-    n += fprintf (fp, "%s: ", gettext (text));
-  return n + fprintf (fp, TARLONG_FORMAT " (%s, %s/s)",
-		      numbytes,
-		      human_readable (numbytes, abbr, human_opts, 1, 1),
-		      (0 < duration && numbytes / duration < (uintmax_t) -1
-		       ? human_readable (numbytes / duration, rate, human_opts, 1, 1)
-		       : "?"));
+  int n = fprintf (fp, "%s: "TARLONG_FORMAT" (", gettext (text), numbytes);
+
+  if (numbytes < ulim)
+    n += fprintf (fp, "%s", human_readable (numbytes, abbr, human_opts, 1, 1));
+  else
+    n += fprintf (fp, "%g", numbytes);
+
+  if (!duration_ns)
+    n += fprintf (fp, ")");
+  else
+    {
+      double rate = 1e9 * numbytes / duration_ns;
+      if (rate < ulim)
+	n += fprintf (fp, ", %s/s)",
+		      human_readable (rate, abbr, human_opts, 1, 1));
+      else
+	n += fprintf (fp, ", %g/s)", rate);
+    }
+
+  return n;
 }
 
 /* Format totals to file FP.  FORMATS is an array of strings to output
@@ -528,7 +542,6 @@ format_total_stats (FILE *fp, char const *const *formats, int eor, int eol)
 
     case DELETE_SUBCOMMAND:
       {
-        char buf[UINTMAX_STRSIZE_BOUND];
         n = print_stats (fp, formats[TF_READ],
 			 records_read * record_size);
 
@@ -538,15 +551,10 @@ format_total_stats (FILE *fp, char const *const *formats, int eor, int eol)
         n += print_stats (fp, formats[TF_WRITE],
 			  prev_written + bytes_written);
 
-	fputc (eor, fp);
-	n++;
-
-	if (formats[TF_DELETED] && formats[TF_DELETED][0])
-	  n += fprintf (fp, "%s: ", gettext (formats[TF_DELETED]));
-        n += fprintf (fp, "%s",
-		      STRINGIFY_BIGINT ((records_read - records_skipped)
-					* record_size
-					- (prev_written + bytes_written), buf));
+	intmax_t deleted = ((records_read - records_skipped) * record_size
+			    - (prev_written + bytes_written));
+	n += fprintf (fp, "%c%s: %jd", eor, gettext (formats[TF_DELETED]),
+		      deleted);
       }
       break;
 
@@ -657,11 +665,10 @@ xclose (int fd)
 static void
 init_buffer (void)
 {
-  if (! record_buffer_aligned[record_index])
-    record_buffer_aligned[record_index] =
-      page_aligned_alloc (&record_buffer[record_index], record_size);
+  if (! record_buffer[record_index])
+    record_buffer[record_index] = xalignalloc (getpagesize (), record_size);
 
-  record_start = record_buffer_aligned[record_index];
+  record_start = record_buffer[record_index];
   current_block = record_start;
   record_end = record_start + blocking_factor;
 }
@@ -877,7 +884,7 @@ _flush_write (void)
       if (map)
 	{
 	  size_t delta = status - map->start * BLOCKSIZE;
-	  ssize_t diff;
+	  ptrdiff_t diff;
 	  map->nblocks += delta / BLOCKSIZE;
 	  if (delta > map->sizeleft)
 	    delta = map->sizeleft;
@@ -1121,7 +1128,7 @@ close_archive (void)
       while (current_block > record_start);
     }
 
-  compute_duration ();
+  compute_duration_ns ();
   if (verify_option)
     verify_volume ();
 
@@ -1131,8 +1138,8 @@ close_archive (void)
   sys_wait_for_child (child_pid, hit_eof);
 
   tar_stat_destroy (&current_stat_info);
-  free (record_buffer[0]);
-  free (record_buffer[1]);
+  alignfree (record_buffer[0]);
+  alignfree (record_buffer[1]);
   bufmap_free (NULL);
 }
 
@@ -1513,7 +1520,6 @@ try_new_volume (void)
 
   if (bufmap_head)
     {
-      uintmax_t s;
       if (!continued_file_name)
 	{
 	  WARN ((0, 0, _("%s is not continued on this volume"),
@@ -1538,34 +1544,25 @@ try_new_volume (void)
             }
         }
 
-      s = continued_file_size + continued_file_offset;
-
-      if (bufmap_head->sizetotal != s || s < continued_file_offset)
+      uintmax_t s;
+      if (ckd_add (&s, continued_file_size, continued_file_offset)
+	  || s != bufmap_head->sizetotal)
         {
-          char totsizebuf[UINTMAX_STRSIZE_BOUND];
-          char s1buf[UINTMAX_STRSIZE_BOUND];
-          char s2buf[UINTMAX_STRSIZE_BOUND];
-
-          WARN ((0, 0, _("%s is the wrong size (%s != %s + %s)"),
+	  WARN ((0, 0, _("%s is the wrong size (%jd != %ju + %ju)"),
                  quote (continued_file_name),
-                 STRINGIFY_BIGINT (bufmap_head->sizetotal, totsizebuf),
-                 STRINGIFY_BIGINT (continued_file_size, s1buf),
-                 STRINGIFY_BIGINT (continued_file_offset, s2buf)));
+		 intmax (bufmap_head->sizetotal),
+		 uintmax (continued_file_size),
+		 uintmax (continued_file_offset)));
           return false;
         }
 
-      if (bufmap_head->sizetotal - bufmap_head->sizeleft !=
-	  continued_file_offset)
+      if (bufmap_head->sizetotal - bufmap_head->sizeleft
+	  != continued_file_offset)
         {
-          char totsizebuf[UINTMAX_STRSIZE_BOUND];
-          char s1buf[UINTMAX_STRSIZE_BOUND];
-          char s2buf[UINTMAX_STRSIZE_BOUND];
-
-          WARN ((0, 0, _("This volume is out of sequence (%s - %s != %s)"),
-                 STRINGIFY_BIGINT (bufmap_head->sizetotal, totsizebuf),
-                 STRINGIFY_BIGINT (bufmap_head->sizeleft, s1buf),
-                 STRINGIFY_BIGINT (continued_file_offset, s2buf)));
-
+	  WARN ((0, 0, _("This volume is out of sequence (%jd - %jd != %ju)"),
+		 intmax (bufmap_head->sizetotal),
+		 intmax (bufmap_head->sizeleft),
+		 uintmax (continued_file_offset)));
           return false;
         }
     }
@@ -1685,11 +1682,9 @@ _write_volume_label (const char *str)
 static void
 add_volume_label (void)
 {
-  char buf[UINTMAX_STRSIZE_BOUND];
-  char *p = STRINGIFY_BIGINT (volno, buf);
   char *s = xmalloc (strlen (volume_label_option) + sizeof VOL_SUFFIX
-                     + strlen (p) + 2);
-  sprintf (s, "%s %s %s", volume_label_option, VOL_SUFFIX, p);
+		     + INT_BUFSIZE_BOUND (int) + 2);
+  sprintf (s, "%s %s %d", volume_label_option, VOL_SUFFIX, volno);
   _write_volume_label (s);
   free (s);
 }

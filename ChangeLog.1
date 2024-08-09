@@ -344,7 +344,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 	* configure.in: For mknod, also include <sys/types.h> prior to
 	<sys/stat.h>, as Ultrix needs this.
 	Reported by Bruce Jerrick, Bryant Fujimoto, Conrad Hughes, Erich
-	Stefan Boleyn, Jason R. Mastaler, Joshua R. Poulson, Jurgen Botz,
+	Stefan Boleyn, Jason R. Mastaler, Joshua R. Poulson, Jürgen Botz,
 	Serge Granik, Simon Wright, Ulrich Drepper and Vince Del Vecchio.
 
 	* configure.in: Replace execlp as needed (for Minix, mainly).
@@ -1294,7 +1294,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 	* gmalloc.c: New, from elsewhere.  This renames and updates
 	what was previously malloc.c.  This also solves __const vs const.
 	* Makefile.in: Distribute gmalloc.c.
-	Reported by Cliff Krumvieda, Francois Pinard, Henrik Bakman,
+	Reported by Cliff Krumvieda, François Pinard, Henrik Bakman,
 	J.T. Conklin, Nelson H.F. Beebe and Tilman Schmidt.
 
 1994-07-22  François Pinard  <pinard@iro.umontreal.ca>
@@ -2939,7 +2939,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 	Elmer Fittery, Eric Benson, Eric M. Boehm, Gerd Knorr, Graham
 	Whitted, Harald Milz, Heiko Schlichting, James V. Di Toro III,
 	Jan Carlson, Janne Snabb, Jeff Sorensen, Jens Henrik Jensen,
-	Jim Clausing, John J. Szetela, John R. Vanderpool, Jurgen Botz,
+	Jim Clausing, John J. Szetela, John R. Vanderpool, Jürgen Botz,
 	Karl Berry, Karlos Z. Smith, Karsten Thygesen, Koji Kishi,
 	Luke Mewburn, Manuel Munier, Marc Ewing, Matthew J. D'Errico,
 	Martin Goik, Maxime Taksar, maximum entropy, Michael Hayes,
@@ -3852,7 +3852,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 	* tar.h: Merely define valloc as being malloc if valloc does
 	not exist.
 	* port.h: Remove valloc, which was only a dummy for malloc.
-	Reported by Cliff Krumvieda, Francois Pinard, Henrik Bakman,
+	Reported by Cliff Krumvieda, François Pinard, Henrik Bakman,
 	J.T. Conklin, Nelson H.F. Beebe and Tilman Schmidt.
 
 1994-07-22  François Pinard  <pinard@iro.umontreal.ca>
@@ -5387,7 +5387,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 	* getdate.y : Parse European dates of the form YYMMDD.
 	In ftime(): Init timezone by calling localtime(), and remember that
 	timezone is in seconds, but we want timeb->timezone to be in minutes.
-	Reported by Jörgen Haegg.
+	Reported by Jörgen Hägg.
 
 	* rtape_lib.c (__rmt_open): Also look for /usr/bsd/rsh.
 	Declare signal handler as returning void instead of int if USG is

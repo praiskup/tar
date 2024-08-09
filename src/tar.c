@@ -130,7 +130,6 @@ bool delay_directory_restore_option;
 #include <wordsplit.h>
 #include <sysexits.h>
 #include <quotearg.h>
-#include <verify.h>
 #include <version-etc.h>
 #include <xstrtol.h>
 #include <stdopen.h>
@@ -1083,7 +1082,7 @@ set_use_compress_program_option (const char *string, struct option_locus *loc)
 static void
 sigstat (int signo)
 {
-  compute_duration ();
+  compute_duration_ns ();
   print_total_stats ();
 #ifndef HAVE_SIGACTION
   signal (signo, sigstat);
@@ -1501,9 +1500,9 @@ parse_opt (int key, char *arg, struct argp_state *state)
       {
 	uintmax_t u;
 	if (! (xstrtoumax (arg, 0, 10, &u, "") == LONGINT_OK
-	       && u == (blocking_factor = u)
+	       && !ckd_add (&blocking_factor, u, 0)
 	       && 0 < blocking_factor
-	       && u == (record_size = u * BLOCKSIZE) / BLOCKSIZE))
+	       && !ckd_mul (&record_size, u, BLOCKSIZE)))
 	  USAGE_ERROR ((0, 0, "%s: %s", quotearg_colon (arg),
 			_("Invalid blocking factor")));
       }
@@ -1688,22 +1687,33 @@ parse_opt (int key, char *arg, struct argp_state *state)
 	uintmax_t u;
 	char *p;
 
-	if (xstrtoumax (arg, &p, 10, &u, TAR_SIZE_SUFFIXES) != LONGINT_OK)
-	  USAGE_ERROR ((0, 0, "%s: %s", quotearg_colon (arg),
-			_("Invalid tape length")));
-	if (p > arg && !strchr (TAR_SIZE_SUFFIXES, p[-1]))
-	  tape_length_option = 1024 * (tarlong) u;
-	else
-	  tape_length_option = (tarlong) u;
+	switch (xstrtoumax (arg, &p, 10, &u, TAR_SIZE_SUFFIXES))
+	  {
+	  case LONGINT_OK:
+	    tape_length_option = u;
+	    if (arg < p && !strchr (TAR_SIZE_SUFFIXES, p[-1]))
+	      tape_length_option *= 1024;
+	    break;
+
+	  case LONGINT_OVERFLOW:
+	    /* Treat enormous values as effectively infinity.  */
+	    tape_length_option = 0;
+	    break;
+
+	  default:
+	    USAGE_ERROR ((0, 0, "%s: %s", quotearg_colon (arg),
+			  _("Invalid tape length")));
+	  }
+
 	multi_volume_option = true;
       }
       break;
 
     case LEVEL_OPTION:
       {
-	char *p;
-	incremental_level = strtoul (arg, &p, 10);
-	if (*p)
+	uintmax_t u;
+	if (! (xstrtoumax (arg, nullptr, 10, &u, "") == LONGINT_OK
+	       && ckd_add (&incremental_level, u, 0)))
 	  USAGE_ERROR ((0, 0, _("Invalid incremental level value")));
       }
       break;
@@ -2102,10 +2112,9 @@ parse_opt (int key, char *arg, struct argp_state *state)
 	uintmax_t u;
 
 	if (! (xstrtoumax (arg, NULL, 10, &u, TAR_SIZE_SUFFIXES) == LONGINT_OK
-	       && u == (size_t) u))
+	       && !ckd_add (&record_size, u, 0)))
 	  USAGE_ERROR ((0, 0, "%s: %s", quotearg_colon (arg),
 			_("Invalid record size")));
-	record_size = u;
 	if (record_size % BLOCKSIZE != 0)
 	  USAGE_ERROR ((0, 0, _("Record size must be a multiple of %d."),
 			BLOCKSIZE));
@@ -2151,10 +2160,9 @@ parse_opt (int key, char *arg, struct argp_state *state)
       {
 	uintmax_t u;
 	if (! (xstrtoumax (arg, 0, 10, &u, "") == LONGINT_OK
-	       && u == (size_t) u))
+	       && !ckd_add (&strip_name_components, u, 0)))
 	  USAGE_ERROR ((0, 0, "%s: %s", quotearg_colon (arg),
 			_("Invalid number of elements")));
-	strip_name_components = u;
       }
       break;
 
@@ -2379,10 +2387,11 @@ parse_default_options (struct tar_args *args)
       ws.ws_wordv[0] = (char*) program_name;
       save_loc_ptr = args->loc;
       args->loc = &loc;
-      if (argp_parse (&argp,
-		      ws.ws_offs + ws.ws_wordc,
-		      ws.ws_wordv,
-		      ARGP_IN_ORDER|ARGP_NO_EXIT, &idx, args))
+      int argc;
+      if (ckd_add (&argc, ws.ws_offs, ws.ws_wordc))
+	FATAL_ERROR ((0, 0, "too many options"));
+      if (argp_parse (&argp, argc, ws.ws_wordv,
+		      ARGP_IN_ORDER | ARGP_NO_EXIT, &idx, args))
 	abort (); /* shouldn't happen */
       args->loc = save_loc_ptr;
       if (name_more_files ())
@@ -2587,7 +2596,7 @@ decode_options (int argc, char **argv)
 	memset (&newer_mtime_option, 0, sizeof (newer_mtime_option));
     }
 
-  if (incremental_level != -1 && !listed_incremental_option)
+  if (0 <= incremental_level && !listed_incremental_option)
     WARN ((0, 0,
 	   _("--level is meaningless without --listed-incremental")));
 
