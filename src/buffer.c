@@ -965,10 +965,10 @@ short_read (size_t status)
       && record_start_block == 0 && status != 0
       && archive_is_dev ())
     {
-      unsigned long rsize = status / BLOCKSIZE;
+      idx_t rsize = status / BLOCKSIZE;
       WARN ((0, 0,
-	     ngettext ("Record size = %lu block",
-		       "Record size = %lu blocks",
+	     ngettext ("Record size = %td block",
+		       "Record size = %td blocks",
 		       rsize),
 	     rsize));
     }
