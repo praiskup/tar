@@ -853,7 +853,7 @@ struct option_locus
 {
   enum option_source source;  /* Option origin */
   char const *name;           /* File or variable name */
-  size_t line;                /* Number of input line if source is OPTS_FILE */
+  intmax_t line;              /* Number of input line if source is OPTS_FILE */
   struct option_locus *prev;  /* Previous occurrence of the option of same
 				 class */
 };

@@ -206,8 +206,8 @@ names_parse_opt (int key, char *arg, struct argp_state *state)
 	struct tar_args *args = state->input;
 	if (args->loc->source == OPTS_FILE)
 	  {
-	    error (0, 0, _("%s:%lu: unrecognized option"), args->loc->name,
-		   (unsigned long) args->loc->line);
+	    error (0, 0, _("%s:%jd: unrecognized option"), args->loc->name,
+		   args->loc->line);
 	    set_exit_status (TAREXIT_FAILURE);
 	  }
 	return ARGP_ERR_UNKNOWN;
@@ -651,7 +651,7 @@ struct name_elt        /* A name_array element. */
     struct             /* File, if type == NELT_FILE */
     {
       const char *name;/* File name */
-      size_t line;     /* Input line number */
+      intmax_t line;   /* Input line number */
       int term;        /* File name terminator in the list */
       bool verbatim;   /* Verbatim handling of file names: no white-space
 			  trimming, no option processing */
