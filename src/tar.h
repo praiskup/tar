@@ -281,7 +281,7 @@ struct xattr_array
   {
     char *xkey;
     char *xval_ptr;
-    size_t xval_len;
+    idx_t xval_len;
   };
 
 struct xattr_map

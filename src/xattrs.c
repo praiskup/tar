@@ -66,7 +66,7 @@ xattr_map_free (struct xattr_map *xattr_map)
 
 void
 xattr_map_add (struct xattr_map *map,
-	       const char *key, const char *val, size_t len)
+	       const char *key, const char *val, idx_t len)
 {
   struct xattr_array *p;
 
@@ -75,7 +75,7 @@ xattr_map_add (struct xattr_map *map,
 			      sizeof (map->xm_map[0]));
   p = &map->xm_map[map->xm_size];
   p->xkey = xstrdup (key);
-  p->xval_ptr = xmemdup (val, len + 1);
+  p->xval_ptr = ximemdup (val, len + 1);
   p->xval_len = len;
   map->xm_size++;
 }
@@ -854,8 +854,8 @@ xattrs_print (struct tar_stat_info const *st)
         {
           char *keyword = st->xattr_map.xm_map[i].xkey + XATTRS_PREFIX_LEN;
           if (!xattrs_masked_out (keyword, false /* like extracting */ ))
-	    fprintf (stdlis, "  x: %lu %s\n",
-		     (unsigned long) st->xattr_map.xm_map[i].xval_len, keyword);
+	    fprintf (stdlis, "  x: %td %s\n",
+		     st->xattr_map.xm_map[i].xval_len, keyword);
         }
     }
 }

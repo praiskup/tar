@@ -915,7 +915,7 @@ void xattr_map_init (struct xattr_map *map);
 void xattr_map_copy (struct xattr_map *dst,
 		     const struct xattr_map *src);
 void xattr_map_add (struct xattr_map *map,
-		    const char *key, const char *val, size_t len);
+		    const char *key, const char *val, idx_t len);
 void xattr_map_free (struct xattr_map *xattr_map);
 
 /* Module system.c */
