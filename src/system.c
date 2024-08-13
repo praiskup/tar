@@ -805,17 +805,17 @@ sys_wait_command (void)
   if (WIFEXITED (status))
     {
       if (!ignore_command_error_option && WEXITSTATUS (status))
-	ERROR ((0, 0, _("%lu: Child returned status %d"),
-		(unsigned long) global_pid, WEXITSTATUS (status)));
+	ERROR ((0, 0, _("%jd: Child returned status %d"),
+		intmax (global_pid), WEXITSTATUS (status)));
     }
   else if (WIFSIGNALED (status))
     {
-      WARN ((0, 0, _("%lu: Child terminated on signal %d"),
-	     (unsigned long) global_pid, WTERMSIG (status)));
+      WARN ((0, 0, _("%jd: Child terminated on signal %d"),
+	     intmax (global_pid), WTERMSIG (status)));
     }
   else
-    ERROR ((0, 0, _("%lu: Child terminated on unknown reason"),
-	    (unsigned long) global_pid));
+    ERROR ((0, 0, _("%jd: Child terminated on unknown reason"),
+	    intmax (global_pid)));
 
   global_pid = -1;
 }
