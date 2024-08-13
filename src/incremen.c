@@ -262,18 +262,13 @@ static struct directory *
 make_directory (const char *name, char *caname)
 {
   size_t namelen = strlen (name);
-  struct directory *directory = xmalloc (sizeof (*directory));
-  directory->next = NULL;
-  directory->dump = directory->idump = NULL;
-  directory->orig = NULL;
-  directory->flags = false;
+  struct directory *directory = xizalloc (sizeof *directory);
   if (namelen > 1 && ISSLASH (name[namelen - 1]))
     namelen--;
   directory->name = xmalloc (namelen + 1);
   memcpy (directory->name, name, namelen);
   directory->name[namelen] = 0;
   directory->caname = caname;
-  directory->tagfile = NULL;
   return directory;
 }
 
