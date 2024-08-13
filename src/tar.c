@@ -267,10 +267,10 @@ archive_format_string (enum archive_format fmt)
   return "unknown?";
 }
 
-#define FORMAT_MASK(n) (1<<(n))
+#define FORMAT_MASK(n) (1 << (n))
 
 static void
-assert_format(unsigned fmt_mask)
+assert_format (int fmt_mask)
 {
   if ((FORMAT_MASK (archive_format) & fmt_mask) == 0)
     USAGE_ERROR ((0, 0,
@@ -999,26 +999,12 @@ static struct option_locus *option_class[OC_MAX];
 /* Save location of an option of class ID.  Return location of a previous
    occurrence of an option of that class, or NULL. */
 static struct option_locus *
-optloc_save (unsigned int id, struct option_locus *loc)
+optloc_save (enum option_class id, struct option_locus *loc)
 {
-  struct option_locus *optloc;
-  char *p;
-  size_t s;
-
-  if (id >= sizeof (option_class) / sizeof (option_class[0]))
-    abort ();
-  s = sizeof (*loc);
-  if (loc->name)
-    s += strlen (loc->name) + 1;
-  optloc = xmalloc (s);
-  if (loc->name)
-    {
-      p = (char*) optloc + sizeof (*loc);
-      strcpy (p, loc->name);
-      optloc->name = p;
-    }
-  else
-    optloc->name = NULL;
+  char const *name = loc->name;
+  idx_t namesize = name ? strlen (name) + 1 : 0;
+  struct option_locus *optloc = ximalloc (sizeof *loc + namesize);
+  optloc->name = name ? memcpy (optloc + 1, name, namesize) : NULL;
   optloc->source = loc->source;
   optloc->line = loc->line;
   optloc->prev = option_class[id];
@@ -2577,7 +2563,7 @@ decode_options (int argc, char **argv)
     {
       if (archive_format == GNU_FORMAT || archive_format == OLDGNU_FORMAT)
 	{
-	  size_t volume_label_max_len =
+	  int volume_label_max_len =
 	    (sizeof current_header->header.name
 	     - 1 /* for trailing '\0' */
 	     - (multi_volume_option
@@ -2588,11 +2574,9 @@ decode_options (int argc, char **argv)
 		: 0));
 	  if (volume_label_max_len < strlen (volume_label_option))
 	    USAGE_ERROR ((0, 0,
-			  ngettext ("%s: Volume label is too long (limit is %lu byte)",
-				    "%s: Volume label is too long (limit is %lu bytes)",
-				    volume_label_max_len),
+			  _("%s: Volume label length exceeds %d bytes"),
 			  quotearg_colon (volume_label_option),
-			  (unsigned long) volume_label_max_len));
+			  volume_label_max_len));
 	}
       /* else FIXME
 	 Label length in PAX format is limited by the volume size. */
