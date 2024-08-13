@@ -77,7 +77,7 @@ struct directory
     struct dumpdir *idump;      /* Initial contents if the directory was
 				   rescanned */
     enum children children;     /* What to save under this directory */
-    unsigned flags;             /* See DIRF_ macros above */
+    int flags;			/* See DIRF_ macros above */
     struct directory *orig;     /* If the directory was renamed, points to
 				   the original directory structure */
     const char *tagfile;        /* Tag file, if the directory falls under
