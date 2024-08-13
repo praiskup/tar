@@ -974,7 +974,7 @@ read_incr_db_01 (int version, const char *initbuf)
   char *buf = NULL;
   size_t bufsize = 0;
   char *ebuf;
-  long lineno = 1;
+  intmax_t lineno = 1;
 
   if (version == 1)
     {
@@ -995,7 +995,7 @@ read_incr_db_01 (int version, const char *initbuf)
   newer_mtime_option = decode_timespec (buf, &ebuf, false);
 
   if (! valid_timespec (newer_mtime_option))
-    FATAL_ERROR ((0, errno, "%s:%ld: %s",
+    FATAL_ERROR ((0, errno, "%s:%jd: %s",
 		  quotearg_colon (listed_incremental_option),
 		  lineno,
 		  _("Invalid time stamp")));
@@ -1009,7 +1009,7 @@ read_incr_db_01 (int version, const char *initbuf)
 	    = stoint (buf_ns, &ebuf, &overflow, 0, BILLION - 1);
 	  if ((ebuf == buf_ns) | *ebuf | overflow)
 	    {
-	      ERROR ((0, 0, "%s:%ld: %s",
+	      ERROR ((0, 0, "%s:%jd: %s",
 		      quotearg_colon (listed_incremental_option),
 		      lineno,
 		      _("Invalid time stamp")));
@@ -1037,7 +1037,7 @@ read_incr_db_01 (int version, const char *initbuf)
 	  mtime = decode_timespec (strp, &ebuf, false);
 	  strp = ebuf;
 	  if (!valid_timespec (mtime) || *strp != ' ')
-	    FATAL_ERROR ((0, errno, "%s:%ld: %s",
+	    FATAL_ERROR ((0, errno, "%s:%jd: %s",
 			  quotearg_colon (listed_incremental_option), lineno,
 			  _("Invalid modification time")));
 
@@ -1045,7 +1045,7 @@ read_incr_db_01 (int version, const char *initbuf)
 	  mtime.tv_nsec = stoint (strp, &ebuf, &overflow, 0, BILLION - 1);
 	  if ((ebuf == strp) | (*ebuf != ' ') | overflow)
 	    {
-	      FATAL_ERROR ((0, 0, "%s:%ld: %s",
+	      FATAL_ERROR ((0, 0, "%s:%jd: %s",
 			    quotearg_colon (listed_incremental_option), lineno,
 			    _("Invalid modification time (nanoseconds)")));
 	      mtime.tv_nsec = -1;
@@ -1059,7 +1059,7 @@ read_incr_db_01 (int version, const char *initbuf)
       dev = stoint (strp, &ebuf, &overflow,
 		    TYPE_MINIMUM (dev_t), TYPE_MAXIMUM (dev_t));
       if ((ebuf == strp) | (*ebuf != ' ') | overflow)
-	FATAL_ERROR ((0, 0, "%s:%ld: %s",
+	FATAL_ERROR ((0, 0, "%s:%jd: %s",
 		quotearg_colon (listed_incremental_option), lineno,
 		      _("Invalid device number")));
       strp = ebuf + 1;
@@ -1067,7 +1067,7 @@ read_incr_db_01 (int version, const char *initbuf)
       ino = stoint (strp, &ebuf, &overflow,
 		    TYPE_MINIMUM (ino_t), TYPE_MAXIMUM (ino_t));
       if ((ebuf == strp) | (*ebuf != ' ') | overflow)
-	FATAL_ERROR ((0, 0, "%s:%ld: %s",
+	FATAL_ERROR ((0, 0, "%s:%jd: %s",
 		      quotearg_colon (listed_incremental_option), lineno,
 		      _("Invalid inode number")));
       strp = ebuf + 1;
