@@ -48,7 +48,7 @@ map_compare (void const *entry1, void const *entry2)
 static bool
 parse_id (uintmax_t *retval,
 	  char const *arg, char const *what, uintmax_t maxval,
-	  char const *file, unsigned line)
+	  char const *file, intmax_t line)
 {
   char *p;
   bool overflow;
@@ -56,12 +56,12 @@ parse_id (uintmax_t *retval,
 
   if ((p == arg) | *p)
     {
-      error (0, 0, _("%s:%u: invalid %s: %s"),  file, line, what, arg);
+      error (0, 0, _("%s:%jd: invalid %s: %s"),  file, line, what, arg);
       return false;
     }
   if (overflow)
     {
-      error (0, 0, _("%s:%u: %s out of range: %s"), file, line, what, arg);
+      error (0, 0, _("%s:%jd: %s out of range: %s"), file, line, what, arg);
       return false;
     }
   return true;
@@ -78,7 +78,7 @@ map_read (Hash_table **ptab, char const *file,
   ssize_t n;
   struct wordsplit ws;
   int wsopt;
-  unsigned line;
+  intmax_t line;
   int err = 0;
 
   fp = fopen (file, "r");
@@ -98,14 +98,14 @@ map_read (Hash_table **ptab, char const *file,
 
       ++line;
       if (wordsplit (buf, &ws, wsopt))
-	FATAL_ERROR ((0, 0, _("%s:%u: cannot split line: %s"),
+	FATAL_ERROR ((0, 0, _("%s:%jd: cannot split line: %s"),
 		      file, line, wordsplit_strerror (&ws)));
       wsopt |= WRDSF_REUSE;
       if (ws.ws_wordc == 0)
 	continue;
       if (ws.ws_wordc != 2)
 	{
-	  error (0, 0, _("%s:%u: malformed line"), file, line);
+	  error (0, 0, _("%s:%jd: malformed line"), file, line);
 	  err = 1;
 	  continue;
 	}
@@ -123,7 +123,7 @@ map_read (Hash_table **ptab, char const *file,
 	  orig_id = name_to_id (ws.ws_wordv[0]);
 	  if (orig_id == UINTMAX_MAX)
 	    {
-	      error (0, 0, _("%s:%u: can't obtain %s of %s"),
+	      error (0, 0, _("%s:%jd: can't obtain %s of %s"),
 		     file, line, what, ws.ws_wordv[0]);
 	      err = 1;
 	      continue;
@@ -156,7 +156,7 @@ map_read (Hash_table **ptab, char const *file,
 	  new_id = name_to_id (ws.ws_wordv[1]);
 	  if (new_id == UINTMAX_MAX)
 	    {
-	      error (0, 0, _("%s:%u: can't obtain %s of %s"),
+	      error (0, 0, _("%s:%jd: can't obtain %s of %s"),
 		     file, line, what, ws.ws_wordv[1]);
 	      err = 1;
 	      continue;
