@@ -830,7 +830,6 @@ from_header (char const *where0, size_t digs, char const *type,
       /* Parse base-64 output produced only by tar test versions
 	 1.13.6 (1999-08-11) through 1.13.11 (1999-08-23).
 	 Support for this will be withdrawn in future releases.  */
-      int dig;
       if (!silent)
 	{
 	  static bool warned_once;
@@ -841,9 +840,12 @@ from_header (char const *where0, size_t digs, char const *type,
 	    }
 	}
       negative = *where++ == '-';
-      while (where != lim
-	     && (dig = base64_map[(unsigned char) *where]) < 64)
+      while (where != lim)
 	{
+	  unsigned char uc = *where;
+	  int dig = base64_map[uc];
+	  if (64 <= dig)
+	    break;
 	  if (ckd_mul (&value, value, 64))
 	    {
 	      if (type && !silent)
