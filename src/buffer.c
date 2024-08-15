@@ -75,7 +75,7 @@ static off_t record_start_block; /* block ordinal at record_start */
 FILE *stdlis;
 
 static void backspace_output (void);
-static _Noreturn void write_fatal_details (char const *, ssize_t, size_t);
+static _Noreturn void write_fatal_details (char const *, ssize_t, idx_t);
 
 /* PID of child program, if compress_option or remote archive access.  */
 static pid_t child_pid;
@@ -1144,7 +1144,7 @@ close_archive (void)
 }
 
 static void
-write_fatal_details (char const *name, ssize_t status, size_t size)
+write_fatal_details (char const *name, ssize_t status, idx_t size)
 {
   write_error_details (name, status, size);
   if (rmtclose (archive) != 0)
