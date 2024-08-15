@@ -115,6 +115,7 @@ unlinkdir
 unlocked-io
 utimensat
 version-etc-fsf
+verror
 xalignalloc
 xalloc
 xalloc-die
