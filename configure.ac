@@ -112,9 +112,8 @@ AC_DEFINE([GNULIB_WCHAR_SINGLE_LOCALE], [1],
    like mbrtowc only after setting the locale, and never change the
    locale once set.])
 
-if test $ac_cv_lib_error_at_line = no; then
-  # This means that the error() function is not present in libc, so
-  # the one from gnulib will be used instead. This function precedes
+if test $COMPILE_ERROR_C = 1; then
+  # This means that Gnulib's 'error' function will be used.  It precedes
   # error messages it prints with the program name as returned by getprogname()
   # call, instead of using the name set by set_program_name.
   # Install workaround.
