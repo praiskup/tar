@@ -1349,16 +1349,17 @@ read_directory_file (void)
 	{
 	  ebuf = buf + sizeof PACKAGE_NAME - 1;
 	  if (*ebuf++ != '-')
-	    ERROR((1, 0, _("Bad incremental file format")));
+	    FATAL_ERROR ((0, 0, _("Bad incremental file format")));
 	  for (; *ebuf != '-'; ebuf++)
 	    if (!*ebuf)
-	      ERROR((1, 0, _("Bad incremental file format")));
+	      FATAL_ERROR ((0, 0, _("Bad incremental file format")));
 
 	  ebuf++;
 	  if (! ('0' <= *ebuf && *ebuf <= '0' + TAR_INCREMENTAL_VERSION
 		 && !c_isdigit (ebuf[1])))
-	    ERROR ((1, 0, _("Unsupported incremental format version: %s"),
-		    ebuf));
+	    FATAL_ERROR ((0, 0,
+			  _("Unsupported incremental format version: %s"),
+			  ebuf));
 	  incremental_version = *ebuf - '0';
 	}
       else
@@ -1482,7 +1483,7 @@ get_gnu_dumpdir (struct tar_stat_info *stat_info)
       mv_size_left (size);
       data_block = find_next_block ();
       if (!data_block)
-	ERROR ((1, 0, _("Unexpected EOF in archive")));
+	FATAL_ERROR ((0, 0, _("Unexpected EOF in archive")));
       copied = available_space_after (data_block);
       if (copied > size)
 	copied = size;
