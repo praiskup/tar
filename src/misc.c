@@ -400,51 +400,102 @@ timetostr (time_t t, char buf[SYSINT_BUFSIZE])
   return sysinttostr (t, TYPE_MINIMUM (time_t), TYPE_MAXIMUM (time_t), buf);
 }
 
-/* Convert a prefix of the string ARG to a system integer type whose
-   minimum value is MINVAL and maximum MAXVAL.  If MINVAL is negative,
+/* Convert a prefix of the string ARG to a system integer type.
+   If ARGLIM, set *ARGLIM to point to just after the prefix.
+   If OVERFLOW, set *OVERFLOW to true or false
+   depending on whether the input is out of MINVAL..MAXVAL range.
+   If the input is out of that range, return an extreme value.
+   MINVAL must not be positive.
+
+   If MINVAL is negative, MAXVAL can be at most INTMAX_MAX, and
    negative integers MINVAL .. -1 are assumed to be represented using
    leading '-' in the usual way.  If the represented value exceeds
    INTMAX_MAX, return a negative integer V such that (uintmax_t) V
-   yields the represented value.  If ARGLIM is nonnull, store into
-   *ARGLIM a pointer to the first character after the prefix.
+   yields the represented value.
+
+   On conversion error: if ARGLIM set *ARGLIM = ARG; if OVERFLOW set
+   *OVERFLOW = false; then return 0.
 
    This is the inverse of sysinttostr.
 
-   On a normal return, set errno = 0.
-   On conversion error, return 0 and set errno = EINVAL.
-   On overflow, return an extreme value and set errno = ERANGE.  */
+   Sample call to this function:
+
+      char *s_end;
+      bool overflow;
+      idx_t i = stoint (s, &s_end, &overflow, 0, IDX_MAX);
+      if ((s_end == s) | *s_end | overflow)
+        diagnose_invalid (s);
+
+   This example uses "|" instead of "||" for fewer branches at runtime,
+   which tends to be more efficient on modern processors.
+
+   This function is named "stoint" instead of "strtoint" because
+   <string.h> reserves names beginning with "str".  */
+
 intmax_t
-strtosysint (char const *arg, char **arglim, intmax_t minval, uintmax_t maxval)
+stoint (char const *arg, char **arglim, bool *overflow,
+	intmax_t minval, uintmax_t maxval)
 {
   static_assert (INTMAX_MAX <= UINTMAX_MAX);
+  char const *p = arg;
+  intmax_t i;
+  bool v = false;
 
-  errno = 0;
-  if (maxval <= INTMAX_MAX)
+  if (c_isdigit (*p))
     {
-      if (c_isdigit (arg[*arg == '-']))
+      if (minval < 0)
 	{
-	  intmax_t i = strtoimax (arg, arglim, 10);
-	  intmax_t imaxval = maxval;
-	  if (minval <= i && i <= imaxval)
-	    return i;
-	  errno = ERANGE;
-	  return i < minval ? minval : maxval;
+	  i = *p - '0';
+
+	  while (c_isdigit (*++p))
+	    {
+	      v |= ckd_mul (&i, i, 10);
+	      v |= ckd_add (&i, i, *p - '0');
+	    }
+
+	  v |= maxval < i;
+	  if (v)
+	    i = maxval;
 	}
+      else
+	{
+	  uintmax_t u = *p - '0';
+
+	  while (c_isdigit (*++p))
+	    {
+	      v |= ckd_mul (&u, u, 10);
+	      v |= ckd_add (&u, u, *p - '0');
+	    }
+
+	  v |= maxval < u;
+	  if (v)
+	    u = maxval;
+	  i = represent_uintmax (u);
+	}
+    }
+  else if (minval < 0 && *p == '-' && c_isdigit (p[1]))
+    {
+      p++;
+      i = - (*p - '0');
+
+      while (c_isdigit (*++p))
+	{
+	  v |= ckd_mul (&i, i, 10);
+	  v |= ckd_sub (&i, i, *p - '0');
+	}
+
+      v |= i < minval;
+      if (v)
+	i = minval;
     }
   else
-    {
-      if (c_isdigit (*arg))
-	{
-	  uintmax_t i = strtoumax (arg, arglim, 10);
-	  if (i <= maxval)
-	    return represent_uintmax (i);
-	  errno = ERANGE;
-	  return maxval;
-	}
-    }
+    i = 0;
 
-  errno = EINVAL;
-  return 0;
+  if (arglim)
+    *arglim = (char *) p;
+  if (overflow)
+    *overflow = v;
+  return i;
 }
 
 /* Output fraction and trailing digits appropriate for a nanoseconds
@@ -507,36 +558,13 @@ code_timespec (struct timespec t, char tsbuf[TIMESPEC_STRSIZE_BOUND])
 struct timespec
 decode_timespec (char const *arg, char **arg_lim, bool parse_fraction)
 {
-  time_t s = TYPE_MINIMUM (time_t);
   int ns = -1;
-  char const *p = arg;
-  bool negative = *arg == '-';
-  struct timespec r;
-
-  if (! c_isdigit (arg[negative]))
-    errno = EINVAL;
-  else
+  bool overflow;
+  time_t s = stoint (arg, arg_lim, &overflow,
+		     TYPE_MINIMUM (time_t), TYPE_MAXIMUM (time_t));
+  char const *p = *arg_lim;
+  if (p != arg)
     {
-      errno = 0;
-
-      if (negative)
-	{
-	  intmax_t i = strtoimax (arg, arg_lim, 10);
-	  if (TYPE_SIGNED (time_t) ? TYPE_MINIMUM (time_t) <= i : 0 <= i)
-	    s = i;
-	  else
-	    errno = ERANGE;
-	}
-      else
-	{
-	  uintmax_t i = strtoumax (arg, arg_lim, 10);
-	  if (i <= TYPE_MAXIMUM (time_t))
-	    s = i;
-	  else
-	    errno = ERANGE;
-	}
-
-      p = *arg_lim;
       ns = 0;
 
       if (parse_fraction && *p == '.')
@@ -550,36 +578,27 @@ decode_timespec (char const *arg, char **arg_lim, bool parse_fraction)
 	    else
 	      trailing_nonzero |= *p != '0';
 
+	  *arg_lim = (char *) p;
+
 	  while (digits < LOG10_BILLION)
 	    digits++, ns *= 10;
 
-	  if (negative)
+	  if (*arg == '-')
 	    {
 	      /* Convert "-1.10000000000001" to s == -2, ns == 89999999.
 		 I.e., truncate time stamps towards minus infinity while
 		 converting them to internal form.  */
 	      ns += trailing_nonzero;
 	      if (ns != 0)
-		{
-		  if (s == TYPE_MINIMUM (time_t))
-		    ns = -1;
-		  else
-		    {
-		      s--;
-		      ns = BILLION - ns;
-		    }
-		}
+		ns = ckd_sub (&s, s, 1) ? -1 : BILLION - ns;
 	    }
 	}
 
-      if (errno == ERANGE)
+      if (overflow)
 	ns = -1;
     }
 
-  *arg_lim = (char *) p;
-  r.tv_sec = s;
-  r.tv_nsec = ns;
-  return r;
+  return (struct timespec) { .tv_sec = s, .tv_nsec = ns };
 }
 
 /* File handling.  */
@@ -824,9 +843,9 @@ deref_stat (char const *name, struct stat *buf)
    opened O_NONBLOCK for security reasons, and on some file systems
    this can cause read to fail with errno == EAGAIN.  Return the
    actual number of bytes read, zero for EOF, or
-   SAFE_READ_ERROR upon error.  */
-size_t
-blocking_read (int fd, void *buf, size_t count)
+   -1 upon error.  */
+ptrdiff_t
+blocking_read (int fd, void *buf, idx_t count)
 {
   size_t bytes = full_read (fd, buf, count);
 
@@ -840,9 +859,7 @@ blocking_read (int fd, void *buf, size_t count)
     }
 #endif
 
-  if (bytes == 0 && errno != 0)
-    bytes = SAFE_READ_ERROR;
-  return bytes;
+  return bytes == SAFE_READ_ERROR || (bytes == 0 && errno != 0) ? -1 : bytes;
 }
 
 /* Write to FD from the buffer BUF with COUNT bytes.  Do a full write.
@@ -850,11 +867,11 @@ blocking_read (int fd, void *buf, size_t count)
    files are opened O_NONBLOCK for security reasons, and on some file
    systems this can cause write to fail with errno == EAGAIN.  Return
    the actual number of bytes written, setting errno if that is less
-   than COUNT.  */
-size_t
-blocking_write (int fd, void const *buf, size_t count)
+   than COUNT.  Return -1 on write error.  */
+idx_t
+blocking_write (int fd, void const *buf, idx_t count)
 {
-  size_t bytes = full_write (fd, buf, count);
+  idx_t bytes = full_write (fd, buf, count);
 
 #if defined F_SETFL && O_NONBLOCK
   if (bytes < count && errno == EAGAIN)
@@ -1099,7 +1116,7 @@ close_diag (char const *name)
 {
   if (ignore_failed_read_option)
     {
-      if (WARNING_ENABLED(WARN_FAILED_READ))
+      if (WARNING_ENABLED (WARN_FAILED_READ))
 	close_warn (name);
     }
   else
@@ -1111,7 +1128,7 @@ open_diag (char const *name)
 {
   if (ignore_failed_read_option)
     {
-      if (WARNING_ENABLED(WARN_FAILED_READ))
+      if (WARNING_ENABLED (WARN_FAILED_READ))
 	open_warn (name);
     }
   else
@@ -1123,7 +1140,7 @@ read_diag_details (char const *name, off_t offset, size_t size)
 {
   if (ignore_failed_read_option)
     {
-      if (WARNING_ENABLED(WARN_FAILED_READ))
+      if (WARNING_ENABLED (WARN_FAILED_READ))
 	read_warn_details (name, offset, size);
     }
   else
@@ -1135,7 +1152,7 @@ readlink_diag (char const *name)
 {
   if (ignore_failed_read_option)
     {
-      if (WARNING_ENABLED(WARN_FAILED_READ))
+      if (WARNING_ENABLED (WARN_FAILED_READ))
 	readlink_warn (name);
     }
   else
@@ -1147,7 +1164,7 @@ savedir_diag (char const *name)
 {
   if (ignore_failed_read_option)
     {
-      if (WARNING_ENABLED(WARN_FAILED_READ))
+      if (WARNING_ENABLED (WARN_FAILED_READ))
 	savedir_warn (name);
     }
   else
@@ -1159,7 +1176,7 @@ seek_diag_details (char const *name, off_t offset)
 {
   if (ignore_failed_read_option)
     {
-      if (WARNING_ENABLED(WARN_FAILED_READ))
+      if (WARNING_ENABLED (WARN_FAILED_READ))
 	seek_warn_details (name, offset);
     }
   else
@@ -1171,7 +1188,7 @@ stat_diag (char const *name)
 {
   if (ignore_failed_read_option)
     {
-      if (WARNING_ENABLED(WARN_FAILED_READ))
+      if (WARNING_ENABLED (WARN_FAILED_READ))
 	stat_warn (name);
     }
   else

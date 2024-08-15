@@ -805,17 +805,17 @@ sys_wait_command (void)
   if (WIFEXITED (status))
     {
       if (!ignore_command_error_option && WEXITSTATUS (status))
-	ERROR ((0, 0, _("%lu: Child returned status %d"),
-		(unsigned long) global_pid, WEXITSTATUS (status)));
+	ERROR ((0, 0, _("%jd: Child returned status %d"),
+		intmax (global_pid), WEXITSTATUS (status)));
     }
   else if (WIFSIGNALED (status))
     {
-      WARN ((0, 0, _("%lu: Child terminated on signal %d"),
-	     (unsigned long) global_pid, WTERMSIG (status)));
+      WARN ((0, 0, _("%jd: Child terminated on signal %d"),
+	     intmax (global_pid), WTERMSIG (status)));
     }
   else
-    ERROR ((0, 0, _("%lu: Child terminated on unknown reason"),
-	    (unsigned long) global_pid));
+    ERROR ((0, 0, _("%jd: Child terminated on unknown reason"),
+	    intmax (global_pid)));
 
   global_pid = -1;
 }
@@ -875,10 +875,10 @@ sys_exec_info_script (const char **archive_name, int volume_number)
   /* Child */
   setenv ("TAR_VERSION", PACKAGE_VERSION, 1);
   setenv ("TAR_ARCHIVE", *archive_name, 1);
-  char intbuf[INT_BUFSIZE_BOUND (int)];
+  char intbuf[INT_BUFSIZE_BOUND (intmax_t)];
   sprintf (intbuf, "%d", volume_number);
   setenv ("TAR_VOLUME", intbuf, 1);
-  sprintf (intbuf, "%d", blocking_factor);
+  sprintf (intbuf, "%jd", blocking_factor);
   setenv ("TAR_BLOCKING_FACTOR", intbuf, 1);
   setenv ("TAR_SUBCOMMAND", subcommand_string (subcommand_option), 1);
   setenv ("TAR_FORMAT",
@@ -896,7 +896,7 @@ sys_exec_info_script (const char **archive_name, int volume_number)
 void
 sys_exec_checkpoint_script (const char *script_name,
 			    const char *archive_name,
-			    int checkpoint_number)
+			    intmax_t checkpoint_number)
 {
   pid_t pid = xfork ();
 
@@ -919,10 +919,10 @@ sys_exec_checkpoint_script (const char *script_name,
   /* Child */
   setenv ("TAR_VERSION", PACKAGE_VERSION, 1);
   setenv ("TAR_ARCHIVE", archive_name, 1);
-  char intbuf[INT_BUFSIZE_BOUND (int)];
-  sprintf (intbuf, "%d", checkpoint_number);
+  char intbuf[INT_BUFSIZE_BOUND (intmax_t)];
+  sprintf (intbuf, "%jd", checkpoint_number);
   setenv ("TAR_CHECKPOINT", intbuf, 1);
-  sprintf (intbuf, "%d", blocking_factor);
+  sprintf (intbuf, "%td", blocking_factor);
   setenv ("TAR_BLOCKING_FACTOR", intbuf, 1);
   setenv ("TAR_SUBCOMMAND", subcommand_string (subcommand_option), 1);
   setenv ("TAR_FORMAT",

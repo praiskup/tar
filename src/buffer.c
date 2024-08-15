@@ -75,7 +75,7 @@ static off_t record_start_block; /* block ordinal at record_start */
 FILE *stdlis;
 
 static void backspace_output (void);
-static _Noreturn void write_fatal_details (char const *, ssize_t, size_t);
+static _Noreturn void write_fatal_details (char const *, ssize_t, idx_t);
 
 /* PID of child program, if compress_option or remote archive access.  */
 static pid_t child_pid;
@@ -965,10 +965,10 @@ short_read (size_t status)
       && record_start_block == 0 && status != 0
       && archive_is_dev ())
     {
-      unsigned long rsize = status / BLOCKSIZE;
+      idx_t rsize = status / BLOCKSIZE;
       WARN ((0, 0,
-	     ngettext ("Record size = %lu block",
-		       "Record size = %lu blocks",
+	     ngettext ("Record size = %td block",
+		       "Record size = %td blocks",
 		       rsize),
 	     rsize));
     }
@@ -985,11 +985,11 @@ short_read (size_t status)
 
       if (! read_full_records)
         {
-          unsigned long rest = record_size - left;
+          idx_t rest = record_size - left;
 
           FATAL_ERROR ((0, 0,
-                        ngettext ("Unaligned block (%lu byte) in archive",
-                                  "Unaligned block (%lu bytes) in archive",
+                        ngettext ("Unaligned block (%td byte) in archive",
+                                  "Unaligned block (%td bytes) in archive",
                                   rest),
                         rest));
         }
@@ -1144,7 +1144,7 @@ close_archive (void)
 }
 
 static void
-write_fatal_details (char const *name, ssize_t status, size_t size)
+write_fatal_details (char const *name, ssize_t status, idx_t size)
 {
   write_error_details (name, status, size);
   if (rmtclose (archive) != 0)

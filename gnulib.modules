@@ -106,10 +106,6 @@ stdopen
 strdup-posix
 strerror
 strnlen
-strtoimax
-strtol
-strtoul
-strtoumax
 symlinkat
 sys_stat
 timespec
@@ -119,6 +115,7 @@ unlinkdir
 unlocked-io
 utimensat
 version-etc-fsf
+verror
 xalignalloc
 xalloc
 xalloc-die

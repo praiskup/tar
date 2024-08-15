@@ -1281,7 +1281,6 @@ extract_file (char *file_name, int typeflag)
   off_t size;
   union block *data_block;
   int status;
-  size_t count;
   size_t written;
   bool interdir_made = false;
   mode_t mode = (current_stat_info.stat.st_mode & MODE_RWX
@@ -1351,7 +1350,7 @@ extract_file (char *file_name, int typeflag)
 	if (written > size)
 	  written = size;
 	errno = 0;
-	count = blocking_write (fd, data_block->buffer, written);
+	idx_t count = blocking_write (fd, data_block->buffer, written);
 	size -= written;
 
 	set_next_block_after ((union block *)

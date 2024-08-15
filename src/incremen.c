@@ -77,7 +77,7 @@ struct directory
     struct dumpdir *idump;      /* Initial contents if the directory was
 				   rescanned */
     enum children children;     /* What to save under this directory */
-    unsigned flags;             /* See DIRF_ macros above */
+    int flags;			/* See DIRF_ macros above */
     struct directory *orig;     /* If the directory was renamed, points to
 				   the original directory structure */
     const char *tagfile;        /* Tag file, if the directory falls under
@@ -262,18 +262,13 @@ static struct directory *
 make_directory (const char *name, char *caname)
 {
   size_t namelen = strlen (name);
-  struct directory *directory = xmalloc (sizeof (*directory));
-  directory->next = NULL;
-  directory->dump = directory->idump = NULL;
-  directory->orig = NULL;
-  directory->flags = false;
+  struct directory *directory = xizalloc (sizeof *directory);
   if (namelen > 1 && ISSLASH (name[namelen - 1]))
     namelen--;
   directory->name = xmalloc (namelen + 1);
   memcpy (directory->name, name, namelen);
   directory->name[namelen] = 0;
   directory->caname = caname;
-  directory->tagfile = NULL;
   return directory;
 }
 
@@ -976,11 +971,10 @@ static void
 read_incr_db_01 (int version, const char *initbuf)
 {
   int n;
-  uintmax_t u;
   char *buf = NULL;
   size_t bufsize = 0;
   char *ebuf;
-  long lineno = 1;
+  intmax_t lineno = 1;
 
   if (version == 1)
     {
@@ -1001,7 +995,7 @@ read_incr_db_01 (int version, const char *initbuf)
   newer_mtime_option = decode_timespec (buf, &ebuf, false);
 
   if (! valid_timespec (newer_mtime_option))
-    FATAL_ERROR ((0, errno, "%s:%ld: %s",
+    FATAL_ERROR ((0, errno, "%s:%jd: %s",
 		  quotearg_colon (listed_incremental_option),
 		  lineno,
 		  _("Invalid time stamp")));
@@ -1010,21 +1004,18 @@ read_incr_db_01 (int version, const char *initbuf)
       if (version == 1 && *ebuf)
 	{
 	  char const *buf_ns = ebuf + 1;
-	  errno = 0;
-	  u = strtoumax (buf_ns, &ebuf, 10);
-	  if (!errno && BILLION <= u)
-	    errno = ERANGE;
-	  if (errno || buf_ns == ebuf)
+	  bool overflow;
+	  newer_mtime_option.tv_nsec
+	    = stoint (buf_ns, &ebuf, &overflow, 0, BILLION - 1);
+	  if ((ebuf == buf_ns) | *ebuf | overflow)
 	    {
-	      ERROR ((0, errno, "%s:%ld: %s",
+	      ERROR ((0, 0, "%s:%jd: %s",
 		      quotearg_colon (listed_incremental_option),
 		      lineno,
 		      _("Invalid time stamp")));
 	      newer_mtime_option.tv_sec = TYPE_MINIMUM (time_t);
 	      newer_mtime_option.tv_nsec = -1;
 	    }
-	  else
-	    newer_mtime_option.tv_nsec = u;
 	}
     }
 
@@ -1046,45 +1037,41 @@ read_incr_db_01 (int version, const char *initbuf)
 	  mtime = decode_timespec (strp, &ebuf, false);
 	  strp = ebuf;
 	  if (!valid_timespec (mtime) || *strp != ' ')
-	    FATAL_ERROR ((0, errno, "%s:%ld: %s",
+	    FATAL_ERROR ((0, errno, "%s:%jd: %s",
 			  quotearg_colon (listed_incremental_option), lineno,
 			  _("Invalid modification time")));
 
-	  errno = 0;
-	  u = strtoumax (strp, &ebuf, 10);
-	  if (!errno && BILLION <= u)
-	    errno = ERANGE;
-	  if (errno || strp == ebuf || *ebuf != ' ')
+	  bool overflow;
+	  mtime.tv_nsec = stoint (strp, &ebuf, &overflow, 0, BILLION - 1);
+	  if ((ebuf == strp) | (*ebuf != ' ') | overflow)
 	    {
-	      FATAL_ERROR ((0, errno, "%s:%ld: %s",
+	      FATAL_ERROR ((0, 0, "%s:%jd: %s",
 			    quotearg_colon (listed_incremental_option), lineno,
 			    _("Invalid modification time (nanoseconds)")));
 	      mtime.tv_nsec = -1;
 	    }
-	  else
-	    mtime.tv_nsec = u;
 	  strp = ebuf;
 	}
       else
 	mtime.tv_sec = mtime.tv_nsec = 0;
 
-      dev = strtosysint (strp, &ebuf,
-			 TYPE_MINIMUM (dev_t), TYPE_MAXIMUM (dev_t));
-      strp = ebuf;
-      if (errno || *strp != ' ')
-	FATAL_ERROR ((0, errno, "%s:%ld: %s",
+      bool overflow;
+      dev = stoint (strp, &ebuf, &overflow,
+		    TYPE_MINIMUM (dev_t), TYPE_MAXIMUM (dev_t));
+      if ((ebuf == strp) | (*ebuf != ' ') | overflow)
+	FATAL_ERROR ((0, 0, "%s:%jd: %s",
 		quotearg_colon (listed_incremental_option), lineno,
 		      _("Invalid device number")));
+      strp = ebuf + 1;
 
-      ino = strtosysint (strp, &ebuf,
-			 TYPE_MINIMUM (ino_t), TYPE_MAXIMUM (ino_t));
-      strp = ebuf;
-      if (errno || *strp != ' ')
-	FATAL_ERROR ((0, errno, "%s:%ld: %s",
+      ino = stoint (strp, &ebuf, &overflow,
+		    TYPE_MINIMUM (ino_t), TYPE_MAXIMUM (ino_t));
+      if ((ebuf == strp) | (*ebuf != ' ') | overflow)
+	FATAL_ERROR ((0, 0, "%s:%jd: %s",
 		      quotearg_colon (listed_incremental_option), lineno,
 		      _("Invalid inode number")));
+      strp = ebuf + 1;
 
-      strp++;
       unquote_string (strp);
       note_directory (strp, mtime, dev, ino, nfs, false, NULL);
     }
@@ -1126,7 +1113,6 @@ read_num (FILE *fp, char const *fieldname,
 {
   int i;
   char buf[INT_BUFSIZE_BOUND (intmax_t)];
-  int conversion_errno;
   int c = getc (fp);
   bool negative = c == '-';
 
@@ -1165,24 +1151,20 @@ read_num (FILE *fp, char const *fieldname,
 		    fieldname, buf, uc));
     }
 
-  *pval = strtosysint (buf, NULL, min_val, max_val);
-  conversion_errno = errno;
+  char *bufend;
+  bool overflow;
+  *pval = stoint (buf, &bufend, &overflow, min_val, max_val);
 
-  switch (conversion_errno)
-    {
-    case ERANGE:
-      FATAL_ERROR ((0, conversion_errno,
-		    _("%s: byte %jd: (valid range %jd..%ju)\n\t%s %s"),
-		    quotearg_colon (listed_incremental_option),
-		    intmax (ftello (fp)), min_val, max_val, fieldname, buf));
-    default:
-      FATAL_ERROR ((0, conversion_errno,
-		    _("%s: byte %jd: %s %s"),
-		    quotearg_colon (listed_incremental_option),
-		    intmax (ftello (fp)), fieldname, buf));
-    case 0:
-      break;
-    }
+  if (buf == bufend)
+    FATAL_ERROR ((0, EINVAL,
+		  _("%s: byte %jd: %s %s"),
+		  quotearg_colon (listed_incremental_option),
+		  intmax (ftello (fp)), fieldname, buf));
+  if (overflow)
+    FATAL_ERROR ((0, ERANGE,
+		  _("%s: byte %jd: (valid range %jd..%ju)\n\t%s %s"),
+		  quotearg_colon (listed_incremental_option),
+		  intmax (ftello (fp)), min_val, max_val, fieldname, buf));
 
   return true;
 }
@@ -1361,18 +1343,24 @@ read_directory_file (void)
   if (0 < getline (&buf, &bufsize, listed_incremental_stream))
     {
       char *ebuf;
-      uintmax_t incremental_version;
+      int incremental_version;
 
       if (strncmp (buf, PACKAGE_NAME, sizeof PACKAGE_NAME - 1) == 0)
 	{
 	  ebuf = buf + sizeof PACKAGE_NAME - 1;
 	  if (*ebuf++ != '-')
-	    ERROR((1, 0, _("Bad incremental file format")));
+	    FATAL_ERROR ((0, 0, _("Bad incremental file format")));
 	  for (; *ebuf != '-'; ebuf++)
 	    if (!*ebuf)
-	      ERROR((1, 0, _("Bad incremental file format")));
+	      FATAL_ERROR ((0, 0, _("Bad incremental file format")));
 
-	  incremental_version = strtoumax (ebuf + 1, NULL, 10);
+	  ebuf++;
+	  if (! ('0' <= *ebuf && *ebuf <= '0' + TAR_INCREMENTAL_VERSION
+		 && !c_isdigit (ebuf[1])))
+	    FATAL_ERROR ((0, 0,
+			  _("Unsupported incremental format version: %s"),
+			  ebuf));
+	  incremental_version = *ebuf - '0';
 	}
       else
 	incremental_version = 0;
@@ -1389,10 +1377,8 @@ read_directory_file (void)
 	  break;
 
 	default:
-	  ERROR ((1, 0, _("Unsupported incremental format version: %"PRIuMAX),
-		  incremental_version));
+	  unreachable ();
 	}
-
     }
 
   if (ferror (listed_incremental_stream))
@@ -1497,7 +1483,7 @@ get_gnu_dumpdir (struct tar_stat_info *stat_info)
       mv_size_left (size);
       data_block = find_next_block ();
       if (!data_block)
-	ERROR ((1, 0, _("Unexpected EOF in archive")));
+	FATAL_ERROR ((0, 0, _("Unexpected EOF in archive")));
       copied = available_space_after (data_block);
       if (copied > size)
 	copied = size;

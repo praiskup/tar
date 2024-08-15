@@ -98,8 +98,8 @@ extern enum archive_format archive_format;
    are always related, the second being BLOCKSIZE times the first.  They do
    not have _option in their name, even if their values is derived from
    option decoding, as these are especially important in tar.  */
-extern int blocking_factor;
-extern size_t record_size;
+extern idx_t blocking_factor;
+extern idx_t record_size;
 
 extern bool absolute_names_option;
 
@@ -129,7 +129,7 @@ extern enum backup_type backup_type;
 
 extern bool block_number_option;
 
-extern unsigned checkpoint_option;
+extern intmax_t checkpoint_option;
 #define DEFAULT_CHECKPOINT 10
 
 /* Specified name of compression program, or "gzip" as implied by -z.  */
@@ -190,8 +190,8 @@ extern bool keep_directory_symlink_option;
 
 /* Specified file name for incremental list.  */
 extern const char *listed_incremental_option;
-/* Incremental dump level */
-extern int incremental_level;
+/* Incremental dump level: either -1, 0, or 1.  */
+extern signed char incremental_level;
 /* Check device numbers when doing incremental dumps. */
 extern bool check_device_option;
 
@@ -288,8 +288,7 @@ extern size_t strip_name_components;
 extern bool show_omitted_dirs_option;
 
 extern bool sparse_option;
-extern unsigned tar_sparse_major;
-extern unsigned tar_sparse_minor;
+extern intmax_t tar_sparse_major, tar_sparse_minor;
 
 enum hole_detection_method
   {
@@ -702,7 +701,7 @@ enum { UINTMAX_STRSIZE_BOUND = INT_BUFSIZE_BOUND (intmax_t) };
 enum { SYSINT_BUFSIZE =
 	 max (UINTMAX_STRSIZE_BOUND, INT_BUFSIZE_BOUND (intmax_t)) };
 char *sysinttostr (uintmax_t, intmax_t, uintmax_t, char buf[SYSINT_BUFSIZE]);
-intmax_t strtosysint (char const *, char **, intmax_t, uintmax_t);
+intmax_t stoint (char const *, char **, bool *, intmax_t, uintmax_t);
 char *timetostr (time_t, char buf[SYSINT_BUFSIZE]);
 void code_ns_fraction (int ns, char *p);
 enum { BILLION = 1000000000, LOG10_BILLION = 9 };
@@ -741,8 +740,8 @@ void undo_last_backup (void);
 
 int deref_stat (char const *name, struct stat *buf);
 
-size_t blocking_read (int fd, void *buf, size_t count);
-size_t blocking_write (int fd, void const *buf, size_t count);
+ptrdiff_t blocking_read (int fd, void *buf, idx_t count);
+idx_t blocking_write (int fd, void const *buf, idx_t count);
 
 extern idx_t chdir_current;
 extern int chdir_fd;
@@ -759,7 +758,6 @@ void seek_diag_details (char const *name, off_t offset);
 void stat_diag (char const *name);
 void file_removed_diag (const char *name, bool top_level,
 			void (*diagfn) (char const *name));
-void write_error_details (char const *name, size_t status, size_t size);
 _Noreturn void write_fatal (char const *name);
 
 pid_t xfork (void);
@@ -854,7 +852,7 @@ struct option_locus
 {
   enum option_source source;  /* Option origin */
   char const *name;           /* File or variable name */
-  size_t line;                /* Number of input line if source is OPTS_FILE */
+  intmax_t line;              /* Number of input line if source is OPTS_FILE */
   struct option_locus *prev;  /* Previous occurrence of the option of same
 				 class */
 };
@@ -916,7 +914,7 @@ void xattr_map_init (struct xattr_map *map);
 void xattr_map_copy (struct xattr_map *dst,
 		     const struct xattr_map *src);
 void xattr_map_add (struct xattr_map *map,
-		    const char *key, const char *val, size_t len);
+		    const char *key, const char *val, idx_t len);
 void xattr_map_free (struct xattr_map *xattr_map);
 
 /* Module system.c */
@@ -941,7 +939,7 @@ void sys_wait_command (void);
 int sys_exec_info_script (const char **archive_name, int volume_number);
 void sys_exec_checkpoint_script (const char *script_name,
 				 const char *archive_name,
-				 int checkpoint_number);
+				 intmax_t checkpoint_number);
 bool mtioseek (bool count_files, off_t count);
 int sys_exec_setmtime_script (const char *script_name,
 			      int dirfd,
@@ -1032,7 +1030,7 @@ extern int warning_option;
 #define WARNOPT(opt,args)			\
   do						\
     {						\
-      if (WARNING_ENABLED(opt)) WARN (args);	\
+      if (WARNING_ENABLED (opt)) WARN (args);	\
     }						\
   while (0)
 

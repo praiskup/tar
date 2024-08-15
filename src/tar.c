@@ -34,8 +34,8 @@
 /* Define variables declared in common.h that belong to tar.c.  */
 enum subcommand subcommand_option;
 enum archive_format archive_format;
-int blocking_factor;
-size_t record_size;
+idx_t blocking_factor;
+idx_t record_size;
 bool absolute_names_option;
 bool utc_option;
 bool full_time_option;
@@ -44,7 +44,7 @@ enum atime_preserve atime_preserve_option;
 bool backup_option;
 enum backup_type backup_type;
 bool block_number_option;
-unsigned checkpoint_option;
+intmax_t checkpoint_option;
 const char *use_compress_program_option;
 bool dereference_option;
 bool hard_dereference_option;
@@ -60,7 +60,7 @@ uintmax_t occurrence_option;
 enum old_files old_files_option;
 bool keep_directory_symlink_option;
 const char *listed_incremental_option;
-int incremental_level;
+signed char incremental_level;
 bool check_device_option;
 struct mode_change *mode_option;
 mode_t initial_umask;
@@ -90,8 +90,8 @@ int xattrs_option;
 size_t strip_name_components;
 bool show_omitted_dirs_option;
 bool sparse_option;
-unsigned tar_sparse_major;
-unsigned tar_sparse_minor;
+intmax_t tar_sparse_major;
+intmax_t tar_sparse_minor;
 enum hole_detection_method hole_detection;
 bool starting_file_option;
 tarlong tape_length_option;
@@ -267,10 +267,10 @@ archive_format_string (enum archive_format fmt)
   return "unknown?";
 }
 
-#define FORMAT_MASK(n) (1<<(n))
+#define FORMAT_MASK(n) (1 << (n))
 
 static void
-assert_format(unsigned fmt_mask)
+assert_format (int fmt_mask)
 {
   if ((FORMAT_MASK (archive_format) & fmt_mask) == 0)
     USAGE_ERROR ((0, 0,
@@ -999,26 +999,12 @@ static struct option_locus *option_class[OC_MAX];
 /* Save location of an option of class ID.  Return location of a previous
    occurrence of an option of that class, or NULL. */
 static struct option_locus *
-optloc_save (unsigned int id, struct option_locus *loc)
+optloc_save (enum option_class id, struct option_locus *loc)
 {
-  struct option_locus *optloc;
-  char *p;
-  size_t s;
-
-  if (id >= sizeof (option_class) / sizeof (option_class[0]))
-    abort ();
-  s = sizeof (*loc);
-  if (loc->name)
-    s += strlen (loc->name) + 1;
-  optloc = xmalloc (s);
-  if (loc->name)
-    {
-      p = (char*) optloc + sizeof (*loc);
-      strcpy (p, loc->name);
-      optloc->name = p;
-    }
-  else
-    optloc->name = NULL;
+  char const *name = loc->name;
+  idx_t namesize = name ? strlen (name) + 1 : 0;
+  struct option_locus *optloc = ximalloc (sizeof *loc + namesize);
+  optloc->name = name ? memcpy (optloc + 1, name, namesize) : NULL;
   optloc->source = loc->source;
   optloc->line = loc->line;
   optloc->prev = option_class[id];
@@ -1345,50 +1331,24 @@ expand_pax_option (struct tar_args *targs, const char *arg)
 static uintmax_t
 parse_owner_group (char *arg, uintmax_t field_max, char const **name_option)
 {
-  uintmax_t u = UINTMAX_MAX;
-  char *end;
-  char const *name = 0;
-  char const *invalid_num = 0;
+  char const *name = NULL;
+  char const *num = arg;
   char *colon = strchr (arg, ':');
-
   if (colon)
     {
-      char const *num = colon + 1;
+      num = colon + 1;
       *colon = '\0';
-      if (*arg)
+      if (arg != colon)
 	name = arg;
-      if (num && (! (xstrtoumax (num, &end, 10, &u, "") == LONGINT_OK
-		     && u <= field_max)))
-	invalid_num = num;
-    }
-  else
-    {
-      uintmax_t u1;
-      switch ('0' <= *arg && *arg <= '9'
-	      ? xstrtoumax (arg, &end, 10, &u1, "")
-	      : LONGINT_INVALID)
-	{
-	default:
-	  name = arg;
-	  break;
-
-	case LONGINT_OK:
-	  if (u1 <= field_max)
-	    {
-	      u = u1;
-	      break;
-	    }
-	  FALLTHROUGH;
-	case LONGINT_OVERFLOW:
-	  invalid_num = arg;
-	  break;
-	}
     }
 
-  if (invalid_num)
-    FATAL_ERROR ((0, 0, "%s: %s", quotearg_colon (invalid_num),
+  bool overflow;
+  char *end;
+  uintmax_t u = stoint (num, &end, &overflow, 0, field_max);
+  if ((end == num) | *end | overflow)
+    FATAL_ERROR ((0, 0, "%s: %s", quotearg_colon (num),
 		  _("Invalid owner or group ID")));
-  if (name)
+  if (name_option)
     *name_option = name;
   return u;
 }
@@ -1498,13 +1458,15 @@ parse_opt (int key, char *arg, struct argp_state *state)
 
     case 'b':
       {
-	uintmax_t u;
-	if (! (xstrtoumax (arg, 0, 10, &u, "") == LONGINT_OK
-	       && !ckd_add (&blocking_factor, u, 0)
-	       && 0 < blocking_factor
-	       && !ckd_mul (&record_size, u, BLOCKSIZE)))
+	bool overflow;
+	char *end;
+	blocking_factor = stoint (arg, &end, &overflow, 0,
+				  (min (IDX_MAX, min (SSIZE_MAX, SIZE_MAX))
+				   / BLOCKSIZE));
+	if ((end == arg) | *end | overflow | !blocking_factor)
 	  USAGE_ERROR ((0, 0, "%s: %s", quotearg_colon (arg),
 			_("Invalid blocking factor")));
+	record_size = blocking_factor * BLOCKSIZE;
       }
       break;
 
@@ -1711,9 +1673,9 @@ parse_opt (int key, char *arg, struct argp_state *state)
 
     case LEVEL_OPTION:
       {
-	uintmax_t u;
-	if (! (xstrtoumax (arg, nullptr, 10, &u, "") == LONGINT_OK
-	       && ckd_add (&incremental_level, u, 0)))
+	char *end;
+	incremental_level = stoint (arg, &end, NULL, 0, 1);
+	if ((end == arg) | *end)
 	  USAGE_ERROR ((0, 0, _("Invalid incremental level value")));
       }
       break;
@@ -1831,15 +1793,12 @@ parse_opt (int key, char *arg, struct argp_state *state)
       sparse_option = true;
       {
 	char *p;
-	tar_sparse_major = strtoul (arg, &p, 10);
-	if (*p)
-	  {
-	    if (*p != '.')
-	      USAGE_ERROR ((0, 0, _("Invalid sparse version value")));
-	    tar_sparse_minor = strtoul (p + 1, &p, 10);
-	    if (*p)
-	      USAGE_ERROR ((0, 0, _("Invalid sparse version value")));
-	  }
+	bool vmajor, vminor;
+	tar_sparse_major = stoint (arg, &p, &vmajor, 0, INTMAX_MAX);
+	if ((p != arg) & (*p == '.'))
+	  tar_sparse_minor = stoint (p + 1, &p, &vminor, 0, INTMAX_MAX);
+	if ((p == arg) | *p | vmajor | vminor)
+	  USAGE_ERROR ((0, 0, _("Invalid sparse version value")));
       }
       break;
 
@@ -1936,10 +1895,10 @@ parse_opt (int key, char *arg, struct argp_state *state)
 	      checkpoint_compile_action (".");
 	      arg++;
 	    }
-	  checkpoint_option = strtoul (arg, &p, 0);
-	  if (*p)
+	  checkpoint_option = stoint (arg, &p, NULL, 0, INTMAX_MAX);
+	  if (*p | (checkpoint_option <= 0))
 	    FATAL_ERROR ((0, 0,
-			  _("--checkpoint value is not an integer")));
+			  _("invalid --checkpoint value")));
 	}
       else
 	checkpoint_option = DEFAULT_CHECKPOINT;
@@ -2045,10 +2004,9 @@ parse_opt (int key, char *arg, struct argp_state *state)
 	occurrence_option = 1;
       else
 	{
-	  uintmax_t u;
-	  if (xstrtoumax (arg, 0, 10, &u, "") == LONGINT_OK)
-	    occurrence_option = u;
-	  else
+	  char *end;
+	  occurrence_option = stoint (arg, &end, NULL, 0, UINTMAX_MAX);
+	  if (*end)
 	    FATAL_ERROR ((0, 0, "%s: %s", quotearg_colon (arg),
 			  _("Invalid number")));
 	}
@@ -2112,7 +2070,8 @@ parse_opt (int key, char *arg, struct argp_state *state)
 	uintmax_t u;
 
 	if (! (xstrtoumax (arg, NULL, 10, &u, TAR_SIZE_SUFFIXES) == LONGINT_OK
-	       && !ckd_add (&record_size, u, 0)))
+	       && !ckd_add (&record_size, u, 0)
+	       && record_size <= min (SSIZE_MAX, SIZE_MAX)))
 	  USAGE_ERROR ((0, 0, "%s: %s", quotearg_colon (arg),
 			_("Invalid record size")));
 	if (record_size % BLOCKSIZE != 0)
@@ -2158,9 +2117,9 @@ parse_opt (int key, char *arg, struct argp_state *state)
 
     case STRIP_COMPONENTS_OPTION:
       {
-	uintmax_t u;
-	if (! (xstrtoumax (arg, 0, 10, &u, "") == LONGINT_OK
-	       && !ckd_add (&strip_name_components, u, 0)))
+	char *end;
+	strip_name_components = stoint (arg, &end, NULL, 0, SIZE_MAX);
+	if (*end)
 	  USAGE_ERROR ((0, 0, "%s: %s", quotearg_colon (arg),
 			_("Invalid number of elements")));
       }
@@ -2251,8 +2210,8 @@ parse_opt (int key, char *arg, struct argp_state *state)
 
     case ARGP_KEY_ERROR:
       if (args->loc->source == OPTS_FILE)
-	error (0, 0, _("%s:%lu: location of the error"), args->loc->name,
-	       (unsigned long) args->loc->line);
+	error (0, 0, _("%s:%jd: location of the error"), args->loc->name,
+	       args->loc->line);
       else if (args->loc->source == OPTS_ENVIRON)
 	error (0, 0, _("error parsing %s"), args->loc->name);
       exit (EX_USAGE);
@@ -2604,7 +2563,7 @@ decode_options (int argc, char **argv)
     {
       if (archive_format == GNU_FORMAT || archive_format == OLDGNU_FORMAT)
 	{
-	  size_t volume_label_max_len =
+	  int volume_label_max_len =
 	    (sizeof current_header->header.name
 	     - 1 /* for trailing '\0' */
 	     - (multi_volume_option
@@ -2615,11 +2574,9 @@ decode_options (int argc, char **argv)
 		: 0));
 	  if (volume_label_max_len < strlen (volume_label_option))
 	    USAGE_ERROR ((0, 0,
-			  ngettext ("%s: Volume label is too long (limit is %lu byte)",
-				    "%s: Volume label is too long (limit is %lu bytes)",
-				    volume_label_max_len),
+			  _("%s: Volume label length exceeds %d bytes"),
 			  quotearg_colon (volume_label_option),
-			  (unsigned long) volume_label_max_len));
+			  volume_label_max_len));
 	}
       /* else FIXME
 	 Label length in PAX format is limited by the volume size. */

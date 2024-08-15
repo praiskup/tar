@@ -51,28 +51,29 @@ static uid_t uid_from_header (const char *buf, size_t size);
 static intmax_t from_header (const char *, size_t, const char *,
 			     intmax_t, uintmax_t, bool, bool);
 
-/* Base 64 digits; see Internet RFC 2045 Table 1.  */
-static char const base_64_digits[64] =
-{
-  'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
-  'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
-  'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
-  'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
-  '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/'
+/* Table of base-64 digit values + 1, indexed by unsigned chars.
+   See Internet RFC 2045 Table 1.
+   Zero entries are for unsigned chars that are not base-64 digits.  */
+static char const base64_map[UCHAR_MAX + 1] = {
+  ['A'] =  0 + 1, ['B'] =  1 + 1, ['C'] =  2 + 1, ['D'] =  3 + 1,
+  ['E'] =  4 + 1, ['F'] =  5 + 1, ['G'] =  6 + 1, ['H'] =  7 + 1,
+  ['I'] =  8 + 1, ['J'] =  9 + 1, ['K'] = 10 + 1, ['L'] = 11 + 1,
+  ['M'] = 12 + 1, ['N'] = 13 + 1, ['O'] = 14 + 1, ['P'] = 15 + 1,
+  ['Q'] = 16 + 1, ['R'] = 17 + 1, ['S'] = 18 + 1, ['T'] = 19 + 1,
+  ['U'] = 20 + 1, ['V'] = 21 + 1, ['W'] = 22 + 1, ['X'] = 23 + 1,
+  ['Y'] = 24 + 1, ['Z'] = 25 + 1,
+  ['a'] = 26 + 1, ['b'] = 27 + 1, ['c'] = 28 + 1, ['d'] = 29 + 1,
+  ['e'] = 30 + 1, ['f'] = 31 + 1, ['g'] = 32 + 1, ['h'] = 33 + 1,
+  ['i'] = 34 + 1, ['j'] = 35 + 1, ['k'] = 36 + 1, ['l'] = 37 + 1,
+  ['m'] = 38 + 1, ['n'] = 39 + 1, ['o'] = 40 + 1, ['p'] = 41 + 1,
+  ['q'] = 42 + 1, ['r'] = 43 + 1, ['s'] = 44 + 1, ['t'] = 45 + 1,
+  ['u'] = 46 + 1, ['v'] = 47 + 1, ['w'] = 48 + 1, ['x'] = 49 + 1,
+  ['y'] = 50 + 1, ['z'] = 51 + 1,
+  ['0'] = 52 + 1, ['1'] = 53 + 1, ['2'] = 54 + 1, ['3'] = 55 + 1,
+  ['4'] = 56 + 1, ['5'] = 57 + 1, ['6'] = 58 + 1, ['7'] = 59 + 1,
+  ['8'] = 60 + 1, ['9'] = 61 + 1,
+  ['+'] = 62 + 1, ['/'] = 63 + 1,
 };
-
-/* Table of base-64 digit values indexed by unsigned chars.
-   The value is 64 for unsigned chars that are not base-64 digits.  */
-static char base64_map[UCHAR_MAX + 1];
-
-static void
-base64_init (void)
-{
-  int i;
-  memset (base64_map, 64, sizeof base64_map);
-  for (i = 0; i < 64; i++)
-    base64_map[(int) base_64_digits[i]] = i;
-}
 
 static char *
 decode_xform (char *file_name, void *data)
@@ -171,7 +172,6 @@ read_and (void (*do_something) (void))
   enum read_header prev_status;
   struct timespec mtime;
 
-  base64_init ();
   name_gather ();
 
   open_archive (ACCESS_READ);
@@ -337,18 +337,13 @@ list_archive (void)
 enum read_header
 tar_checksum (union block *header, bool silent)
 {
-  size_t i;
   int unsigned_sum = 0;		/* the POSIX one :-) */
   int signed_sum = 0;		/* the Sun one :-( */
-  int recorded_sum;
-  int parsed_sum;
-  char *p;
 
-  p = header->buffer;
-  for (i = sizeof *header; i-- != 0;)
+  for (int i = 0; i < sizeof *header; i++)
     {
-      unsigned_sum += (unsigned char) *p;
-      signed_sum += (signed char) (*p++);
+      unsigned char uc = header->buffer[i]; unsigned_sum += uc;
+      signed   char sc = header->buffer[i];   signed_sum += sc;
     }
 
   if (unsigned_sum == 0)
@@ -356,21 +351,19 @@ tar_checksum (union block *header, bool silent)
 
   /* Adjust checksum to count the "chksum" field as blanks.  */
 
-  for (i = sizeof header->header.chksum; i-- != 0;)
+  for (int i = 0; i < sizeof header->header.chksum; i++)
     {
-      unsigned_sum -= (unsigned char) header->header.chksum[i];
-      signed_sum -= (signed char) (header->header.chksum[i]);
+      unsigned char uc = header->header.chksum[i]; unsigned_sum -= uc;
+      signed   char sc = header->header.chksum[i];   signed_sum -= sc;
     }
   unsigned_sum += ' ' * sizeof header->header.chksum;
-  signed_sum += ' ' * sizeof header->header.chksum;
+  signed_sum   += ' ' * sizeof header->header.chksum;
 
-  parsed_sum = from_header (header->header.chksum,
-			    sizeof header->header.chksum, 0,
-			    0, INT_MAX, true, silent);
-  if (parsed_sum < 0)
+  int recorded_sum = from_header (header->header.chksum,
+				  sizeof header->header.chksum, 0,
+				  0, INT_MAX, true, silent);
+  if (recorded_sum < 0)
     return HEADER_FAILURE;
-
-  recorded_sum = parsed_sum;
 
   if (unsigned_sum != recorded_sum && signed_sum != recorded_sum)
     return HEADER_FAILURE;
@@ -837,7 +830,6 @@ from_header (char const *where0, size_t digs, char const *type,
       /* Parse base-64 output produced only by tar test versions
 	 1.13.6 (1999-08-11) through 1.13.11 (1999-08-23).
 	 Support for this will be withdrawn in future releases.  */
-      int dig;
       if (!silent)
 	{
 	  static bool warned_once;
@@ -848,9 +840,12 @@ from_header (char const *where0, size_t digs, char const *type,
 	    }
 	}
       negative = *where++ == '-';
-      while (where != lim
-	     && (dig = base64_map[(unsigned char) *where]) < 64)
+      while (where != lim)
 	{
+	  unsigned char uc = *where;
+	  char dig = base64_map[uc];
+	  if (dig <= 0)
+	    break;
 	  if (ckd_mul (&value, value, 64))
 	    {
 	      if (type && !silent)
@@ -859,7 +854,7 @@ from_header (char const *where0, size_t digs, char const *type,
 			quote_mem (where0, digs), type));
 	      return -1;
 	    }
-	  value |= dig;
+	  value |= dig - 1;
 	  where++;
 	}
     }
@@ -879,7 +874,8 @@ from_header (char const *where0, size_t digs, char const *type,
       value = (*where++ & ((1 << (LG_256 - 2)) - 1)) - signbit;
       for (;;)
 	{
-	  value = (value << LG_256) + (unsigned char) *where++;
+	  unsigned char uc = *where++;
+	  value = (value << LG_256) + uc;
 	  if (where == lim)
 	    break;
 	  if (((value << LG_256 >> LG_256) | topbits) != value)
@@ -1431,7 +1427,6 @@ skim_member (bool must_copy)
 void
 test_archive_label (void)
 {
-  base64_init ();
   name_gather ();
 
   open_archive (ACCESS_READ);

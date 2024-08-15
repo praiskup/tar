@@ -1047,28 +1047,32 @@ dump_regular_file (int fd, struct tar_stat_info *st)
   mv_begin_write (st->file_name, st->stat.st_size, st->stat.st_size);
   while (size_left > 0)
     {
-      size_t bufsize, count;
-
       blk = find_next_block ();
 
-      bufsize = available_space_after (blk);
+      idx_t bufsize = available_space_after (blk);
 
       if (size_left < bufsize)
 	{
 	  /* Last read -- zero out area beyond.  */
 	  bufsize = size_left;
-	  count = bufsize % BLOCKSIZE;
-	  if (count)
-	    memset (blk->buffer + size_left, 0, BLOCKSIZE - count);
+	  idx_t beyond = bufsize % BLOCKSIZE;
+	  if (beyond)
+	    memset (blk->buffer + size_left, 0, BLOCKSIZE - beyond);
 	}
 
-      count = (fd <= 0) ? bufsize : blocking_read (fd, blk->buffer, bufsize);
-      if (count == SAFE_READ_ERROR)
+      ptrdiff_t count;
+      if (fd <= 0)
+	count = bufsize;
+      else
 	{
-	  read_diag_details (st->orig_file_name,
-	                     st->stat.st_size - size_left, bufsize);
-	  pad_archive (size_left);
-	  return dump_status_short;
+	  count = blocking_read (fd, blk->buffer, bufsize);
+	  if (count < 0)
+	    {
+	      read_diag_details (st->orig_file_name,
+				 st->stat.st_size - size_left, bufsize);
+	      pad_archive (size_left);
+	      return dump_status_short;
+	    }
 	}
       size_left -= count;
       set_next_block_after (blk + (bufsize - 1) / BLOCKSIZE);

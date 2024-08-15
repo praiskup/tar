@@ -23,7 +23,7 @@
 #include <rmt.h>
 
 static union block *new_record;
-static int new_blocks;
+static idx_t new_blocks;
 static bool acting_as_filter;
 
 /* The number of records skipped at the start of the archive, when
@@ -363,11 +363,11 @@ delete_archive_members (void)
 	  /* Write the end of tape.  FIXME: we can't use write_eot here,
 	     as it gets confused when the input is at end of file.  */
 
-	  int total_zero_blocks = 0;
+	  idx_t total_zero_blocks = 0;
 
 	  do
 	    {
-	      int zero_blocks = blocking_factor - new_blocks;
+	      idx_t zero_blocks = blocking_factor - new_blocks;
 	      memset (new_record + new_blocks, 0, BLOCKSIZE * zero_blocks);
 	      total_zero_blocks += zero_blocks;
 	      write_record (total_zero_blocks < 2);

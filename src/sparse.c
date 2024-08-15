@@ -216,7 +216,6 @@ sparse_scan_file_raw (struct tar_sparse_file *file)
   struct tar_stat_info *st = file->stat_info;
   int fd = file->fd;
   char buffer[BLOCKSIZE];
-  size_t count = 0;
   off_t offset = 0;
   struct sp_array sp = {0, 0};
 
@@ -225,9 +224,16 @@ sparse_scan_file_raw (struct tar_sparse_file *file)
   if (!tar_sparse_scan (file, scan_begin, NULL))
     return false;
 
-  while ((count = blocking_read (fd, buffer, sizeof buffer)) != 0
-         && count != SAFE_READ_ERROR)
+  while (true)
     {
+      ptrdiff_t count = blocking_read (fd, buffer, sizeof buffer);
+      if (count <= 0)
+	{
+	  if (count < 0)
+	    read_diag_details (st->orig_file_name, offset, sizeof buffer);
+	  break;
+	}
+
       /* Analyze the block.  */
       if (zero_block_p (buffer, count))
         {
@@ -258,7 +264,6 @@ sparse_scan_file_raw (struct tar_sparse_file *file)
     sp.offset = offset;
 
   sparse_add_map (st, &sp);
-  st->archive_file_size += count;
   return tar_sparse_scan (file, scan_end, NULL);
 }
 
@@ -489,7 +494,6 @@ sparse_extract_region (struct tar_sparse_file *file, size_t i)
     }
   else while (write_size > 0)
     {
-      size_t count;
       size_t wrbytes = (write_size > BLOCKSIZE) ? BLOCKSIZE : write_size;
       union block *blk = find_next_block ();
       if (!blk)
@@ -499,7 +503,7 @@ sparse_extract_region (struct tar_sparse_file *file, size_t i)
 	}
       set_next_block_after (blk);
       file->dumped_size += BLOCKSIZE;
-      count = blocking_write (file->fd, blk->buffer, wrbytes);
+      idx_t count = blocking_write (file->fd, blk->buffer, wrbytes);
       write_size -= count;
       mv_size_left (file->stat_info->archive_file_size - file->dumped_size);
       file->offset += count;
@@ -1249,20 +1253,10 @@ pax_dump_header (struct tar_sparse_file *file)
 static bool
 decode_num (uintmax_t *num, char const *arg, uintmax_t maxval)
 {
-  uintmax_t u;
   char *arg_lim;
-
-  if (!c_isdigit (*arg))
-    return false;
-
-  errno = 0;
-  u = strtoumax (arg, &arg_lim, 10);
-
-  if (! (u <= maxval && errno != ERANGE) || *arg_lim)
-    return false;
-
-  *num = u;
-  return true;
+  bool overflow;
+  *num = stoint (arg, &arg_lim, &overflow, 0, maxval);
+  return ! ((arg_lim == arg) | *arg_lim | overflow);
 }
 
 static bool
