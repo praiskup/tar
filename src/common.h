@@ -697,7 +697,7 @@ represent_uintmax (uintmax_t n)
     }
 }
 
-enum { UINTMAX_STRSIZE_BOUND = INT_BUFSIZE_BOUND (intmax_t) };
+enum { UINTMAX_STRSIZE_BOUND = INT_BUFSIZE_BOUND (uintmax_t) };
 enum { SYSINT_BUFSIZE =
 	 max (UINTMAX_STRSIZE_BOUND, INT_BUFSIZE_BOUND (intmax_t)) };
 char *sysinttostr (uintmax_t, intmax_t, uintmax_t, char buf[SYSINT_BUFSIZE]);
