@@ -456,12 +456,12 @@ open_compressed_archive (void)
             {
             case ct_tar:
               if (shortfile)
-                ERROR ((0, 0, _("This does not look like a tar archive")));
+		paxerror (0, _("This does not look like a tar archive"));
               return archive;
 
             case ct_none:
               if (shortfile)
-                ERROR ((0, 0, _("This does not look like a tar archive")));
+		paxerror (0, _("This does not look like a tar archive"));
               set_compression_program_by_suffix (archive_name_array[0], NULL,
 						 false);
               if (!use_compress_program_option)
@@ -680,8 +680,7 @@ check_tty (enum access_mode mode)
   if (strcmp (archive_name_array[0], "-") == 0
       && isatty (mode == ACCESS_READ ? STDIN_FILENO : STDOUT_FILENO))
     {
-      FATAL_ERROR ((0, 0,
-		    mode == ACCESS_READ
+      paxfatal (0, (mode == ACCESS_READ
 		    ? _("Refusing to read archive contents from terminal "
 			"(missing -f option?)")
 		    : _("Refusing to write archive contents to terminal "
@@ -726,10 +725,10 @@ _open_archive (enum access_mode wanted_access)
   bool backed_up_flag = false;
 
   if (record_size == 0)
-    FATAL_ERROR ((0, 0, _("Invalid value for record_size")));
+    paxfatal (0, 0, _("Invalid value for record_size"));
 
   if (archive_names == 0)
-    FATAL_ERROR ((0, 0, _("No archive name given")));
+    paxfatal (0, _("No archive name given"));
 
   tar_stat_destroy (&current_stat_info);
 
@@ -772,7 +771,7 @@ _open_archive (enum access_mode wanted_access)
     {
       read_full_records = true; /* could be a pipe, be safe */
       if (verify_option)
-        FATAL_ERROR ((0, 0, _("Cannot verify stdin/stdout archive")));
+	paxfatal (0, _("Cannot verify stdin/stdout archive"));
 
       switch (wanted_access)
         {
@@ -784,11 +783,10 @@ _open_archive (enum access_mode wanted_access)
             archive = STDIN_FILENO;
             type = check_compressed_archive (&shortfile);
             if (type != ct_tar && type != ct_none)
-              FATAL_ERROR ((0, 0,
-                            _("Archive is compressed. Use %s option"),
-                            compress_option (type)));
+	      paxfatal (0, _("Archive is compressed. Use %s option"),
+			compress_option (type));
             if (shortfile)
-              ERROR ((0, 0, _("This does not look like a tar archive")));
+	      paxerror (0, _("This does not look like a tar archive"));
           }
           break;
 
@@ -840,8 +838,7 @@ _open_archive (enum access_mode wanted_access)
             break;
 
           default:
-            FATAL_ERROR ((0, 0,
-                          _("Cannot update compressed archives")));
+	    paxfatal (0, _("Cannot update compressed archives"));
           }
         break;
       }
@@ -928,13 +925,13 @@ archive_read_error (void)
   read_error (*archive_name_cursor);
 
   if (record_start_block == 0)
-    FATAL_ERROR ((0, 0, _("At beginning of tape, quitting now")));
+    paxfatal (0, _("At beginning of tape, quitting now"));
 
   /* Read error in mid archive.  We retry up to READ_ERROR_MAX times and
      then give up on reading the archive.  */
 
   if (read_error_count++ > READ_ERROR_MAX)
-    FATAL_ERROR ((0, 0, _("Too many errors, quitting")));
+    paxfatal (0, _("Too many errors, quitting"));
   return;
 }
 
@@ -966,11 +963,11 @@ short_read (size_t status)
       && archive_is_dev ())
     {
       idx_t rsize = status / BLOCKSIZE;
-      WARN ((0, 0,
-	     ngettext ("Record size = %td block",
-		       "Record size = %td blocks",
-		       rsize),
-	     rsize));
+      paxwarn (0,
+	       ngettext ("Record size = %td block",
+			 "Record size = %td blocks",
+			 rsize),
+	       rsize);
     }
 
   while (left % BLOCKSIZE != 0
@@ -987,11 +984,10 @@ short_read (size_t status)
         {
           idx_t rest = record_size - left;
 
-          FATAL_ERROR ((0, 0,
-                        ngettext ("Unaligned block (%td byte) in archive",
-                                  "Unaligned block (%td bytes) in archive",
+	  paxfatal (0, ngettext ("Unaligned block (%td byte) in archive",
+				 "Unaligned block (%td bytes) in archive",
                                   rest),
-                        rest));
+		    rest);
         }
 
       left -= status;
@@ -1064,8 +1060,8 @@ backspace_output (void)
       {
         /* Lseek failed.  Try a different method.  */
 
-        WARN ((0, 0,
-               _("Cannot backspace archive file; it may be unreadable without -i")));
+	paxwarn (0, _("Cannot backspace archive file;"
+		      " it may be unreadable without -i"));
 
         /* Replace the first part of the record with NULs.  */
 
@@ -1102,7 +1098,7 @@ seek_archive (off_t size)
     return offset;
 
   if (offset % record_size)
-    FATAL_ERROR ((0, 0, _("rmtlseek not stopped at a record boundary")));
+    paxfatal (0, _("rmtlseek not stopped at a record boundary"));
 
   /* Convert to number of records */
   offset /= BLOCKSIZE;
@@ -1163,8 +1159,8 @@ init_volume_number (void)
     {
       if (fscanf (file, "%d", &global_volno) != 1
           || global_volno < 0)
-        FATAL_ERROR ((0, 0, _("%s: contains invalid volume number"),
-                      quotearg_colon (volno_file_option)));
+	paxfatal (0, _("%s: contains invalid volume number"),
+		  quotearg_colon (volno_file_option));
       if (ferror (file))
         read_error (volno_file_option);
       if (fclose (file) != 0)
@@ -1198,7 +1194,7 @@ increase_volume_number (void)
 {
   global_volno++;
   if (global_volno < 0)
-    FATAL_ERROR ((0, 0, _("Volume number overflow")));
+    paxfatal (0, _("Volume number overflow"));
   volno++;
 }
 
@@ -1219,12 +1215,12 @@ change_tape_menu (FILE *read_file)
 
       if (getline (&input_buffer, &size, read_file) <= 0)
         {
-          WARN ((0, 0, _("EOF where user reply was expected")));
+	  paxwarn (0, _("EOF where user reply was expected"));
 
           if (subcommand_option != EXTRACT_SUBCOMMAND
               && subcommand_option != LIST_SUBCOMMAND
               && subcommand_option != DIFF_SUBCOMMAND)
-            WARN ((0, 0, _("WARNING: Archive is incomplete")));
+	    paxwarn (0, _("WARNING: Archive is incomplete"));
 
           fatal_exit ();
         }
@@ -1251,12 +1247,12 @@ change_tape_menu (FILE *read_file)
         case 'q':
           /* Quit.  */
 
-          WARN ((0, 0, _("No new volume; exiting.\n")));
+	  paxwarn (0, _("No new volume; exiting.\n"));
 
           if (subcommand_option != EXTRACT_SUBCOMMAND
               && subcommand_option != LIST_SUBCOMMAND
               && subcommand_option != DIFF_SUBCOMMAND)
-            WARN ((0, 0, _("WARNING: Archive is incomplete")));
+	    paxwarn (0, _("WARNING: Archive is incomplete"));
 
           fatal_exit ();
 
@@ -1347,8 +1343,7 @@ new_volume (enum access_mode mode)
           if (volno_file_option)
             closeout_volume_number ();
           if (sys_exec_info_script (archive_name_cursor, global_volno+1))
-            FATAL_ERROR ((0, 0, _("%s command failed"),
-                          quote (info_script_option)));
+	    paxfatal (0, _("%s command failed"), quote (info_script_option));
         }
       else
         change_tape_menu (read_file);
@@ -1409,7 +1404,7 @@ read_header0 (struct tar_stat_info *info)
       set_next_block_after (current_header);
       return true;
     }
-  ERROR ((0, 0, _("This does not look like a tar archive")));
+  paxerror (0, _("This does not look like a tar archive"));
   return false;
 }
 
@@ -1446,7 +1441,7 @@ try_new_volume (void)
   header = find_next_block ();
   if (!header)
     {
-      WARN ((0, 0, _("This does not look like a tar archive")));
+      paxwarn (0, _("This does not look like a tar archive"));
       return false;
     }
 
@@ -1458,7 +1453,7 @@ try_new_volume (void)
 	if (read_header (&header, &dummy, read_header_x_global)
 	    != HEADER_SUCCESS_EXTENDED)
 	  {
-	    WARN ((0, 0, _("This does not look like a tar archive")));
+	    paxwarn (0, _("This does not look like a tar archive"));
 	    return false;
 	  }
 
@@ -1487,7 +1482,7 @@ try_new_volume (void)
 	    break;
 
 	  default:
-	    WARN ((0, 0, _("This does not look like a tar archive")));
+	    paxwarn (0, _("This does not look like a tar archive"));
 	    return false;
 	  }
         break;
@@ -1522,8 +1517,8 @@ try_new_volume (void)
     {
       if (!continued_file_name)
 	{
-	  WARN ((0, 0, _("%s is not continued on this volume"),
-		 quote (bufmap_head->file_name)));
+	  paxwarn (0, _("%s is not continued on this volume"),
+		   quote (bufmap_head->file_name));
 	  return false;
 	}
 
@@ -1533,13 +1528,14 @@ try_new_volume (void)
               && strlen (bufmap_head->file_name) >= NAME_FIELD_SIZE
               && strncmp (continued_file_name, bufmap_head->file_name,
                           NAME_FIELD_SIZE) == 0)
-            WARN ((0, 0,
- _("%s is possibly continued on this volume: header contains truncated name"),
-                   quote (bufmap_head->file_name)));
+	    paxwarn (0,
+		     _("%s is possibly continued on this volume:"
+		       " header contains truncated name"),
+		     quote (bufmap_head->file_name));
           else
             {
-              WARN ((0, 0, _("%s is not continued on this volume"),
-                     quote (bufmap_head->file_name)));
+	      paxwarn (0, _("%s is not continued on this volume"),
+		       quote (bufmap_head->file_name));
               return false;
             }
         }
@@ -1548,21 +1544,21 @@ try_new_volume (void)
       if (ckd_add (&s, continued_file_size, continued_file_offset)
 	  || s != bufmap_head->sizetotal)
         {
-	  WARN ((0, 0, _("%s is the wrong size (%jd != %ju + %ju)"),
-                 quote (continued_file_name),
-		 intmax (bufmap_head->sizetotal),
-		 uintmax (continued_file_size),
-		 uintmax (continued_file_offset)));
+	  paxwarn (0, _("%s is the wrong size (%jd != %ju + %ju)"),
+		   quote (continued_file_name),
+		   intmax (bufmap_head->sizetotal),
+		   uintmax (continued_file_size),
+		   uintmax (continued_file_offset));
           return false;
         }
 
       if (bufmap_head->sizetotal - bufmap_head->sizeleft
 	  != continued_file_offset)
         {
-	  WARN ((0, 0, _("This volume is out of sequence (%jd - %jd != %ju)"),
-		 intmax (bufmap_head->sizetotal),
-		 intmax (bufmap_head->sizeleft),
-		 uintmax (continued_file_offset)));
+	  paxwarn (0, _("This volume is out of sequence (%jd - %jd != %ju)"),
+		   intmax (bufmap_head->sizetotal),
+		   intmax (bufmap_head->sizeleft),
+		   uintmax (continued_file_offset));
           return false;
         }
     }
@@ -1624,8 +1620,8 @@ match_volume_label (void)
       union block *label = find_next_block ();
 
       if (!label)
-	FATAL_ERROR ((0, 0, _("Archive not labeled to match %s"),
-		      quote (volume_label_option)));
+	paxfatal (0, _("Archive not labeled to match %s"),
+		  quote (volume_label_option));
       if (label->header.typeflag == GNUTYPE_VOLHDR)
 	{
 	  ASSIGN_STRING_N (&volume_label, label->header.name);
@@ -1642,13 +1638,13 @@ match_volume_label (void)
     }
 
   if (!volume_label)
-    FATAL_ERROR ((0, 0, _("Archive not labeled to match %s"),
-                  quote (volume_label_option)));
+    paxfatal (0, _("Archive not labeled to match %s"),
+	      quote (volume_label_option));
 
   if (!check_label_pattern (volume_label))
-    FATAL_ERROR ((0, 0, _("Volume %s does not match %s"),
-                  quote_n (0, volume_label),
-                  quote_n (1, volume_label_option)));
+    paxfatal (0, _("Volume %s does not match %s"),
+	      quote_n (0, volume_label),
+	      quote_n (1, volume_label_option));
 }
 
 /* Mark the archive with volume label STR. */
@@ -1737,9 +1733,10 @@ gnu_add_multi_volume_header (struct bufmap *map)
 
   if (len > NAME_FIELD_SIZE)
     {
-      WARN ((0, 0,
-	     _("%s: file name too long to be stored in a GNU multivolume header, truncated"),
-	     quotearg_colon (map->file_name)));
+      paxwarn (0,
+	       _("%s: file name too long to be stored"
+		 " in a GNU multivolume header, truncated"),
+	       quotearg_colon (map->file_name));
       len = NAME_FIELD_SIZE;
     }
 
@@ -1931,7 +1928,7 @@ _gnu_flush_write (size_t buffer_level)
 
   if (status % BLOCKSIZE)
     {
-      ERROR ((0, 0, _("write did not end on a block boundary")));
+      paxerror (0, _("write did not end on a block boundary"));
       archive_write_error (status);
     }
 

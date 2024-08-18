@@ -798,9 +798,9 @@ maybe_backup_file (const char *file_name, bool this_is_the_archive)
     {
       /* The backup operation failed.  */
       int e = errno;
-      ERROR ((0, e, _("%s: Cannot rename to %s"),
-	      quotearg_colon (before_backup_name),
-	      quote_n (1, after_backup_name)));
+      paxerror (e, _("%s: Cannot rename to %s"),
+		quotearg_colon (before_backup_name),
+		quote_n (1, after_backup_name));
       assign_null (&after_backup_name);
       return false;
     }
@@ -817,9 +817,9 @@ undo_last_backup (void)
 	  != 0)
 	{
 	  int e = errno;
-	  ERROR ((0, e, _("%s: Cannot rename to %s"),
-		  quotearg_colon (after_backup_name),
-		  quote_n (1, before_backup_name)));
+	  paxerror (e, _("%s: Cannot rename to %s"),
+		    quotearg_colon (after_backup_name),
+		    quote_n (1, before_backup_name));
 	}
       if (verbose_option)
 	fprintf (stdlis, _("Renaming %s back to %s\n"),
@@ -1201,9 +1201,8 @@ file_removed_diag (const char *name, bool top_level,
 {
   if (!top_level && errno == ENOENT)
     {
-      WARNOPT (WARN_FILE_REMOVED,
-	       (0, 0, _("%s: File removed before we read it"),
-		quotearg_colon (name)));
+      warnopt (WARN_FILE_REMOVED, 0, _("%s: File removed before we read it"),
+	       quotearg_colon (name));
       set_exit_status (TAREXIT_DIFFERS);
     }
   else

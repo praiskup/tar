@@ -1027,12 +1027,8 @@ extern int warning_option;
 
 #define WARNING_ENABLED(opt) (warning_option & (opt))
 
-#define WARNOPT(opt,args)			\
-  do						\
-    {						\
-      if (WARNING_ENABLED (opt)) WARN (args);	\
-    }						\
-  while (0)
+extern void warnopt (int, int, char const *, ...)
+  ATTRIBUTE_COLD ATTRIBUTE_FORMAT ((printf, 3, 4));
 
 /* Module unlink.c */
 

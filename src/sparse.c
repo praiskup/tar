@@ -360,8 +360,7 @@ sparse_scan_file (struct tar_sparse_file *file)
         return true;
 #else
       if (hole_detection == HOLE_DETECTION_SEEK)
-	WARN((0, 0,
-	      _("\"seek\" hole detection is not supported, using \"raw\".")));
+	paxwarn (0, _("\"seek\" hole detection is not supported, using \"raw\"."));
       /* fall back to "raw" for this and all other files */
       hole_detection = HOLE_DETECTION_RAW;
 #endif
@@ -454,13 +453,12 @@ sparse_dump_region (struct tar_sparse_file *file, size_t i)
 		     + file->stat_info->sparse_map[i].numbytes
 		     - bytes_left);
 
-	      WARNOPT (WARN_FILE_SHRANK,
-		       (0, 0,
-			ngettext ("%s: File shrank by %jd byte; padding with zeros",
-				  "%s: File shrank by %jd bytes; padding with zeros",
-				  n),
-			quotearg_colon (file->stat_info->orig_file_name),
-			intmax (n)));
+	      warnopt (WARN_FILE_SHRANK, 0,
+		       ngettext ("%s: File shrank by %jd byte; padding with zeros",
+				 "%s: File shrank by %jd bytes; padding with zeros",
+				 n),
+		       quotearg_colon (file->stat_info->orig_file_name),
+		       intmax (n));
 	      if (! ignore_failed_read_option)
 		set_exit_status (TAREXIT_DIFFERS);
 	      return false;
@@ -498,7 +496,7 @@ sparse_extract_region (struct tar_sparse_file *file, size_t i)
       union block *blk = find_next_block ();
       if (!blk)
 	{
-	  ERROR ((0, 0, _("Unexpected EOF in archive")));
+	  paxerror (0, _("Unexpected EOF in archive"));
 	  return false;
 	}
       set_next_block_after (blk);
@@ -684,7 +682,7 @@ check_data_region (struct tar_sparse_file *file, size_t i)
       union block *blk = find_next_block ();
       if (!blk)
 	{
-	  ERROR ((0, 0, _("Unexpected EOF in archive")));
+	  paxerror (0, _("Unexpected EOF in archive"));
 	  return false;
 	}
       set_next_block_after (blk);
@@ -843,7 +841,7 @@ oldgnu_get_sparse_info (struct tar_sparse_file *file)
       h = find_next_block ();
       if (!h)
 	{
-	  ERROR ((0, 0, _("Unexpected EOF in archive")));
+	  paxerror (0, _("Unexpected EOF in archive"));
 	  return false;
 	}
       set_next_block_after (h);
@@ -853,8 +851,8 @@ oldgnu_get_sparse_info (struct tar_sparse_file *file)
 
   if (rc == add_fail)
     {
-      ERROR ((0, 0, _("%s: invalid sparse archive member"),
-	      file->stat_info->orig_file_name));
+      paxerror (0, _("%s: invalid sparse archive member"),
+		file->stat_info->orig_file_name);
       return false;
     }
   return true;
@@ -975,7 +973,7 @@ star_get_sparse_info (struct tar_sparse_file *file)
       h = find_next_block ();
       if (!h)
 	{
-	  ERROR ((0, 0, _("Unexpected EOF in archive")));
+	  paxerror (0, _("Unexpected EOF in archive"));
 	  return false;
 	}
       set_next_block_after (h);
@@ -986,8 +984,8 @@ star_get_sparse_info (struct tar_sparse_file *file)
 
   if (rc == add_fail)
     {
-      ERROR ((0, 0, _("%s: invalid sparse archive member"),
-	      file->stat_info->orig_file_name));
+      paxerror (0, _("%s: invalid sparse archive member"),
+		file->stat_info->orig_file_name);
       return false;
     }
   return true;
@@ -1279,8 +1277,8 @@ pax_decode_header (struct tar_sparse_file *file)
      {                                                             \
        if (dst == buf + UINTMAX_STRSIZE_BOUND -1)                  \
          {                                                         \
-           ERROR ((0, 0, _("%s: numeric overflow in sparse archive member"), \
-	          file->stat_info->orig_file_name));               \
+	   paxerror (0, _("%s: numeric overflow in sparse archive member"), \
+		     file->stat_info->orig_file_name);		   \
            return false;                                           \
          }                                                         \
        if (src == endp)                                            \
@@ -1288,7 +1286,7 @@ pax_decode_header (struct tar_sparse_file *file)
 	   set_next_block_after (b);                               \
            b = find_next_block ();                                 \
            if (!b)                                                 \
-             FATAL_ERROR ((0, 0, _("Unexpected EOF in archive"))); \
+	     paxfatal (0, _("Unexpected EOF in archive"));	   \
            src = b->buffer;                                        \
 	   endp = b->buffer + BLOCKSIZE;                           \
 	 }                                                         \
@@ -1302,13 +1300,13 @@ pax_decode_header (struct tar_sparse_file *file)
       set_next_block_after (current_header);
       blk = find_next_block ();
       if (!blk)
-        FATAL_ERROR ((0, 0, _("Unexpected EOF in archive")));
+	paxfatal (0, _("Unexpected EOF in archive"));
       p = blk->buffer;
       COPY_BUF (blk,nbuf,p);
       if (!decode_num (&u, nbuf, SIZE_MAX))
 	{
-	  ERROR ((0, 0, _("%s: malformed sparse archive member"),
-		  file->stat_info->orig_file_name));
+	  paxerror (0, _("%s: malformed sparse archive member"),
+		    file->stat_info->orig_file_name);
 	  return false;
 	}
       file->stat_info->sparse_map_size = u;
@@ -1322,8 +1320,8 @@ pax_decode_header (struct tar_sparse_file *file)
 	  COPY_BUF (blk,nbuf,p);
 	  if (!decode_num (&u, nbuf, TYPE_MAXIMUM (off_t)))
 	    {
-	      ERROR ((0, 0, _("%s: malformed sparse archive member"),
-		      file->stat_info->orig_file_name));
+	      paxerror (0, _("%s: malformed sparse archive member"),
+			file->stat_info->orig_file_name);
 	      return false;
 	    }
 	  sp.offset = u;
@@ -1333,8 +1331,8 @@ pax_decode_header (struct tar_sparse_file *file)
 	      || ckd_add (&size, sp.offset, u)
 	      || file->stat_info->stat.st_size < size)
 	    {
-	      ERROR ((0, 0, _("%s: malformed sparse archive member"),
-		      file->stat_info->orig_file_name));
+	      paxerror (0, _("%s: malformed sparse archive member"),
+			file->stat_info->orig_file_name);
 	      return false;
 	    }
 	  sp.numbytes = u;

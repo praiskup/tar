@@ -300,11 +300,10 @@ xattrs__acls_set (struct tar_stat_info const *st,
          FILE_NAME may already have inherited default acls from parent
          directory;  clean them up. */
       if (acl_delete_def_file_at (chdir_fd, file_name))
-        WARNOPT (WARN_XATTR_WRITE,
-                (0, errno,
+	warnopt (WARN_XATTR_WRITE, errno,
                  _("acl_delete_def_file_at: Cannot drop default POSIX ACLs "
                    "for file '%s'"),
-                 file_name));
+		 file_name);
       return;
     }
   else
@@ -318,10 +317,9 @@ xattrs__acls_set (struct tar_stat_info const *st,
 
   if (acl_set_file_at (chdir_fd, file_name, type, acl) < 0)
     /* warn even if filesystem does not support acls */
-    WARNOPT (WARN_XATTR_WRITE,
-	     (0, errno,
-	      _ ("acl_set_file_at: Cannot set POSIX ACLs for file '%s'"),
-	      file_name));
+    warnopt (WARN_XATTR_WRITE, errno,
+	     _ ("acl_set_file_at: Cannot set POSIX ACLs for file '%s'"),
+	     file_name);
 
   acl_free (acl);
 }
@@ -373,7 +371,8 @@ acls_get_text (int parentfd, const char *file_name, acl_type_t type,
       static int warned;
       if (!warned)
 	{
-	  WARN ((0, 0, _("--numeric-owner is ignored for ACLs: libacl is not available")));
+	  paxwarn (0, _("--numeric-owner is ignored for ACLs:"
+			" libacl is not available"));
 	  warned = 1;
 	}
 #endif
@@ -456,7 +455,7 @@ xattrs_acls_get (MAYBE_UNUSED int parentfd, MAYBE_UNUSED char const *file_name,
 #ifndef HAVE_POSIX_ACLS
       static int done = 0;
       if (!done)
-        WARN ((0, 0, _("POSIX ACL support is not available")));
+	paxwarn (0, _("POSIX ACL support is not available"));
       done = 1;
 #else
       int err = file_has_acl_at (parentfd, file_name, &st->stat);
@@ -486,7 +485,7 @@ xattrs_acls_set (MAYBE_UNUSED struct tar_stat_info const *st,
 #ifndef HAVE_POSIX_ACLS
       static int done = 0;
       if (!done)
-        WARN ((0, 0, _("POSIX ACL support is not available")));
+	paxwarn (0, _("POSIX ACL support is not available"));
       done = 1;
 #else
       xattrs__acls_set (st, file_name, ACL_TYPE_ACCESS,
@@ -550,7 +549,7 @@ xattrs_xattrs_get (int parentfd, char const *file_name,
 #ifndef HAVE_XATTRS
       static int done = 0;
       if (!done)
-        WARN ((0, 0, _("XATTR support is not available")));
+	paxwarn (0, _("XATTR support is not available"));
       done = 1;
 #else
       static size_t xsz = 1024;
@@ -631,10 +630,9 @@ xattrs__fd_set (char const *file_name, char typeflag,
         }
 
       if (ret < 0)
-        WARNOPT (WARN_XATTR_WRITE,
-		 (0, errno,
-		  _("%s: Cannot set '%s' extended attribute for file '%s'"),
-		  sysname, attr, file_name));
+	warnopt (WARN_XATTR_WRITE, errno,
+		 _("%s: Cannot set '%s' extended attribute for file '%s'"),
+		 sysname, attr, file_name);
     }
 }
 #endif
@@ -650,7 +648,7 @@ xattrs_selinux_get (MAYBE_UNUSED int parentfd, MAYBE_UNUSED char const *file_nam
 #if HAVE_SELINUX_SELINUX_H != 1
       static int done = 0;
       if (!done)
-        WARN ((0, 0, _("SELinux support is not available")));
+	paxwarn (0, _("SELinux support is not available"));
       done = 1;
 #else
       int result = (fd
@@ -672,7 +670,7 @@ xattrs_selinux_set (MAYBE_UNUSED struct tar_stat_info const *st,
 #if HAVE_SELINUX_SELINUX_H != 1
       static int done = 0;
       if (!done)
-        WARN ((0, 0, _("SELinux support is not available")));
+	paxwarn (0, _("SELinux support is not available"));
       done = 1;
 #else
       const char *sysname = "setfilecon";
@@ -693,10 +691,9 @@ xattrs_selinux_set (MAYBE_UNUSED struct tar_stat_info const *st,
         }
 
       if (ret < 0)
-        WARNOPT (WARN_XATTR_WRITE,
-		 (0, errno,
-		  _("%s: Cannot set SELinux context for file '%s'"),
-		  sysname, file_name));
+	warnopt (WARN_XATTR_WRITE, errno,
+		 _("%s: Cannot set SELinux context for file '%s'"),
+		 sysname, file_name);
 #endif
     }
 }
@@ -754,7 +751,7 @@ xattrs_xattrs_set (struct tar_stat_info const *st,
 #ifndef HAVE_XATTRS
       static int done = 0;
       if (!done)
-        WARN ((0, 0, _("XATTR support is not available")));
+	paxwarn (0, _("XATTR support is not available"));
       done = 1;
 #else
       size_t i;

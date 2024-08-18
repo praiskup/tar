@@ -200,17 +200,16 @@ parse_transform_expr (const char *expr)
 		  break;
 		}
 	      if (parse_xform_flags (&transform_flags, *expr))
-		USAGE_ERROR ((0, 0, _("Unknown transform flag: %c"),
-			      *expr));
+		paxusage (_("Unknown transform flag: %c"), *expr);
 	    }
 	  return expr;
 	}
-      USAGE_ERROR ((0, 0, _("Invalid transform expression")));
+      paxusage (_("Invalid transform expression"));
     }
 
   delim = expr[1];
   if (!delim)
-    USAGE_ERROR ((0, 0, _("Invalid transform expression")));
+    paxusage (_("Invalid transform expression"));
 
   /* Scan regular expression */
   for (i = 2; expr[i] && expr[i] != delim; i++)
@@ -218,7 +217,7 @@ parse_transform_expr (const char *expr)
       i++;
 
   if (expr[i] != delim)
-    USAGE_ERROR ((0, 0, _("Invalid transform expression")));
+    paxusage (_("Invalid transform expression"));
 
   /* Scan replacement expression */
   for (j = i + 1; expr[j] && expr[j] != delim; j++)
@@ -226,7 +225,7 @@ parse_transform_expr (const char *expr)
       j++;
 
   if (expr[j] != delim)
-    USAGE_ERROR ((0, 0, _("Invalid transform expression")));
+    paxusage (_("Invalid transform expression"));
 
   /* Check flags */
   tf->transform_type = transform_first;
@@ -257,8 +256,7 @@ parse_transform_expr (const char *expr)
 
       default:
 	if (parse_xform_flags (&tf->flags, *p))
-	  USAGE_ERROR ((0, 0, _("Unknown flag in transform expression: %c"),
-			*p));
+	  paxusage (_("Unknown flag in transform expression: %c"), *p);
       }
 
   if (*p == ';')
@@ -275,7 +273,7 @@ parse_transform_expr (const char *expr)
     {
       char errbuf[512];
       regerror (rc, &tf->regex, errbuf, sizeof (errbuf));
-      USAGE_ERROR ((0, 0, _("Invalid transform expression: %s"), errbuf));
+      paxusage (_("Invalid transform expression: %s"), errbuf);
     }
 
   if (str[0] == '^' || (i > 2 && str[i - 3] == '$'))
@@ -301,8 +299,8 @@ parse_transform_expr (const char *expr)
 	      {
 		idx_t n = stoint (cur, &cur, NULL, 0, IDX_MAX);
 		if (tf->regex.re_nsub < n)
-		  USAGE_ERROR ((0, 0, _("Invalid transform replacement:"
-					" back reference out of range")));
+		  paxusage (_("Invalid transform replacement:"
+			      " back reference out of range"));
 		add_backref_segment (tf, n);
 	      }
 	      break;

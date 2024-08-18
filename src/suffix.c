@@ -103,11 +103,11 @@ set_compression_program_by_suffix (const char *name, const char *defprog,
     {
       use_compress_program_option = defprog;
       if (len > 0 && verbose)
-	WARN ((0, 0,
-	       _("no compression program is defined for suffix '%s';"
-		 " assuming %s"),
-	       name + len,
-	       defprog ? defprog : "uncompressed archive"));
+	paxwarn (0,
+		 _("no compression program is defined for suffix '%s';"
+		   " assuming %s"),
+		 name + len,
+		 defprog ? defprog : "uncompressed archive");
     }
 }
 

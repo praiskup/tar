@@ -385,10 +385,7 @@ handle_file_selection_option (int key, const char *arg)
     case 'X':
       if (add_exclude_file (add_exclude, excluded, arg, EXCLUDE_OPTIONS, '\n')
 	  != 0)
-	{
-	  int e = errno;
-	  FATAL_ERROR ((0, e, "%s", quotearg_colon (arg)));
-	}
+	paxfatal (errno, "%s", quotearg_colon (arg));
       break;
 
     case ANCHORED_OPTION:
@@ -433,7 +430,7 @@ handle_file_selection_option (int key, const char *arg)
       break;
 
     default:
-      FATAL_ERROR ((0, 0, "unhandled positional option %d", key));
+      paxfatal (0, "unhandled positional option %d", key);
     }
 }
 
@@ -745,7 +742,10 @@ unconsumed_option_report (void)
     {
       struct name_elt *elt;
 
-      ERROR ((0, 0, _("The following options were used after non-option arguments.  These options are positional and affect only arguments that follow them.  Please, rearrange them properly.")));
+      paxerror (0, _("The following options were used after non-option arguments."
+		     "  These options are positional and affect"
+		     " only arguments that follow them."
+		     "  Please, rearrange them properly."));
 
       elt = unconsumed_option_tail;
       while (elt->prev)
@@ -756,17 +756,17 @@ unconsumed_option_report (void)
 	  switch (elt->type)
 	    {
 	    case NELT_CHDIR:
-	      ERROR ((0, 0, _("-C %s has no effect"), quote (elt->v.name)));
+	      paxerror (0, _("-C %s has no effect"), quote (elt->v.name));
 	      break;
 
 	    case NELT_OPTION:
 	      if (elt->v.opt.arg)
-		ERROR ((0, 0, _("--%s %s has no effect"),
-			file_selection_option_name (elt->v.opt.option),
-			quote (elt->v.opt.arg)));
+		paxerror (0, _("--%s %s has no effect"),
+			  file_selection_option_name (elt->v.opt.option),
+			  quote (elt->v.opt.arg));
 	      else
-		ERROR ((0, 0, _("--%s has no effect"),
-			file_selection_option_name (elt->v.opt.option)));
+		paxerror (0, _("--%s has no effect"),
+			  file_selection_option_name (elt->v.opt.option));
 	      break;
 
 	    default:
@@ -917,10 +917,9 @@ add_file_id (const char *filename)
     if (p->ino == st.st_ino && p->dev == st.st_dev)
       {
 	int oldc = set_char_quoting (NULL, ':', 1);
-	ERROR ((0, 0,
-		_("%s: file list requested from %s already read from %s"),
-		quotearg_n (0, filename),
-		reading_from, p->from_file));
+	paxerror (0, _("%s: file list requested from %s already read from %s"),
+		  quotearg_n (0, filename),
+		  reading_from, p->from_file);
 	set_char_quoting (NULL, ':', oldc);
 	return 1;
       }
@@ -997,11 +996,11 @@ handle_option (const char *str, struct name_elt const *ent)
 
   ws.ws_offs = 1;
   if (wordsplit (str, &ws, WRDSF_DEFFLAGS|WRDSF_DOOFFS))
-    FATAL_ERROR ((0, 0, _("cannot split string '%s': %s"),
-		  str, wordsplit_strerror (&ws)));
+    paxfatal (0, _("cannot split string '%s': %s"),
+	      str, wordsplit_strerror (&ws));
   int argc;
   if (ckd_add (&argc, ws.ws_wordc, ws.ws_offs))
-    FATAL_ERROR ((0, 0, _("too many options")));
+    paxfatal (0, _("too many options"));
   ws.ws_wordv[0] = (char *) program_name;
   loc.source = OPTS_FILE;
   loc.name = ent->v.file.name;
@@ -1046,9 +1045,9 @@ read_next_name (struct name_elt *ent, struct name_elt *ret)
 	  continue;
 
 	case file_list_zero:
-	  WARNOPT (WARN_FILENAME_WITH_NULS,
-		   (0, 0, N_("%s: file name read contains nul character"),
-		    quotearg_colon (ent->v.file.name)));
+	  warnopt (WARN_FILENAME_WITH_NULS, 0,
+		   N_("%s: file name read contains nul character"),
+		    quotearg_colon (ent->v.file.name));
 	  ent->v.file.term = 0;
 	  FALLTHROUGH;
 	case file_list_success:
@@ -1410,11 +1409,9 @@ regex_usage_warning (const char *name)
       && fnmatch_pattern_has_wildcards (name, 0))
     {
       warned_once = 1;
-      WARN ((0, 0,
-	     _("Pattern matching characters used in file names")));
-      WARN ((0, 0,
-	     _("Use --wildcards to enable pattern matching,"
-	       " or --no-wildcards to suppress this warning")));
+      paxwarn (0, _("Pattern matching characters used in file names"));
+      paxwarn (0, _("Use --wildcards to enable pattern matching,"
+		    " or --no-wildcards to suppress this warning"));
     }
   return warned_once;
 }
@@ -1429,11 +1426,11 @@ names_notfound (void)
     if (!WASFOUND (cursor) && cursor->name[0])
       {
 	regex_usage_warning (cursor->name);
-	ERROR ((0, 0,
-		(cursor->found_count == 0) ?
-		     _("%s: Not found in archive") :
-		     _("%s: Required occurrence not found in archive"),
-		quotearg_colon (cursor->name)));
+	paxerror (0,
+		  (cursor->found_count == 0
+		   ? _("%s: Not found in archive")
+		   : _("%s: Required occurrence not found in archive")),
+		  quotearg_colon (cursor->name));
       }
 
   /* Don't bother freeing the name list; we're about to exit.  */
@@ -1447,8 +1444,7 @@ names_notfound (void)
       while ((name = name_next (true)))
 	{
 	  regex_usage_warning (name);
-	  ERROR ((0, 0, _("%s: Not found in archive"),
-		  quotearg_colon (name)));
+	  paxerror (0, _("%s: Not found in archive"), quotearg_colon (name));
 	}
     }
 }
@@ -1760,15 +1756,13 @@ collect_and_sort_names (void)
 
 	case 1:
 	  if (namelist->change_dir == 0)
-	    USAGE_ERROR ((0, 0,
-			  _("Using -C option inside file list is not "
-			    "allowed with --listed-incremental")));
+	    paxusage (_("Using -C option inside file list is not "
+			"allowed with --listed-incremental"));
 	  break;
 
 	default:
-	  USAGE_ERROR ((0, 0,
-			_("Only one -C option is allowed with "
-			  "--listed-incremental")));
+	  paxusage (_("Only one -C option is allowed with "
+		      "--listed-incremental"));
 	}
 
       read_directory_file ();

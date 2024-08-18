@@ -186,11 +186,11 @@ update_archive (void)
 	  switch (previous_status)
 	    {
 	    case HEADER_STILL_UNREAD:
-	      WARN ((0, 0, _("This does not look like a tar archive")));
+	      paxwarn (0, _("This does not look like a tar archive"));
 	      FALLTHROUGH;
 	    case HEADER_SUCCESS:
 	    case HEADER_ZERO_BLOCK:
-	      ERROR ((0, 0, _("Skipping to next header")));
+	      paxerror (0, _("Skipping to next header"));
 	      FALLTHROUGH;
 	    case HEADER_FAILURE:
 	      break;

@@ -216,8 +216,8 @@ read_and (void (*do_something) (void))
 
 		case DIRTYPE:
 		  if (show_omitted_dirs_option)
-		    WARN ((0, 0, _("%s: Omitting"),
-			   quotearg_colon (current_stat_info.file_name)));
+		    paxwarn (0, _("%s: Omitting"),
+			     quotearg_colon (current_stat_info.file_name));
 		  FALLTHROUGH;
 		default:
 		  skip_member ();
@@ -243,9 +243,8 @@ read_and (void (*do_something) (void))
 	                            read_header_auto);
 	      if (status == HEADER_ZERO_BLOCK)
 		break;
-	      WARNOPT (WARN_ALONE_ZERO_BLOCK,
-		       (0, 0, _("A lone zero block at %jd"),
-			intmax (current_block_ordinal ())));
+	      warnopt (WARN_ALONE_ZERO_BLOCK, 0, _("A lone zero block at %jd"),
+		       intmax (current_block_ordinal ()));
 	      break;
 	    }
 	  status = prev_status;
@@ -253,9 +252,9 @@ read_and (void (*do_something) (void))
 
 	case HEADER_END_OF_FILE:
 	  if (!ignore_zeros_option)
-	    WARNOPT (WARN_MISSING_ZERO_BLOCKS,
-		     (0, 0, _("Terminating zero blocks missing at %jd"),
-		      intmax (current_block_ordinal ())));
+	    warnopt (WARN_MISSING_ZERO_BLOCKS, 0,
+		     _("Terminating zero blocks missing at %jd"),
+		     intmax (current_block_ordinal ()));
 	  if (block_number_option)
 	    fprintf (stdlis, _("block %jd: ** End of File **\n"),
 		     intmax (current_block_ordinal ()));
@@ -268,7 +267,7 @@ read_and (void (*do_something) (void))
 	  switch (prev_status)
 	    {
 	    case HEADER_STILL_UNREAD:
-	      ERROR ((0, 0, _("This does not look like a tar archive")));
+	      paxerror (0, _("This does not look like a tar archive"));
 	      FALLTHROUGH;
 	    case HEADER_ZERO_BLOCK:
 	    case HEADER_SUCCESS:
@@ -280,7 +279,7 @@ read_and (void (*do_something) (void))
 		  fprintf (stdlis, _("block %jd: "),
 			   intmax (block_ordinal));
 		}
-	      ERROR ((0, 0, _("Skipping to next header")));
+	      paxerror (0, _("Skipping to next header"));
 	      break;
 
 	    case HEADER_END_OF_FILE:
@@ -476,7 +475,7 @@ read_header (union block **return_block, struct tar_stat_info *info,
 		  data_block = find_next_block ();
 		  if (! data_block)
 		    {
-		      ERROR ((0, 0, _("Unexpected EOF in archive")));
+		      paxerror (0, _("Unexpected EOF in archive"));
 		      break;
 		    }
 		  written = available_space_after (data_block);
@@ -750,11 +749,11 @@ from_header (char const *where0, size_t digs, char const *type,
       if (where == lim)
 	{
 	  if (type && !silent)
-	    ERROR ((0, 0,
-		    /* TRANSLATORS: %s is type of the value (gid_t, uid_t,
-		       etc.) */
-		    _("Blanks in header where numeric %s value expected"),
-		    type));
+	    paxerror (0,
+		      /* TRANSLATORS: %s is type of the value (gid_t, uid_t,
+			 etc.) */
+		      _("Blanks in header where numeric %s value expected"),
+		      type);
 	  return -1;
 	}
       if (!c_isspace (*where))
@@ -803,10 +802,11 @@ from_header (char const *where0, size_t digs, char const *type,
 	  if (!overflow && value <= minus_minval)
 	    {
 	      if (!silent)
-		WARN ((0, 0,
-		       /* TRANSLATORS: Second %s is a type name (gid_t,uid_t,etc.) */
-		       _("Archive octal value %.*s is out of %s range; assuming two's complement"),
-		       (int) (where - where1), where1, type));
+		paxwarn (0,
+			 /* TRANSLATORS: Second %s is a type name (gid_t,uid_t,etc.) */
+			 _("Archive octal value %.*s is out of %s range;"
+			   " assuming two's complement"),
+			 (int) (where - where1), where1, type);
 	      negative = true;
 	    }
 	}
@@ -814,10 +814,10 @@ from_header (char const *where0, size_t digs, char const *type,
       if (overflow)
 	{
 	  if (type && !silent)
-	    ERROR ((0, 0,
-		    /* TRANSLATORS: Second %s is a type name (gid_t,uid_t,etc.) */
-		    _("Archive octal value %.*s is out of %s range"),
-		    (int) (where - where1), where1, type));
+	    paxerror (0,
+		      /* TRANSLATORS: Second %s is a type name (gid_t,uid_t,etc.) */
+		      _("Archive octal value %.*s is out of %s range"),
+		      (int) (where - where1), where1, type);
 	  return -1;
 	}
     }
@@ -836,7 +836,7 @@ from_header (char const *where0, size_t digs, char const *type,
 	  if (! warned_once)
 	    {
 	      warned_once = true;
-	      WARN ((0, 0, _("Archive contains obsolescent base-64 headers")));
+	      paxwarn (0, _("Archive contains obsolescent base-64 headers"));
 	    }
 	}
       negative = *where++ == '-';
@@ -849,9 +849,8 @@ from_header (char const *where0, size_t digs, char const *type,
 	  if (ckd_mul (&value, value, 64))
 	    {
 	      if (type && !silent)
-		ERROR ((0, 0,
-			_("Archive signed base-64 string %s is out of %s range"),
-			quote_mem (where0, digs), type));
+		paxerror (0, _("Archive signed base-64 string %s is out of %s range"),
+			  quote_mem (where0, digs), type);
 	      return -1;
 	    }
 	  value |= dig - 1;
@@ -881,9 +880,7 @@ from_header (char const *where0, size_t digs, char const *type,
 	  if (((value << LG_256 >> LG_256) | topbits) != value)
 	    {
 	      if (type && !silent)
-		ERROR ((0, 0,
-			_("Archive base-256 value is out of %s range"),
-			type));
+		paxerror (0, _("Archive base-256 value is out of %s range"), type);
 	      return -1;
 	    }
 	}
@@ -909,10 +906,10 @@ from_header (char const *where0, size_t digs, char const *type,
 	    lim--;
 	  quotearg_buffer (buf, sizeof buf, where0, lim - where0, o);
 	  if (!silent)
-	    ERROR ((0, 0,
-		    /* TRANSLATORS: Second %s is a type name (gid_t,uid_t,etc.) */
-		    _("Archive contains %.*s where numeric %s value expected"),
-		    (int) sizeof buf, buf, type));
+	    paxerror (0,
+		      /* TRANSLATORS: Second %s is a type name (gid_t,uid_t,etc.) */
+		      _("Archive contains %.*s where numeric %s value expected"),
+		      (int) sizeof buf, buf, type);
 	}
 
       return -1;
@@ -925,8 +922,8 @@ from_header (char const *where0, size_t digs, char const *type,
     {
       char const *value_sign = &"-"[!negative];
       /* TRANSLATORS: Second %s is type name (gid_t,uid_t,etc.) */
-      ERROR ((0, 0, _("Archive value %s%ju is out of %s range %jd..%ju"),
-	      value_sign, value, type, minval, maxval));
+      paxerror (0, _("Archive value %s%ju is out of %s range %jd..%ju"),
+		value_sign, value, type, minval, maxval);
     }
 
   return -1;
@@ -1150,7 +1147,7 @@ simple_print_header (struct tar_stat_info *st, union block *blk,
 	case GNUTYPE_LONGNAME:
 	case GNUTYPE_LONGLINK:
 	  modes[0] = 'L';
-	  ERROR ((0, 0, _("Unexpected long name header")));
+	  paxerror (0, _("Unexpected long name header"));
 	  break;
 
 	case GNUTYPE_SPARSE:
@@ -1387,7 +1384,7 @@ skim_file (off_t size, bool must_copy)
     {
       x = find_next_block ();
       if (! x)
-	FATAL_ERROR ((0, 0, _("Unexpected EOF in archive")));
+	paxfatal (0, _("Unexpected EOF in archive"));
 
       set_next_block_after (x);
       size -= BLOCKSIZE;

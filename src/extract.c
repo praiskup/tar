@@ -369,9 +369,8 @@ static void
 check_time (char const *file_name, struct timespec t)
 {
   if (t.tv_sec < 0)
-    WARNOPT (WARN_TIMESTAMP,
-	     (0, 0, _("%s: implausibly old time stamp %s"),
-	      file_name, tartime (t, true)));
+    warnopt (WARN_TIMESTAMP, 0, _("%s: implausibly old time stamp %s"),
+	     file_name, tartime (t, true));
   else if (timespec_cmp (volume_start_time, t) < 0)
     {
       struct timespec now;
@@ -387,9 +386,8 @@ check_time (char const *file_name, struct timespec t)
 	      diff.tv_nsec += BILLION;
 	      diff.tv_sec--;
 	    }
-	  WARNOPT (WARN_TIMESTAMP,
-		   (0, 0, _("%s: time stamp %s is %s s in the future"),
-		    file_name, tartime (t, true), code_timespec (diff, buf)));
+	  warnopt (WARN_TIMESTAMP, 0, _("%s: time stamp %s is %s s in the future"),
+		   file_name, tartime (t, true), code_timespec (diff, buf));
 	}
     }
 }
@@ -653,8 +651,8 @@ repair_delayed_set_stat (char const *dir,
 	}
     }
 
-  ERROR ((0, 0, _("%s: Unexpected inconsistency when making directory"),
-	  quotearg_colon (dir)));
+  paxerror (0, _("%s: Unexpected inconsistency when making directory"),
+	    quotearg_colon (dir));
 }
 
 static void
@@ -891,8 +889,7 @@ maybe_recoverable (char *file_name, bool regular, bool *interdir_made)
       switch (old_files_option)
 	{
 	case SKIP_OLD_FILES:
-	  WARNOPT (WARN_EXISTING_FILE,
-		   (0, 0, _("%s: skipping existing file"), file_name));
+	  warnopt (WARN_EXISTING_FILE, 0, _("%s: skipping existing file"), file_name);
 	  return RECOVER_SKIP;
 
 	case KEEP_OLD_FILES:
@@ -1000,9 +997,10 @@ apply_nonancestor_delayed_set_stat (char const *file_name, bool after_links)
 	      current_mode_mask = ALL_MODE_BITS;
 	      if (! (st.st_dev == data->dev && st.st_ino == data->ino))
 		{
-		  ERROR ((0, 0,
-			  _("%s: Directory renamed before its status could be extracted"),
-			  quotearg_colon (data->file_name)));
+		  paxerror (0,
+			    _("%s: Directory renamed before its status"
+			      " could be extracted"),
+			    quotearg_colon (data->file_name));
 		  skip_this_one = 1;
 		}
 	    }
@@ -1223,8 +1221,8 @@ open_output_file (char const *file_name, int typeflag, mode_t mode,
       if (!conttype_diagnosed)
 	{
 	  conttype_diagnosed = 1;
-	  WARNOPT (WARN_CONTIGUOUS_CAST,
-		   (0, 0, _("Extracting contiguous files as regular files")));
+	  warnopt (WARN_CONTIGUOUS_CAST, 0,
+		   _("Extracting contiguous files as regular files"));
 	}
     }
 
@@ -1341,7 +1339,7 @@ extract_file (char *file_name, int typeflag)
 	data_block = find_next_block ();
 	if (! data_block)
 	  {
-	    ERROR ((0, 0, _("Unexpected EOF in archive")));
+	    paxerror (0, _("Unexpected EOF in archive"));
 	    break;		/* FIXME: What happens, then?  */
 	  }
 
@@ -1611,10 +1609,9 @@ extract_symlink (char *file_name, MAYBE_UNUSED int typeflag)
 	    if (!warned)
 	      {
 		warned = true;
-		WARNOPT (WARN_SYMLINK_CAST,
-			 (0, 0,
-			  _("Attempting extraction of symbolic links"
-			    " as hard links")));
+		warnopt (WARN_SYMLINK_CAST, 0,
+			 _("Attempting extraction of symbolic links"
+			   " as hard links"));
 	      }
 	    return extract_link (file_name, typeflag);
 	  }
@@ -1755,21 +1752,19 @@ prepare_to_extract (char const *file_name, int typeflag, tar_extractor_t *fun)
       return false;
 
     case GNUTYPE_MULTIVOL:
-      ERROR ((0, 0,
-	      _("%s: Cannot extract -- file is continued from another volume"),
-	      quotearg_colon (current_stat_info.file_name)));
+      paxerror (0, _("%s: Cannot extract -- file is continued from another volume"),
+		quotearg_colon (current_stat_info.file_name));
       return false;
 
     case GNUTYPE_LONGNAME:
     case GNUTYPE_LONGLINK:
-      ERROR ((0, 0, _("Unexpected long name header")));
+      paxerror (0, _("Unexpected long name header"));
       return false;
 
     default:
-      WARNOPT (WARN_UNKNOWN_CAST,
-	       (0, 0,
-		_("%s: Unknown file type '%c', extracted as normal file"),
-		quotearg_colon (file_name), typeflag));
+      warnopt (WARN_UNKNOWN_CAST, 0,
+	       _("%s: Unknown file type '%c', extracted as normal file"),
+	       quotearg_colon (file_name), typeflag);
       extractor = extract_file;
     }
 
@@ -1797,9 +1792,8 @@ prepare_to_extract (char const *file_name, int typeflag, tar_extractor_t *fun)
 	case KEEP_NEWER_FILES:
 	  if (file_newer_p (file_name, 0, &current_stat_info))
 	    {
-	      WARNOPT (WARN_IGNORE_NEWER,
-		       (0, 0, _("Current %s is newer or same age"),
-			quote (file_name)));
+	      warnopt (WARN_IGNORE_NEWER, 0, _("Current %s is newer or same age"),
+		       quote (file_name));
 	      return false;
 	    }
 	  break;
@@ -1828,8 +1822,8 @@ extract_archive (void)
   skip_dotdot_name = (!absolute_names_option
 		      && contains_dot_dot (current_stat_info.orig_file_name));
   if (skip_dotdot_name)
-    ERROR ((0, 0, _("%s: Member name contains '..'"),
-	    quotearg_colon (current_stat_info.orig_file_name)));
+    paxerror (0, _("%s: Member name contains '..'"),
+	      quotearg_colon (current_stat_info.orig_file_name));
 
   if (!current_stat_info.file_name[0]
       || skip_dotdot_name
@@ -1859,9 +1853,8 @@ extract_archive (void)
   if (backup_option)
     if (!maybe_backup_file (current_stat_info.file_name, 0))
       {
-	int e = errno;
-	ERROR ((0, e, _("%s: Was unable to backup this file"),
-		quotearg_colon (current_stat_info.file_name)));
+	paxerror (errno, _("%s: Was unable to backup this file"),
+		  quotearg_colon (current_stat_info.file_name));
 	skip_member ();
 	return;
       }
@@ -2027,9 +2020,9 @@ rename_directory (char *src, char *dst)
 	  break;
 	}
 
-      ERROR ((0, e, _("Cannot rename %s to %s"),
-	      quote_n (0, src),
-	      quote_n (1, dst)));
+      paxerror (e, _("Cannot rename %s to %s"),
+		quote_n (0, src),
+		quote_n (1, dst));
       return false;
     }
   return true;

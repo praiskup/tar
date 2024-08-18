@@ -133,7 +133,7 @@ read_and_process (struct tar_stat_info *st, bool (*processor) (idx_t, char *))
       data_block = find_next_block ();
       if (! data_block)
 	{
-	  ERROR ((0, 0, _("Unexpected EOF in archive")));
+	  paxerror (0, _("Unexpected EOF in archive"));
 	  return;
 	}
 
@@ -477,9 +477,9 @@ diff_archive (void)
   switch (current_header->header.typeflag)
     {
     default:
-      ERROR ((0, 0, _("%s: Unknown file type '%c', diffed as normal file"),
-	      quotearg_colon (current_stat_info.file_name),
-	      current_header->header.typeflag));
+      paxerror (0, _("%s: Unknown file type '%c', diffed as normal file"),
+		quotearg_colon (current_stat_info.file_name),
+		current_header->header.typeflag);
       FALLTHROUGH;
     case AREGTYPE:
     case REGTYPE:
@@ -529,19 +529,17 @@ verify_volume (void)
   int may_fail = 0;
   if (removed_prefixes_p ())
     {
-      WARN((0, 0,
-	    _("Archive contains file names with leading prefixes removed.")));
+      paxwarn (0,
+	       _("Archive contains file names with leading prefixes removed."));
       may_fail = 1;
     }
   if (transform_program_p ())
     {
-      WARN((0, 0,
-	    _("Archive contains transformed file names.")));
+      paxwarn (0, _("Archive contains transformed file names."));
       may_fail = 1;
     }
   if (may_fail)
-    WARN((0, 0,
-	  _("Verification may fail to locate original files.")));
+    paxwarn (0, _("Verification may fail to locate original files."));
 
   clear_directory_table ();
 
@@ -595,10 +593,11 @@ verify_volume (void)
 	    }
 	  while (status == HEADER_FAILURE);
 
-	  ERROR ((0, 0,
-		  ngettext ("VERIFY FAILURE: %d invalid header detected",
-			    "VERIFY FAILURE: %d invalid headers detected",
-			    counter), counter));
+	  paxerror (0,
+		    ngettext ("VERIFY FAILURE: %d invalid header detected",
+			      "VERIFY FAILURE: %d invalid headers detected",
+			      counter),
+		    counter);
 	}
       if (status == HEADER_END_OF_FILE)
 	break;
@@ -611,9 +610,9 @@ verify_volume (void)
 	                            read_header_auto);
 	      if (status == HEADER_ZERO_BLOCK)
 	        break;
-	      WARNOPT (WARN_ALONE_ZERO_BLOCK,
-		       (0, 0, _("A lone zero block at %jd"),
-			intmax (current_block_ordinal ())));
+	      warnopt (WARN_ALONE_ZERO_BLOCK,
+		       0, _("A lone zero block at %jd"),
+		       intmax (current_block_ordinal ()));
             }
 	  continue;
 	}

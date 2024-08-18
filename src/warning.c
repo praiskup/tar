@@ -111,3 +111,17 @@ set_warning_option (const char *arg)
   else
     warning_option |= option;
 }
+
+void
+warnopt (int opt, int errnum, char const *format, ...)
+{
+  if (WARNING_ENABLED (opt))
+    {
+      if (error_hook)
+	error_hook ();
+      va_list ap;
+      va_start (ap, format);
+      verror (0, errnum, format, ap);
+      va_end (ap);
+    }
+}

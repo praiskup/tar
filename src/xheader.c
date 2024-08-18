@@ -161,7 +161,7 @@ xheader_list_destroy (struct keyword_list **root)
 static _Noreturn void
 xheader_set_single_keyword (char *kw)
 {
-  USAGE_ERROR ((0, 0, _("Keyword %s is unknown or not yet implemented"), kw));
+  paxusage (_("Keyword %s is unknown or not yet implemented"), kw);
 }
 
 static void
@@ -170,7 +170,7 @@ assign_time_option (char **sval, time_t *tval, const char *input)
   char *p;
   struct timespec t = decode_timespec (input, &p, false);
   if (! valid_timespec (t) || *p)
-    ERROR ((0, 0, _("Time stamp is out of allowed range")));
+    paxerror (0, _("Time stamp is out of allowed range"));
   else
     {
       *tval = t.tv_sec;
@@ -185,7 +185,7 @@ xheader_set_keyword_equal (char *kw, char *eq)
   char *p = eq;
 
   if (eq == kw)
-    USAGE_ERROR ((0, 0, _("Malformed pax option: %s"), quote (kw)));
+    paxusage (_("Malformed pax option: %s"), quote (kw));
 
   if (eq[-1] == ':')
     {
@@ -204,7 +204,7 @@ xheader_set_keyword_equal (char *kw, char *eq)
   if (strcmp (kw, "delete") == 0)
     {
       if (xheader_protected_pattern_p (p))
-	USAGE_ERROR ((0, 0, _("Pattern %s cannot be used"), quote (p)));
+	paxusage (_("Pattern %s cannot be used"), quote (p));
       xheader_list_append (&keyword_pattern_list, p, NULL);
     }
   else if (strcmp (kw, "exthdr.name") == 0)
@@ -218,7 +218,7 @@ xheader_set_keyword_equal (char *kw, char *eq)
   else
     {
       if (xheader_protected_keyword_p (kw))
-	USAGE_ERROR ((0, 0, _("Keyword %s cannot be overridden"), kw));
+	paxusage (_("Keyword %s cannot be overridden"), kw);
       if (global)
 	xheader_list_append (&keyword_global_override_list, kw, p);
       else
@@ -490,7 +490,7 @@ void
 xheader_forbid_global (void)
 {
   if (keyword_global_override_list)
-    USAGE_ERROR ((0, 0, _("can't update global extended header record")));
+    paxusage (_("can't update global extended header record"));
 }
 
 /* This is reversal function for xattr_encode_keyword.  See comment for
@@ -623,7 +623,7 @@ decode_record (struct xheader *xhdr,
       /* The length is missing.
 	 FIXME: Comment why this is diagnosed only if (*p), or change code.  */
       if (*p)
-	ERROR ((0, 0, _("Malformed extended header: missing length")));
+	paxerror (0, _("Malformed extended header: missing length"));
       return false;
     }
 
@@ -632,8 +632,8 @@ decode_record (struct xheader *xhdr,
       /* Avoid giant diagnostics, as this won't help user.  */
       int len_len = min (len_lim - p, 1000);
 
-      ERROR ((0, 0, _("Extended header length %.*s is out of range"),
-	      len_len, p));
+      paxerror (0, _("Extended header length %.*s is out of range"),
+		len_len, p);
       return false;
     }
 
@@ -643,8 +643,7 @@ decode_record (struct xheader *xhdr,
     continue;
   if (p == len_lim)
     {
-      ERROR ((0, 0,
-	      _("Malformed extended header: missing blank after length")));
+      paxerror (0, _("Malformed extended header: missing blank after length"));
       return false;
     }
 
@@ -652,13 +651,13 @@ decode_record (struct xheader *xhdr,
   p = strchr (p, '=');
   if (! (p && p < nextp))
     {
-      ERROR ((0, 0, _("Malformed extended header: missing equal sign")));
+      paxerror (0, _("Malformed extended header: missing equal sign"));
       return false;
     }
 
   if (nextp[-1] != '\n')
     {
-      ERROR ((0, 0, _("Malformed extended header: missing newline")));
+      paxerror (0, _("Malformed extended header: missing newline"));
       return false;
     }
 
@@ -695,9 +694,9 @@ decx (void *data, char const *keyword, char const *value, size_t size)
   if (t)
     t->decoder (st, keyword, value, size);
   else
-    WARNOPT (WARN_UNKNOWN_KEYWORD,
-	     (0, 0, _("Ignoring unknown extended header keyword %s"),
-	      quotearg_style (shell_escape_always_quoting_style, keyword)));
+    warnopt (WARN_UNKNOWN_KEYWORD, 0,
+	     _("Ignoring unknown extended header keyword %s"),
+	     quotearg_style (shell_escape_always_quoting_style, keyword));
 }
 
 void
@@ -803,7 +802,7 @@ xheader_read (struct xheader *xhdr, union block *p, off_t size)
 	len = BLOCKSIZE;
 
       if (!p)
-	FATAL_ERROR ((0, 0, _("Unexpected EOF in archive")));
+	paxfatal (0, _("Unexpected EOF in archive"));
 
       memcpy (&xhdr->buffer[j], p->buffer, len);
       set_next_block_after (p);
@@ -978,9 +977,10 @@ xheader_string_end (struct xheader *xhdr, char const *keyword)
   size = p;
   if (size != p)
     {
-      ERROR ((0, 0,
-        _("Generated keyword/value pair is too long (keyword=%s, length=%s)"),
-	      keyword, nbuf));
+      paxerror (0,
+		_("Generated keyword/value pair is too long"
+		  " (keyword=%s, length=%s)"),
+		keyword, nbuf);
       obstack_free (xhdr->stk, obstack_finish (xhdr->stk));
       return false;
     }
@@ -1004,8 +1004,8 @@ out_of_range_header (char const *keyword, char const *value,
 {
   /* TRANSLATORS: The first %s is the pax extended header keyword
      (atime, gid, etc.).  */
-  ERROR ((0, 0, _("Extended header %s=%s is out of range %jd..%ju"),
-	  keyword, value, minval, maxval));
+  paxerror (0, _("Extended header %s=%s is out of range %jd..%ju"),
+	    keyword, value, minval, maxval);
 }
 
 static void
@@ -1055,14 +1055,14 @@ decode_time (struct timespec *ts, char const *arg, char const *keyword)
 	out_of_range_header (keyword, arg, TYPE_MINIMUM (time_t),
 			     TYPE_MAXIMUM (time_t));
       else
-	ERROR ((0, 0, _("Malformed extended header: invalid %s=%s"),
-		keyword, arg));
+	paxerror (0, _("Malformed extended header: invalid %s=%s"),
+		  keyword, arg);
       return false;
     }
   if (*arg_lim)
     {
-      ERROR ((0, 0, _("Malformed extended header: invalid %s=%s"),
-	      keyword, arg));
+      paxerror (0, _("Malformed extended header: invalid %s=%s"),
+		keyword, arg);
       return false;
     }
 
@@ -1095,8 +1095,8 @@ decode_signed_num (intmax_t *num, char const *arg,
 
   if ((arg_lim == arg) | *arg_lim)
     {
-      ERROR ((0, 0, _("Malformed extended header: invalid %s=%s"),
-	      keyword, arg));
+      paxerror (0, _("Malformed extended header: invalid %s=%s"),
+		keyword, arg);
       return false;
     }
 
@@ -1401,8 +1401,8 @@ sparse_offset_decoder (struct tar_stat_info *st,
       if (st->sparse_map_avail < st->sparse_map_size)
 	st->sparse_map[st->sparse_map_avail].offset = u;
       else
-	ERROR ((0, 0, _("Malformed extended header: excess %s=%s"),
-		"GNU.sparse.offset", arg));
+	paxerror (0, _("Malformed extended header: excess %s=%s"),
+		  "GNU.sparse.offset", arg);
     }
 }
 
@@ -1426,8 +1426,8 @@ sparse_numbytes_decoder (struct tar_stat_info *st,
       if (st->sparse_map_avail < st->sparse_map_size)
 	st->sparse_map[st->sparse_map_avail++].numbytes = u;
       else
-	ERROR ((0, 0, _("Malformed extended header: excess %s=%s"),
-		keyword, arg));
+	paxerror (0, _("Malformed extended header: excess %s=%s"),
+		  keyword, arg);
     }
 }
 
@@ -1448,8 +1448,8 @@ sparse_map_decoder (struct tar_stat_info *st,
       off_t u = stoint (arg, &delim, &overflow, 0, TYPE_MAXIMUM (off_t));
       if (delim == arg)
 	{
-	  ERROR ((0, 0, _("Malformed extended header: invalid %s=%s"),
-		  keyword, arg));
+	  paxerror (0, _("Malformed extended header: invalid %s=%s"),
+		    keyword, arg);
 	  return;
 	}
 
@@ -1474,8 +1474,8 @@ sparse_map_decoder (struct tar_stat_info *st,
 	    st->sparse_map[st->sparse_map_avail++] = e;
 	  else
 	    {
-	      ERROR ((0, 0, _("Malformed extended header: excess %s=%s"),
-		      keyword, arg));
+	      paxerror (0, _("Malformed extended header: excess %s=%s"),
+			keyword, arg);
 	      return;
 	    }
 	}
@@ -1486,9 +1486,10 @@ sparse_map_decoder (struct tar_stat_info *st,
 	break;
       else if (*delim != ',')
 	{
-	  ERROR ((0, 0,
-		  _("Malformed extended header: invalid %s: unexpected delimiter %c"),
-		  keyword, *delim));
+	  paxerror (0,
+		    _("Malformed extended header: invalid %s:"
+		      " unexpected delimiter %c"),
+		    keyword, *delim);
 	  return;
 	}
 
@@ -1496,9 +1497,10 @@ sparse_map_decoder (struct tar_stat_info *st,
     }
 
   if (!offset)
-    ERROR ((0, 0,
-	    _("Malformed extended header: invalid %s: odd number of values"),
-	    keyword));
+    paxerror (0,
+	      _("Malformed extended header: invalid %s:"
+		" odd number of values"),
+	      keyword);
 }
 
 static void

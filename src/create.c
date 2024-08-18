@@ -69,12 +69,11 @@ exclusion_tag_warning (const char *dirname, const char *tagname,
 		       const char *message)
 {
   if (verbose_option)
-    WARNOPT (WARN_CACHEDIR,
-	     (0, 0,
-	      _("%s: contains a cache directory tag %s; %s"),
-	      quotearg_colon (dirname),
-	      quotearg_n (1, tagname),
-	      message));
+    warnopt (WARN_CACHEDIR, 0,
+	     _("%s: contains a cache directory tag %s; %s"),
+	     quotearg_colon (dirname),
+	     quotearg_n (1, tagname),
+	     message);
 }
 
 enum exclusion_tag_type
@@ -238,14 +237,14 @@ to_chars_subst (bool negative, bool gnu_format, uintmax_t value, size_t valsize,
 	 Apart from this they are completely identical. */
       uintmax_t s = (negsub &= archive_format == GNU_FORMAT) ? - sub : sub;
       char const *ssign = &"-"[!negsub];
-      WARN ((0, 0, _("value %s%ju out of %s range %jd..%ju;"
-		     " substituting %s%ju"),
-	     valuesign, value, type, minval, maxval, ssign, s));
+      paxwarn (0, _("value %s%ju out of %s range %jd..%ju;"
+		    " substituting %s%ju"),
+	       valuesign, value, type, minval, maxval, ssign, s);
       return to_chars (negsub, s, valsize, 0, where, size, type);
     }
   else
-    ERROR ((0, 0, _("value %s%ju out of %s range %jd..%ju"),
-	    valuesign, value, type, minval, maxval));
+    paxerror (0, _("value %s%ju out of %s range %jd..%ju"),
+	      valuesign, value, type, minval, maxval);
   return false;
 }
 
@@ -304,7 +303,7 @@ to_chars (bool negative, uintmax_t value, size_t valsize,
 	  if (! warned_once)
 	    {
 	      warned_once = true;
-	      WARN ((0, 0, _("Generating negative octal headers")));
+	      paxwarn (0, _("Generating negative octal headers"));
 	    }
 	  where[size - 1] = '\0';
 	  to_octal (value & MAX_VAL_WITH_DIGITS (valsize * CHAR_BIT, 1),
@@ -581,18 +580,17 @@ write_ustar_long_name (const char *name)
 
   if (length > PREFIX_FIELD_SIZE + NAME_FIELD_SIZE + 1)
     {
-      ERROR ((0, 0, _("%s: file name is too long (max %d); not dumped"),
-	      quotearg_colon (name),
-	      PREFIX_FIELD_SIZE + NAME_FIELD_SIZE + 1));
+      paxerror (0, _("%s: file name is too long (max %d); not dumped"),
+		quotearg_colon (name),
+		PREFIX_FIELD_SIZE + NAME_FIELD_SIZE + 1);
       return NULL;
     }
 
   i = split_long_name (name, length);
   if (i == 0 || (nlen = length - i - 1) > NAME_FIELD_SIZE || nlen == 0)
     {
-      ERROR ((0, 0,
-	      _("%s: file name is too long (cannot be split); not dumped"),
-	      quotearg_colon (name)));
+      paxerror (0, _("%s: file name is too long (cannot be split); not dumped"),
+		quotearg_colon (name));
       return NULL;
     }
 
@@ -617,9 +615,8 @@ write_long_link (struct tar_stat_info *st)
     case V7_FORMAT:			/* old V7 tar format */
     case USTAR_FORMAT:
     case STAR_FORMAT:
-      ERROR ((0, 0,
-	      _("%s: link name is too long; not dumped"),
-	      quotearg_colon (st->link_name)));
+      paxerror (0, _("%s: link name is too long; not dumped"),
+		quotearg_colon (st->link_name));
       break;
 
     case OLDGNU_FORMAT:
@@ -644,9 +641,8 @@ write_long_name (struct tar_stat_info *st)
     case V7_FORMAT:
       if (strlen (st->file_name) > NAME_FIELD_SIZE-1)
 	{
-	  ERROR ((0, 0, _("%s: file name is too long (max %d); not dumped"),
-		  quotearg_colon (st->file_name),
-		  NAME_FIELD_SIZE - 1));
+	  paxerror (0, _("%s: file name is too long (max %d); not dumped"),
+		    quotearg_colon (st->file_name), NAME_FIELD_SIZE - 1);
 	  return NULL;
 	}
       break;
@@ -1080,15 +1076,14 @@ dump_regular_file (int fd, struct tar_stat_info *st)
       if (count != bufsize)
 	{
 	  memset (blk->buffer + count, 0, bufsize - count);
-	  WARNOPT (WARN_FILE_SHRANK,
-		   (0, 0,
-		    ngettext (("%s: File shrank by %jd byte;"
-			       " padding with zeros"),
-			      ("%s: File shrank by %jd bytes;"
-			       " padding with zeros"),
-			      size_left),
-		    quotearg_colon (st->orig_file_name),
-		    intmax (size_left)));
+	  warnopt (WARN_FILE_SHRANK, 0,
+		   ngettext (("%s: File shrank by %jd byte;"
+			      " padding with zeros"),
+			     ("%s: File shrank by %jd bytes;"
+			      " padding with zeros"),
+			     size_left),
+		   quotearg_colon (st->orig_file_name),
+		   intmax (size_left));
 	  if (! ignore_failed_read_option)
 	    set_exit_status (TAREXIT_DIFFERS);
 	  pad_archive (size_left - (bufsize - count));
@@ -1180,10 +1175,9 @@ dump_dir0 (struct tar_stat_info *st, char const *directory)
       && st->parent->stat.st_dev != st->stat.st_dev)
     {
       if (verbose_option)
-	WARNOPT (WARN_XDEV,
-		 (0, 0,
-		  _("%s: file is on a different filesystem; not dumped"),
-		  quotearg_colon (st->orig_file_name)));
+	warnopt (WARN_XDEV, 0,
+		 _("%s: file is on a different filesystem; not dumped"),
+		 quotearg_colon (st->orig_file_name));
     }
   else
     {
@@ -1433,9 +1427,8 @@ compare_links (void const *entry1, void const *entry2)
 static void
 unknown_file_error (char const *p)
 {
-  WARNOPT (WARN_FILE_IGNORED,
-	   (0, 0, _("%s: Unknown file type; file ignored"),
-	    quotearg_colon (p)));
+  warnopt (WARN_FILE_IGNORED, 0,
+	   _("%s: Unknown file type; file ignored"), quotearg_colon (p));
   if (!ignore_failed_read_option)
     set_exit_status (TAREXIT_FAILURE);
 }
@@ -1535,19 +1528,13 @@ file_count_links (struct tar_stat_info *st)
 void
 check_links (void)
 {
-  struct link *lp;
-
   if (!link_table)
     return;
 
-  for (lp = hash_get_first (link_table); lp;
+  for (struct link *lp = hash_get_first (link_table); lp;
        lp = hash_get_next (link_table, lp))
-    {
-      if (lp->nlink)
-	{
-	  WARN ((0, 0, _("Missing links to %s."), quote (lp->name)));
-	}
-    }
+    if (lp->nlink)
+      paxwarn (0, _("Missing links to %s."), quote (lp->name));
 }
 
 /* Assuming DIR is the working directory, open FILE, using FLAGS to
@@ -1704,18 +1691,16 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
       && (!after_date_option || OLDER_TAR_STAT_TIME (*st, c)))
     {
       if (!incremental_option && verbose_option)
-	WARNOPT (WARN_FILE_UNCHANGED,
-		 (0, 0, _("%s: file is unchanged; not dumped"),
-		  quotearg_colon (p)));
+	warnopt (WARN_FILE_UNCHANGED, 0, _("%s: file is unchanged; not dumped"),
+		 quotearg_colon (p));
       return allocated;
     }
 
   /* See if we are trying to dump the archive.  */
   if (sys_file_is_archive (st))
     {
-      WARNOPT (WARN_IGNORE_ARCHIVE,
-	       (0, 0, _("%s: archive cannot contain itself; not dumped"),
-		quotearg_colon (p)));
+      warnopt (WARN_IGNORE_ARCHIVE, 0,
+	       _("%s: archive cannot contain itself; not dumped"), quotearg_colon (p));
       return allocated;
     }
 
@@ -1835,9 +1820,8 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
 
 	  if (!ok)
 	    {
-	      WARNOPT (WARN_FILE_CHANGED,
-		       (0, 0, _("%s: file changed as we read it"),
-			quotearg_colon (p)));
+	      warnopt (WARN_FILE_CHANGED, 0, _("%s: file changed as we read it"),
+		       quotearg_colon (p));
 	      if (! ignore_failed_read_option)
 		set_exit_status (TAREXIT_DIFFERS);
 	    }
@@ -1910,14 +1894,12 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
     }
   else if (S_ISSOCK (st->stat.st_mode))
     {
-      WARNOPT (WARN_FILE_IGNORED,
-	       (0, 0, _("%s: socket ignored"), quotearg_colon (p)));
+      warnopt (WARN_FILE_IGNORED, 0, _("%s: socket ignored"), quotearg_colon (p));
       return allocated;
     }
   else if (S_ISDOOR (st->stat.st_mode))
     {
-      WARNOPT (WARN_FILE_IGNORED,
-	       (0, 0, _("%s: door ignored"), quotearg_colon (p)));
+      warnopt (WARN_FILE_IGNORED, 0, _("%s: door ignored"), quotearg_colon (p));
       return allocated;
     }
   else

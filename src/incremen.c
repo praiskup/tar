@@ -492,11 +492,10 @@ procdir (const char *name_buffer, struct tar_stat_info *st,
 	    {
 	      if (strcmp (d->name, name_buffer))
 		{
-		  WARNOPT (WARN_RENAME_DIRECTORY,
-			   (0, 0,
-			    _("%s: Directory has been renamed from %s"),
-			    quotearg_colon (name_buffer),
-			    quote_n (1, d->name)));
+		  warnopt (WARN_RENAME_DIRECTORY, 0,
+			   _("%s: Directory has been renamed from %s"),
+			   quotearg_colon (name_buffer),
+			   quote_n (1, d->name));
 		  directory->orig = d;
 		  DIR_SET_FLAG (directory, DIRF_RENAMED);
 		  DIR_CLEAR_FLAG (d, DIRF_RENAMED);
@@ -536,10 +535,10 @@ procdir (const char *name_buffer, struct tar_stat_info *st,
 	{
 	  if (strcmp (d->name, name_buffer))
 	    {
-	      WARNOPT (WARN_RENAME_DIRECTORY,
-		       (0, 0, _("%s: Directory has been renamed from %s"),
-			quotearg_colon (name_buffer),
-			quote_n (1, d->name)));
+	      warnopt (WARN_RENAME_DIRECTORY, 0,
+		       _("%s: Directory has been renamed from %s"),
+		       quotearg_colon (name_buffer),
+		       quote_n (1, d->name));
 	      directory->orig = d;
 	      DIR_SET_FLAG (directory, DIRF_RENAMED);
 	      DIR_CLEAR_FLAG (d, DIRF_RENAMED);
@@ -550,9 +549,8 @@ procdir (const char *name_buffer, struct tar_stat_info *st,
       else
 	{
 	  DIR_SET_FLAG (directory, DIRF_NEW);
-	  WARNOPT (WARN_NEW_DIRECTORY,
-		   (0, 0, _("%s: Directory is new"),
-		    quotearg_colon (name_buffer)));
+	  warnopt (WARN_NEW_DIRECTORY, 0, _("%s: Directory is new"),
+		   quotearg_colon (name_buffer));
 	  directory->children =
 	    (listed_incremental_option
 	     || (OLDER_STAT_TIME (*stat_data, m)
@@ -566,10 +564,9 @@ procdir (const char *name_buffer, struct tar_stat_info *st,
   if (one_file_system_option && st->parent
       && stat_data->st_dev != st->parent->stat.st_dev)
     {
-      WARNOPT (WARN_XDEV,
-	       (0, 0,
-		_("%s: directory is on a different filesystem; not dumped"),
-		quotearg_colon (directory->name)));
+      warnopt (WARN_XDEV, 0,
+	       _("%s: directory is on a different filesystem; not dumped"),
+	       quotearg_colon (directory->name));
       directory->children = NO_CHILDREN;
       /* If there is any dumpdir info in that directory, remove it */
       if (directory->dump)
@@ -588,9 +585,8 @@ procdir (const char *name_buffer, struct tar_stat_info *st,
     }
 
   if (perhaps_renamed)
-    WARNOPT (WARN_RENAME_DIRECTORY,
-	     (0, 0, _("%s: Directory has been renamed"),
-	      quotearg_colon (name_buffer)));
+    warnopt (WARN_RENAME_DIRECTORY, 0, _("%s: Directory has been renamed"),
+	     quotearg_colon (name_buffer));
 
   DIR_SET_FLAG (directory, DIRF_INIT);
 
@@ -995,10 +991,9 @@ read_incr_db_01 (int version, const char *initbuf)
   newer_mtime_option = decode_timespec (buf, &ebuf, false);
 
   if (! valid_timespec (newer_mtime_option))
-    FATAL_ERROR ((0, errno, "%s:%jd: %s",
-		  quotearg_colon (listed_incremental_option),
-		  lineno,
-		  _("Invalid time stamp")));
+    paxfatal (errno, "%s:%jd: %s",
+	      quotearg_colon (listed_incremental_option),
+	      lineno, _("Invalid time stamp"));
   else
     {
       if (version == 1 && *ebuf)
@@ -1009,10 +1004,9 @@ read_incr_db_01 (int version, const char *initbuf)
 	    = stoint (buf_ns, &ebuf, &overflow, 0, BILLION - 1);
 	  if ((ebuf == buf_ns) | *ebuf | overflow)
 	    {
-	      ERROR ((0, 0, "%s:%jd: %s",
-		      quotearg_colon (listed_incremental_option),
-		      lineno,
-		      _("Invalid time stamp")));
+	      paxerror (0, "%s:%jd: %s",
+			quotearg_colon (listed_incremental_option), lineno,
+			_("Invalid time stamp"));
 	      newer_mtime_option.tv_sec = TYPE_MINIMUM (time_t);
 	      newer_mtime_option.tv_nsec = -1;
 	    }
@@ -1037,17 +1031,17 @@ read_incr_db_01 (int version, const char *initbuf)
 	  mtime = decode_timespec (strp, &ebuf, false);
 	  strp = ebuf;
 	  if (!valid_timespec (mtime) || *strp != ' ')
-	    FATAL_ERROR ((0, errno, "%s:%jd: %s",
-			  quotearg_colon (listed_incremental_option), lineno,
-			  _("Invalid modification time")));
+	    paxfatal (errno, "%s:%jd: %s",
+		      quotearg_colon (listed_incremental_option), lineno,
+		      _("Invalid modification time"));
 
 	  bool overflow;
 	  mtime.tv_nsec = stoint (strp, &ebuf, &overflow, 0, BILLION - 1);
 	  if ((ebuf == strp) | (*ebuf != ' ') | overflow)
 	    {
-	      FATAL_ERROR ((0, 0, "%s:%jd: %s",
-			    quotearg_colon (listed_incremental_option), lineno,
-			    _("Invalid modification time (nanoseconds)")));
+	      paxfatal (0, "%s:%jd: %s",
+			quotearg_colon (listed_incremental_option), lineno,
+			_("Invalid modification time (nanoseconds)"));
 	      mtime.tv_nsec = -1;
 	    }
 	  strp = ebuf;
@@ -1059,17 +1053,17 @@ read_incr_db_01 (int version, const char *initbuf)
       dev = stoint (strp, &ebuf, &overflow,
 		    TYPE_MINIMUM (dev_t), TYPE_MAXIMUM (dev_t));
       if ((ebuf == strp) | (*ebuf != ' ') | overflow)
-	FATAL_ERROR ((0, 0, "%s:%jd: %s",
-		quotearg_colon (listed_incremental_option), lineno,
-		      _("Invalid device number")));
+	paxfatal (0, "%s:%jd: %s",
+		  quotearg_colon (listed_incremental_option), lineno,
+		  _("Invalid device number"));
       strp = ebuf + 1;
 
       ino = stoint (strp, &ebuf, &overflow,
 		    TYPE_MINIMUM (ino_t), TYPE_MAXIMUM (ino_t));
       if ((ebuf == strp) | (*ebuf != ' ') | overflow)
-	FATAL_ERROR ((0, 0, "%s:%jd: %s",
-		      quotearg_colon (listed_incremental_option), lineno,
-		      _("Invalid inode number")));
+	paxfatal (0, "%s:%jd: %s",
+		  quotearg_colon (listed_incremental_option), lineno,
+		  _("Invalid inode number"));
       strp = ebuf + 1;
 
       unquote_string (strp);
@@ -1120,11 +1114,11 @@ read_num (FILE *fp, char const *fieldname,
     {
       buf[i] = c;
       if (i == sizeof buf - 1)
-	FATAL_ERROR ((0, 0,
-		      _("%s: byte %jd: %s %.*s... too long"),
-		      quotearg_colon (listed_incremental_option),
-		      intmax (ftello (fp)),
-		      fieldname, i + 1, buf));
+	paxfatal (0,
+		  _("%s: byte %jd: %s %.*s... too long"),
+		  quotearg_colon (listed_incremental_option),
+		  intmax (ftello (fp)),
+		  fieldname, i + 1, buf);
       c = getc (fp);
     }
 
@@ -1135,20 +1129,18 @@ read_num (FILE *fp, char const *fieldname,
       if (ferror (fp))
 	read_fatal (listed_incremental_option);
       if (i != 0)
-	FATAL_ERROR ((0, 0, "%s: %s",
-		      quotearg_colon (listed_incremental_option),
-		      _("Unexpected EOF in snapshot file")));
+	paxfatal (0, "%s: %s",
+		  quotearg_colon (listed_incremental_option),
+		  _("Unexpected EOF in snapshot file"));
       return false;
     }
 
   if (c)
     {
       unsigned uc = c;
-      FATAL_ERROR ((0, 0,
-		    _("%s: byte %jd: %s %s followed by invalid byte 0x%02x"),
-		    quotearg_colon (listed_incremental_option),
-		    intmax (ftello (fp)),
-		    fieldname, buf, uc));
+      paxfatal (0, _("%s: byte %jd: %s %s followed by invalid byte 0x%02x"),
+		quotearg_colon (listed_incremental_option),
+		intmax (ftello (fp)), fieldname, buf, uc);
     }
 
   char *bufend;
@@ -1156,15 +1148,13 @@ read_num (FILE *fp, char const *fieldname,
   *pval = stoint (buf, &bufend, &overflow, min_val, max_val);
 
   if (buf == bufend)
-    FATAL_ERROR ((0, EINVAL,
-		  _("%s: byte %jd: %s %s"),
-		  quotearg_colon (listed_incremental_option),
-		  intmax (ftello (fp)), fieldname, buf));
+    paxfatal (EINVAL, _("%s: byte %jd: %s %s"),
+	      quotearg_colon (listed_incremental_option),
+	      intmax (ftello (fp)), fieldname, buf);
   if (overflow)
-    FATAL_ERROR ((0, ERANGE,
-		  _("%s: byte %jd: (valid range %jd..%ju)\n\t%s %s"),
-		  quotearg_colon (listed_incremental_option),
-		  intmax (ftello (fp)), min_val, max_val, fieldname, buf));
+    paxfatal (ERANGE, _("%s: byte %jd: (valid range %jd..%ju)\n\t%s %s"),
+	      quotearg_colon (listed_incremental_option),
+	      intmax (ftello (fp)), min_val, max_val, fieldname, buf);
 
   return true;
 }
@@ -1187,9 +1177,8 @@ read_timespec (FILE *fp, struct timespec *pval)
     }
   else
     {
-      FATAL_ERROR ((0, 0, "%s: %s",
-		    quotearg_colon (listed_incremental_option),
-		    _("Unexpected EOF in snapshot file")));
+      paxfatal (0, "%s: %s", quotearg_colon (listed_incremental_option),
+		_("Unexpected EOF in snapshot file"));
     }
 }
 
@@ -1240,18 +1229,17 @@ read_incr_db_2 (void)
       while (read_obstack (listed_incremental_stream, &stk, &s) == 0 && s > 1)
 	;
       if (getc (listed_incremental_stream) != 0)
-	FATAL_ERROR ((0, 0, _("%s: byte %s: %s"),
-		      quotearg_colon (listed_incremental_option),
-		      offtostr (ftello (listed_incremental_stream), offbuf),
-		      _("Missing record terminator")));
+	paxfatal (0, _("%s: byte %s: %s"),
+		  quotearg_colon (listed_incremental_option),
+		  offtostr (ftello (listed_incremental_stream), offbuf),
+		  _("Missing record terminator"));
 
       content = obstack_finish (&stk);
       note_directory (name, mtime, dev, ino, nfs, false, content);
       obstack_free (&stk, content);
     }
-  FATAL_ERROR ((0, 0, "%s: %s",
-		quotearg_colon (listed_incremental_option),
-		_("Unexpected EOF in snapshot file")));
+  paxfatal (0, "%s: %s", quotearg_colon (listed_incremental_option),
+	    _("Unexpected EOF in snapshot file"));
 }
 
 /* Display (to stdout) the range of allowed values for each field
@@ -1349,17 +1337,15 @@ read_directory_file (void)
 	{
 	  ebuf = buf + sizeof PACKAGE_NAME - 1;
 	  if (*ebuf++ != '-')
-	    FATAL_ERROR ((0, 0, _("Bad incremental file format")));
+	    paxfatal (0, _("Bad incremental file format"));
 	  for (; *ebuf != '-'; ebuf++)
 	    if (!*ebuf)
-	      FATAL_ERROR ((0, 0, _("Bad incremental file format")));
+	      paxfatal (0, _("Bad incremental file format"));
 
 	  ebuf++;
 	  if (! ('0' <= *ebuf && *ebuf <= '0' + TAR_INCREMENTAL_VERSION
 		 && !c_isdigit (ebuf[1])))
-	    FATAL_ERROR ((0, 0,
-			  _("Unsupported incremental format version: %s"),
-			  ebuf));
+	    paxfatal (0, _("Unsupported incremental format version: %s"), ebuf);
 	  incremental_version = *ebuf - '0';
 	}
       else
@@ -1483,7 +1469,7 @@ get_gnu_dumpdir (struct tar_stat_info *stat_info)
       mv_size_left (size);
       data_block = find_next_block ();
       if (!data_block)
-	FATAL_ERROR ((0, 0, _("Unexpected EOF in archive")));
+	paxfatal (0, _("Unexpected EOF in archive"));
       copied = available_space_after (data_block);
       if (copied > size)
 	copied = size;
@@ -1523,9 +1509,8 @@ dumpdir_ok (char *dumpdir)
       if (expect && *p != expect)
 	{
 	  unsigned char uc = *p;
-	  ERROR ((0, 0,
-		  _("Malformed dumpdir: expected '%c' but found %#3o"),
-		  expect, uc));
+	  paxerror (0, _("Malformed dumpdir: expected '%c' but found %#3o"),
+		    expect, uc);
 	  return false;
 	}
       switch (*p)
@@ -1533,8 +1518,7 @@ dumpdir_ok (char *dumpdir)
 	case 'X':
 	  if (has_tempdir)
 	    {
-	      ERROR ((0, 0,
-		      _("Malformed dumpdir: 'X' duplicated")));
+	      paxerror (0, _("Malformed dumpdir: 'X' duplicated"));
 	      return false;
 	    }
 	  else
@@ -1546,8 +1530,7 @@ dumpdir_ok (char *dumpdir)
 	    {
 	      if (!has_tempdir)
 		{
-		  ERROR ((0, 0,
-			  _("Malformed dumpdir: empty name in 'R'")));
+		  paxerror (0, _("Malformed dumpdir: empty name in 'R'"));
 		  return false;
 		}
 	      else
@@ -1559,14 +1542,12 @@ dumpdir_ok (char *dumpdir)
 	case 'T':
 	  if (expect != 'T')
 	    {
-	      ERROR ((0, 0,
-		      _("Malformed dumpdir: 'T' not preceded by 'R'")));
+	      paxerror (0, _("Malformed dumpdir: 'T' not preceded by 'R'"));
 	      return false;
 	    }
 	  if (p[1] == 0 && !has_tempdir)
 	    {
-	      ERROR ((0, 0,
-		      _("Malformed dumpdir: empty name in 'T'")));
+	      paxerror (0, _("Malformed dumpdir: empty name in 'T'"));
 	      return false;
 	    }
 	  expect = 0;
@@ -1585,15 +1566,12 @@ dumpdir_ok (char *dumpdir)
 
   if (expect)
     {
-      ERROR ((0, 0,
-	      _("Malformed dumpdir: expected '%c' but found end of data"),
-	      expect));
+      paxerror (0, _("Malformed dumpdir: expected '%c' but found end of data"), expect);
       return false;
     }
 
   if (has_tempdir)
-    WARNOPT (WARN_BAD_DUMPDIR,
-	     (0, 0, _("Malformed dumpdir: 'X' never used")));
+    warnopt (WARN_BAD_DUMPDIR, 0, _("Malformed dumpdir: 'X' never used"));
 
   return true;
 }
@@ -1636,9 +1614,8 @@ try_purge_directory (char const *directory_name)
 		  sizeof TEMP_DIR_TEMPLATE);
 	  if (!mkdtemp (temp_stub))
 	    {
-	      ERROR ((0, errno,
-		      _("Cannot create temporary directory using template %s"),
-		      quote (temp_stub)));
+	      paxerror (errno, _("Cannot create temporary directory using template %s"),
+			quote (temp_stub));
 	      free (temp_stub);
 	      free (current_dir);
 	      return false;
@@ -1698,8 +1675,8 @@ try_purge_directory (char const *directory_name)
 				  dirs and check it here? */
 	    {
 	      stat_diag (p);
-	      WARN ((0, 0, _("%s: Not purging directory: unable to stat"),
-		     quotearg_colon (p)));
+	      paxwarn (0, _("%s: Not purging directory: unable to stat"),
+		       quotearg_colon (p));
 	    }
 	  continue;
 	}
@@ -1710,9 +1687,8 @@ try_purge_directory (char const *directory_name)
 	{
 	  if (one_file_system_option && st.st_dev != root_device)
 	    {
-	      WARN ((0, 0,
-		     _("%s: directory is on a different device: not purging"),
-		     quotearg_colon (p)));
+	      paxwarn (0, _("%s: directory is on a different device: not purging"),
+		       quotearg_colon (p));
 	      continue;
 	    }
 
@@ -1722,10 +1698,7 @@ try_purge_directory (char const *directory_name)
 		fprintf (stdlis, _("%s: Deleting %s\n"),
 			 program_name, quote (p));
 	      if (! remove_any_file (p, RECURSIVE_REMOVE_OPTION))
-		{
-		  int e = errno;
-		  ERROR ((0, e, _("%s: Cannot remove"), quotearg_colon (p)));
-		}
+		paxerror (errno, _("%s: Cannot remove"), quotearg_colon (p));
 	    }
 	}
     }
