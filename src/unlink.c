@@ -32,9 +32,11 @@ struct deferred_unlink
 				       entry got added to the queue */
   };
 
-#define IS_CWD(p) \
-  ((p)->is_dir \
-   && ((p)->file_name[0] == 0 || strcmp ((p)->file_name, ".") == 0))
+static bool
+is_cwd (struct deferred_unlink const *p)
+{
+  return p->is_dir && !p->file_name[p->file_name[0] == '.'];
+}
 
 /* The unlink queue */
 static struct deferred_unlink *dunlink_head, *dunlink_tail;
@@ -108,7 +110,7 @@ flush_deferred_unlinks (bool force)
 	    {
 	      const char *fname;
 
-	      if (p->dir_idx && IS_CWD (p))
+	      if (p->dir_idx && is_cwd (p))
 		{
 		  prev = p;
 		  p = next;
@@ -170,7 +172,7 @@ flush_deferred_unlinks (bool force)
 	  const char *fname;
 
 	  chdir_do (p->dir_idx);
-	  if (p->dir_idx && IS_CWD (p))
+	  if (p->dir_idx && is_cwd (p))
 	    {
 	      fname = tar_dirname ();
 	      chdir_do (p->dir_idx - 1);
@@ -223,11 +225,11 @@ queue_deferred_unlink (const char *name, bool is_dir)
   p->is_dir = is_dir;
   p->records_written = records_written;
 
-  if (IS_CWD (p))
+  if (is_cwd (p))
     {
       struct deferred_unlink *q, *prev;
       for (q = dunlink_head, prev = NULL; q; prev = q, q = q->next)
-	if (IS_CWD (q) && q->dir_idx < p->dir_idx)
+	if (is_cwd (q) && q->dir_idx < p->dir_idx)
 	  break;
       if (q)
 	dunlink_insert (prev, p);
