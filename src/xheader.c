@@ -384,14 +384,13 @@ enum {
   pax_file_header,
   pax_global_header
 };
-/* Return the name for the POSIX extended header T */
-#define HEADER_TEMPLATE(t) header_template[t][posixly_correct]
 
 char *
 xheader_xhdr_name (struct tar_stat_info *st)
 {
   if (!exthdr_name)
-    assign_string (&exthdr_name, HEADER_TEMPLATE (pax_file_header));
+    assign_string (&exthdr_name,
+		   header_template[pax_file_header][posixly_correct]);
   return xheader_format_name (st, exthdr_name, 0);
 }
 
@@ -401,7 +400,8 @@ xheader_ghdr_name (void)
   if (!globexthdr_name)
     {
       size_t len;
-      const char *global_header_template = HEADER_TEMPLATE (pax_global_header);
+      const char *global_header_template
+	= header_template[pax_global_header][posixly_correct];
       const char *tmp = getenv ("TMPDIR");
       if (!tmp)
 	tmp = "/tmp";
@@ -533,8 +533,11 @@ xattr_decode_keyword (char *keyword)
 
 /* General Interface */
 
-#define XHDR_PROTECTED 0x01
-#define XHDR_GLOBAL    0x02
+enum
+  {
+    XHDR_PROTECTED	= 0x01,
+    XHDR_GLOBAL		= 0x02
+  };
 
 struct xhdr_tab
 {
