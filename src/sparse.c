@@ -1167,7 +1167,7 @@ struct block_ptr
 };
 
 /* Append to BP the contents of the string SRC, followed by a newline.
-   If the string doesn’t fit, put any overflow into the succeeding blocks.
+   If the string doesn't fit, put any overflow into the succeeding blocks.
    Return the updated BP.  */
 static struct block_ptr
 dump_str_nl (struct block_ptr bp, char const *str)
