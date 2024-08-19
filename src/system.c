@@ -312,8 +312,8 @@ sys_write_archive_buffer (void)
   return rmtwrite (archive, record_start->buffer, record_size);
 }
 
-#define	PREAD 0			/* read file descriptor from pipe() */
-#define	PWRITE 1		/* write file descriptor from pipe() */
+/* Read and write file descriptors from a pipe(pipefd) call.  */
+enum { PREAD, PWRITE };
 
 /* Work around GCC bug 109839.  */
 #if 13 <= __GNUC__
