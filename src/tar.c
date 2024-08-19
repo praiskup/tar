@@ -267,12 +267,16 @@ archive_format_string (enum archive_format fmt)
   return "unknown?";
 }
 
-#define FORMAT_MASK(n) (1 << (n))
+static int
+format_mask (int n)
+{
+  return 1 << n;
+}
 
 static void
 assert_format (int fmt_mask)
 {
-  if ((FORMAT_MASK (archive_format) & fmt_mask) == 0)
+  if ((format_mask (archive_format) & fmt_mask) == 0)
     paxusage (_("GNU features wanted on incompatible archive format"));
 }
 
@@ -1354,7 +1358,7 @@ parse_owner_group (char *arg, uintmax_t field_max, char const **name_option)
   return u;
 }
 
-#define TAR_SIZE_SUFFIXES "bBcGgkKMmPTtw"
+static char const TAR_SIZE_SUFFIXES[] = "bBcGgkKMmPTtw";
 
 static char const *const sort_mode_arg[] = {
   "none",
@@ -2283,28 +2287,34 @@ static const char *tar_authors[] = {
 };
 
 /* Subcommand classes */
-#define SUBCL_READ    0x01   /* subcommand reads from the archive */
-#define SUBCL_WRITE   0x02   /* subcommand writes to the archive */
-#define SUBCL_UPDATE  0x04   /* subcommand updates existing archive */
-#define SUBCL_TEST    0x08   /* subcommand tests archive header or meta-info */
-#define SUBCL_OCCUR   0x10   /* subcommand allows the use of the occurrence
-				option */
+enum
+  {
+    SUBCL_READ   = 1 << 0, /* Reads from the archive.  */
+    SUBCL_WRITE  = 1 << 1, /* Writes to the archive.  */
+    SUBCL_UPDATE = 1 << 2, /* Updates existing archive.  */
+    SUBCL_TEST   = 1 << 3, /* Tests archive header or meta-info.  */
+    SUBCL_OCCUR  = 1 << 4, /* Allows the use of the occurrence option.  */
+  };
 
-static int subcommand_class[] = {
-  /* UNKNOWN_SUBCOMMAND */     0,
-  /* APPEND_SUBCOMMAND  */     SUBCL_WRITE|SUBCL_UPDATE,
-  /* CAT_SUBCOMMAND     */     SUBCL_WRITE,
-  /* CREATE_SUBCOMMAND  */     SUBCL_WRITE,
-  /* DELETE_SUBCOMMAND  */     SUBCL_WRITE|SUBCL_UPDATE|SUBCL_OCCUR,
-  /* DIFF_SUBCOMMAND    */     SUBCL_READ|SUBCL_OCCUR,
-  /* EXTRACT_SUBCOMMAND */     SUBCL_READ|SUBCL_OCCUR,
-  /* LIST_SUBCOMMAND    */     SUBCL_READ|SUBCL_OCCUR,
-  /* UPDATE_SUBCOMMAND  */     SUBCL_WRITE|SUBCL_UPDATE,
-  /* TEST_LABEL_SUBCOMMAND */  SUBCL_TEST
+static int const subcommand_class[] = {
+  [UNKNOWN_SUBCOMMAND	] = 0,
+  [APPEND_SUBCOMMAND	] = SUBCL_WRITE | SUBCL_UPDATE,
+  [CAT_SUBCOMMAND	] = SUBCL_WRITE,
+  [CREATE_SUBCOMMAND	] = SUBCL_WRITE,
+  [DELETE_SUBCOMMAND	] = SUBCL_WRITE | SUBCL_UPDATE | SUBCL_OCCUR,
+  [DIFF_SUBCOMMAND	] = SUBCL_READ | SUBCL_OCCUR,
+  [EXTRACT_SUBCOMMAND	] = SUBCL_READ | SUBCL_OCCUR,
+  [LIST_SUBCOMMAND	] = SUBCL_READ | SUBCL_OCCUR,
+  [UPDATE_SUBCOMMAND	] = SUBCL_WRITE | SUBCL_UPDATE,
+  [TEST_LABEL_SUBCOMMAND] = SUBCL_TEST
 };
 
-/* Return t if the subcommand_option is in class(es) f */
-#define IS_SUBCOMMAND_CLASS(f) (subcommand_class[subcommand_option] & (f))
+/* Is subcommand_option in class(es) f?  */
+static bool
+is_subcommand_class (int f)
+{
+  return subcommand_class[subcommand_option] & f;
+}
 
 void
 more_options (int argc, char **argv, struct option_locus *loc)
@@ -2499,15 +2509,15 @@ decode_options (int argc, char **argv)
       || incremental_option
       || multi_volume_option
       || sparse_option)
-    assert_format (FORMAT_MASK (OLDGNU_FORMAT)
-		   | FORMAT_MASK (GNU_FORMAT)
-		   | FORMAT_MASK (POSIX_FORMAT));
+    assert_format (format_mask (OLDGNU_FORMAT)
+		   | format_mask (GNU_FORMAT)
+		   | format_mask (POSIX_FORMAT));
 
   if (occurrence_option)
     {
       if (!name_more_files ())
 	paxusage (_("--occurrence is meaningless without a file list"));
-      if (!IS_SUBCOMMAND_CLASS (SUBCL_OCCUR))
+      if (!is_subcommand_class (SUBCL_OCCUR))
 	{
 	  if (option_set_in_cl (OC_OCCURRENCE))
 	    option_conflict_error ("--occurrence",
@@ -2577,7 +2587,7 @@ decode_options (int argc, char **argv)
 	paxusage (_("Cannot verify multi-volume archives"));
       if (use_compress_program_option)
 	paxusage (_("Cannot verify compressed archives"));
-      if (!IS_SUBCOMMAND_CLASS (SUBCL_WRITE))
+      if (!is_subcommand_class (SUBCL_WRITE))
 	{
 	  if (option_set_in_cl (OC_VERIFY))
 	    option_conflict_error ("--verify",
@@ -2591,7 +2601,7 @@ decode_options (int argc, char **argv)
     {
       if (multi_volume_option)
 	paxusage (_("Cannot use multi-volume compressed archives"));
-      if (IS_SUBCOMMAND_CLASS (SUBCL_UPDATE))
+      if (is_subcommand_class (SUBCL_UPDATE))
 	paxusage (_("Cannot update compressed archives"));
       if (subcommand_option == CAT_SUBCOMMAND)
 	paxusage (_("Cannot concatenate compressed archives"));
@@ -2615,27 +2625,27 @@ decode_options (int argc, char **argv)
      --gray */
   if (args.pax_option
       && archive_format != POSIX_FORMAT
-      && !IS_SUBCOMMAND_CLASS (SUBCL_READ))
+      && !is_subcommand_class (SUBCL_READ))
     paxusage (_("--pax-option can be used only on POSIX archives"));
 
   /* star creates non-POSIX typed archives with xattr support, so allow the
      extra headers when reading */
   if ((acls_option > 0)
       && archive_format != POSIX_FORMAT
-      && !IS_SUBCOMMAND_CLASS (SUBCL_READ))
+      && !is_subcommand_class (SUBCL_READ))
     paxusage (_("--acls can be used only on POSIX archives"));
 
   if ((selinux_context_option > 0)
       && archive_format != POSIX_FORMAT
-      && !IS_SUBCOMMAND_CLASS (SUBCL_READ))
+      && !is_subcommand_class (SUBCL_READ))
     paxusage (_("--selinux can be used only on POSIX archives"));
 
   if ((xattrs_option > 0)
       && archive_format != POSIX_FORMAT
-      && !IS_SUBCOMMAND_CLASS (SUBCL_READ))
+      && !is_subcommand_class (SUBCL_READ))
     paxusage (_("--xattrs can be used only on POSIX archives"));
 
-  if (starting_file_option && !IS_SUBCOMMAND_CLASS (SUBCL_READ))
+  if (starting_file_option && !is_subcommand_class (SUBCL_READ))
     {
       if (option_set_in_cl (OC_STARTING_FILE))
 	option_conflict_error ("--starting-file",
@@ -2644,7 +2654,7 @@ decode_options (int argc, char **argv)
 	starting_file_option = false;
     }
 
-  if (same_order_option && !IS_SUBCOMMAND_CLASS (SUBCL_READ))
+  if (same_order_option && !is_subcommand_class (SUBCL_READ))
     {
       if (option_set_in_cl (OC_SAME_ORDER))
 	option_conflict_error ("--same-order",
@@ -2994,16 +3004,16 @@ tar_stat_destroy (struct tar_stat_info *st)
   memset (st, 0, sizeof (*st));
 }
 
-/* Format mask for all available formats that support nanosecond
-   timestamp resolution. */
-#define NS_PRECISION_FORMAT_MASK FORMAT_MASK (POSIX_FORMAT)
-
 /* Same as timespec_cmp, but ignore nanoseconds if current archive
    format does not provide sufficient resolution.  */
 int
 tar_timespec_cmp (struct timespec a, struct timespec b)
 {
-  if (!(FORMAT_MASK (current_format) & NS_PRECISION_FORMAT_MASK))
+  /* Format mask for all available formats that support nanosecond
+     timestamp resolution. */
+  int ns_precision_format_mask = format_mask (POSIX_FORMAT);
+
+  if (!(format_mask (current_format) & ns_precision_format_mask))
     a.tv_nsec = b.tv_nsec = 0;
   return timespec_cmp (a, b);
 }
