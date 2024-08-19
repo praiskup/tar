@@ -102,35 +102,40 @@ check_exclusion_tags (struct tar_stat_info const *st, char const **tag_file_name
 
 /* Exclusion predicate to test if the named file (usually "CACHEDIR.TAG")
    contains a valid header, as described at:
-	http://www.brynosaurus.com/cachedir
+	https://bford.info/cachedir/
    Applications can write this file into directories they create
    for use as caches containing purely regenerable, non-precious data,
    allowing us to avoid archiving them if --exclude-caches is specified. */
 
-#define CACHEDIR_SIGNATURE "Signature: 8a477f597d28d172789f06886806bc55"
-#define CACHEDIR_SIGNATURE_SIZE (sizeof CACHEDIR_SIGNATURE - 1)
-
 bool
 cachedir_file_p (int fd)
 {
-  char tagbuf[CACHEDIR_SIGNATURE_SIZE];
-
-  return
-    (read (fd, tagbuf, CACHEDIR_SIGNATURE_SIZE) == CACHEDIR_SIGNATURE_SIZE
-     && memcmp (tagbuf, CACHEDIR_SIGNATURE, CACHEDIR_SIGNATURE_SIZE) == 0);
+  static char const sig[43]
+    = "Signature: 8a477f597d28d172789f06886806bc55";
+  char tagbuf[sizeof sig];
+  return (read (fd, tagbuf, sizeof sig) == sizeof sig
+	  && memcmp (tagbuf, sig, sizeof sig) == 0);
 }
 
 
 /* The maximum uintmax_t value that can be represented with DIGITS digits,
    assuming that each digit is BITS_PER_DIGIT wide.  */
-#define MAX_VAL_WITH_DIGITS(digits, bits_per_digit) \
-   ((digits) * (bits_per_digit) < UINTMAX_WIDTH \
-    ? ((uintmax_t) 1 << ((digits) * (bits_per_digit))) - 1 \
-    : UINTMAX_MAX)
+static uintmax_t
+max_val_with_digits (int digits, int bits_per_digit)
+{
+  uintmax_t one = 1;
+  return (digits * bits_per_digit < UINTMAX_WIDTH
+	  ? (one << (digits * bits_per_digit)) - 1
+	  : UINTMAX_MAX);
+}
 
 /* The maximum uintmax_t value that can be represented with octal
-   digits and a trailing NUL in BUFFER.  */
-#define MAX_OCTAL_VAL(buffer) MAX_VAL_WITH_DIGITS (sizeof (buffer) - 1, LG_8)
+   digits and a trailing NUL in a buffer of size BUFSIZE.  */
+static uintmax_t
+max_octal_val (idx_t bufsize)
+{
+  return max_val_with_digits (bufsize - 1, LG_8);
+}
 
 /* Convert VALUE to an octal representation suitable for tar headers.
    Output to buffer WHERE with size SIZE.
@@ -215,8 +220,8 @@ to_chars_subst (bool negative, bool gnu_format, uintmax_t value, size_t valsize,
 		char *where, size_t size, const char *type)
 {
   uintmax_t maxval = (gnu_format
-		      ? MAX_VAL_WITH_DIGITS (size - 1, LG_256)
-		      : MAX_VAL_WITH_DIGITS (size - 1, LG_8));
+		      ? max_val_with_digits (size - 1, LG_256)
+		      : max_val_with_digits (size - 1, LG_8));
   intmax_t minval = (!gnu_format ? 0
 		     : ckd_sub (&minval, -1, maxval) ? INTMAX_MIN
 		     : minval);
@@ -271,7 +276,7 @@ to_chars (bool negative, uintmax_t value, size_t valsize,
 		     || archive_format == OLDGNU_FORMAT);
 
   /* Generate the POSIX octal representation if the number fits.  */
-  if (! negative && value <= MAX_VAL_WITH_DIGITS (size - 1, LG_8))
+  if (! negative && value <= max_val_with_digits (size - 1, LG_8))
     {
       where[size - 1] = '\0';
       to_octal (value, where, size - 1);
@@ -284,7 +289,7 @@ to_chars (bool negative, uintmax_t value, size_t valsize,
 
       /* Generate the base-256 representation if the number fits.  */
       if (((negative ? -1 - value : value)
-	   <= MAX_VAL_WITH_DIGITS (size - 1, LG_256)))
+	   <= max_val_with_digits (size - 1, LG_256)))
 	{
 	  where[0] = (char) (negative ? -1 : 1 << (LG_256 - 1));
 	  to_base256 (negative, value, where + 1, size - 1);
@@ -306,7 +311,7 @@ to_chars (bool negative, uintmax_t value, size_t valsize,
 	      paxwarn (0, _("Generating negative octal headers"));
 	    }
 	  where[size - 1] = '\0';
-	  to_octal (value & MAX_VAL_WITH_DIGITS (valsize * CHAR_BIT, 1),
+	  to_octal (value & max_val_with_digits (valsize * CHAR_BIT, 1),
 		    where, size - 1);
 	  return true;
 	}
@@ -490,7 +495,8 @@ start_private_header (const char *name, size_t size, time_t t)
   tar_name_copy_str (header->header.name, name, NAME_FIELD_SIZE);
   OFF_TO_CHARS (size, header->header.size);
 
-  TIME_TO_CHARS (t < 0 ? 0 : min (t, MAX_OCTAL_VAL (header->header.mtime)),
+  TIME_TO_CHARS ((t < 0 ? 0
+		  : min (t, max_octal_val (sizeof header->header.mtime))),
 		 header->header.mtime);
   MODE_TO_CHARS (S_IFREG|S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH, header->header.mode);
   UID_TO_CHARS (0, header->header.uid);
@@ -767,7 +773,7 @@ start_header (struct tar_stat_info *st)
   {
     uid_t uid = st->stat.st_uid;
     if (archive_format == POSIX_FORMAT
-	&& MAX_OCTAL_VAL (header->header.uid) < uid)
+	&& max_octal_val (sizeof header->header.uid) < uid)
       {
 	xheader_store ("uid", st, NULL);
 	uid = 0;
@@ -779,7 +785,7 @@ start_header (struct tar_stat_info *st)
   {
     gid_t gid = st->stat.st_gid;
     if (archive_format == POSIX_FORMAT
-	&& MAX_OCTAL_VAL (header->header.gid) < gid)
+	&& max_octal_val (sizeof header->header.gid) < gid)
       {
 	xheader_store ("gid", st, NULL);
 	gid = 0;
@@ -791,7 +797,7 @@ start_header (struct tar_stat_info *st)
   {
     off_t size = st->stat.st_size;
     if (archive_format == POSIX_FORMAT
-	&& MAX_OCTAL_VAL (header->header.size) < size)
+	&& max_octal_val (sizeof header->header.size) < size)
       {
 	xheader_store ("size", st, NULL);
 	size = 0;
@@ -830,10 +836,10 @@ start_header (struct tar_stat_info *st)
 
     if (archive_format == POSIX_FORMAT)
       {
-	if (MAX_OCTAL_VAL (header->header.mtime) < mtime.tv_sec
+	if (max_octal_val (sizeof header->header.mtime) < mtime.tv_sec
 	    || mtime.tv_nsec != 0)
 	  xheader_store ("mtime", st, &mtime);
-	if (MAX_OCTAL_VAL (header->header.mtime) < mtime.tv_sec)
+	if (max_octal_val (sizeof header->header.mtime) < mtime.tv_sec)
 	  mtime.tv_sec = 0;
       }
     if (!TIME_TO_CHARS (mtime.tv_sec, header->header.mtime))
@@ -848,7 +854,7 @@ start_header (struct tar_stat_info *st)
       minor_t devminor = minor (st->stat.st_rdev);
 
       if (archive_format == POSIX_FORMAT
-	  && MAX_OCTAL_VAL (header->header.devmajor) < devmajor)
+	  && max_octal_val (sizeof header->header.devmajor) < devmajor)
 	{
 	  xheader_store ("devmajor", st, NULL);
 	  devmajor = 0;
@@ -857,7 +863,7 @@ start_header (struct tar_stat_info *st)
 	return NULL;
 
       if (archive_format == POSIX_FORMAT
-	  && MAX_OCTAL_VAL (header->header.devminor) < devminor)
+	  && max_octal_val (sizeof header->header.devminor) < devminor)
 	{
 	  xheader_store ("devminor", st, NULL);
 	  devminor = 0;
