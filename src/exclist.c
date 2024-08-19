@@ -93,7 +93,7 @@ info_attach_exclist (struct tar_stat_info *dir)
 	  fp = fdopen (fd, "r");
 	  if (!fp)
 	    {
-	      ERROR ((0, errno, _("%s: fdopen failed"), file->name));
+	      paxerror (errno, _("%s: fdopen failed"), file->name);
 	      close (fd);
 	      continue;
 	    }
@@ -110,10 +110,7 @@ info_attach_exclist (struct tar_stat_info *dir)
 			      FNM_FILE_NAME|EXCLUDE_WILDCARDS|EXCLUDE_ANCHORED,
 			      '\n',
 			      vcsfile->data))
-	    {
-	      int e = errno;
-	      FATAL_ERROR ((0, e, "%s", quotearg_colon (file->name)));
-	    }
+	    paxfatal (errno, "%s", quotearg_colon (file->name));
 	  fclose (fp);
 
 	  ent = xmalloc (sizeof (*ent));

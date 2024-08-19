@@ -239,16 +239,22 @@ static int matching_flags = 0;
 static int include_anchored = EXCLUDE_ANCHORED;
   /* Pattern anchoring options used for file inclusion */
 
-#define EXCLUDE_OPTIONS						\
-  (((wildcards != disable_wildcards) ? EXCLUDE_WILDCARDS : 0)	\
-  | matching_flags						\
-  | recursion_option)
+static int
+exclude_options (void)
+{
+  return (((wildcards != disable_wildcards) ? EXCLUDE_WILDCARDS : 0)
+	  | matching_flags
+	  | recursion_option);
+}
 
-#define INCLUDE_OPTIONS						    \
-  (((wildcards == enable_wildcards) ? EXCLUDE_WILDCARDS : 0)	    \
-  | include_anchored						    \
-  | matching_flags						    \
-  | recursion_option)
+static int
+include_options (void)
+{
+  return (((wildcards == enable_wildcards) ? EXCLUDE_WILDCARDS : 0)
+	  | include_anchored
+	  | matching_flags
+	  | recursion_option);
+}
 
 static char const *const vcs_file_table[] = {
   /* CVS: */
@@ -310,7 +316,7 @@ handle_file_selection_option (int key, const char *arg)
       break;
 
     case EXCLUDE_OPTION:
-      add_exclude (excluded, arg, EXCLUDE_OPTIONS);
+      add_exclude (excluded, arg, exclude_options ());
       break;
 
     case EXCLUDE_CACHES_OPTION:
@@ -383,12 +389,10 @@ handle_file_selection_option (int key, const char *arg)
       break;
 
     case 'X':
-      if (add_exclude_file (add_exclude, excluded, arg, EXCLUDE_OPTIONS, '\n')
+      if (add_exclude_file (add_exclude, excluded, arg,
+			    exclude_options (), '\n')
 	  != 0)
-	{
-	  int e = errno;
-	  FATAL_ERROR ((0, e, "%s", quotearg_colon (arg)));
-	}
+	paxfatal (errno, "%s", quotearg_colon (arg));
       break;
 
     case ANCHORED_OPTION:
@@ -433,7 +437,7 @@ handle_file_selection_option (int key, const char *arg)
       break;
 
     default:
-      FATAL_ERROR ((0, 0, "unhandled positional option %d", key));
+      paxfatal (0, "unhandled positional option %d", key);
     }
 }
 
@@ -745,7 +749,10 @@ unconsumed_option_report (void)
     {
       struct name_elt *elt;
 
-      ERROR ((0, 0, _("The following options were used after non-option arguments.  These options are positional and affect only arguments that follow them.  Please, rearrange them properly.")));
+      paxerror (0, _("The following options were used after non-option arguments."
+		     "  These options are positional and affect"
+		     " only arguments that follow them."
+		     "  Please, rearrange them properly."));
 
       elt = unconsumed_option_tail;
       while (elt->prev)
@@ -756,17 +763,17 @@ unconsumed_option_report (void)
 	  switch (elt->type)
 	    {
 	    case NELT_CHDIR:
-	      ERROR ((0, 0, _("-C %s has no effect"), quote (elt->v.name)));
+	      paxerror (0, _("-C %s has no effect"), quote (elt->v.name));
 	      break;
 
 	    case NELT_OPTION:
 	      if (elt->v.opt.arg)
-		ERROR ((0, 0, _("--%s %s has no effect"),
-			file_selection_option_name (elt->v.opt.option),
-			quote (elt->v.opt.arg)));
+		paxerror (0, _("--%s %s has no effect"),
+			  file_selection_option_name (elt->v.opt.option),
+			  quote (elt->v.opt.arg));
 	      else
-		ERROR ((0, 0, _("--%s has no effect"),
-			file_selection_option_name (elt->v.opt.option)));
+		paxerror (0, _("--%s has no effect"),
+			  file_selection_option_name (elt->v.opt.option));
 	      break;
 
 	    default:
@@ -917,10 +924,9 @@ add_file_id (const char *filename)
     if (p->ino == st.st_ino && p->dev == st.st_dev)
       {
 	int oldc = set_char_quoting (NULL, ':', 1);
-	ERROR ((0, 0,
-		_("%s: file list requested from %s already read from %s"),
-		quotearg_n (0, filename),
-		reading_from, p->from_file));
+	paxerror (0, _("%s: file list requested from %s already read from %s"),
+		  quotearg_n (0, filename),
+		  reading_from, p->from_file);
 	set_char_quoting (NULL, ':', oldc);
 	return 1;
       }
@@ -997,11 +1003,11 @@ handle_option (const char *str, struct name_elt const *ent)
 
   ws.ws_offs = 1;
   if (wordsplit (str, &ws, WRDSF_DEFFLAGS|WRDSF_DOOFFS))
-    FATAL_ERROR ((0, 0, _("cannot split string '%s': %s"),
-		  str, wordsplit_strerror (&ws)));
+    paxfatal (0, _("cannot split string '%s': %s"),
+	      str, wordsplit_strerror (&ws));
   int argc;
   if (ckd_add (&argc, ws.ws_wordc, ws.ws_offs))
-    FATAL_ERROR ((0, 0, _("too many options")));
+    paxfatal (0, _("too many options"));
   ws.ws_wordv[0] = (char *) program_name;
   loc.source = OPTS_FILE;
   loc.name = ent->v.file.name;
@@ -1046,9 +1052,9 @@ read_next_name (struct name_elt *ent, struct name_elt *ret)
 	  continue;
 
 	case file_list_zero:
-	  WARNOPT (WARN_FILENAME_WITH_NULS,
-		   (0, 0, N_("%s: file name read contains nul character"),
-		    quotearg_colon (ent->v.file.name)));
+	  warnopt (WARN_FILENAME_WITH_NULS, 0,
+		   N_("%s: file name read contains nul character"),
+		    quotearg_colon (ent->v.file.name));
 	  ent->v.file.term = 0;
 	  FALLTHROUGH;
 	case file_list_success:
@@ -1193,7 +1199,7 @@ name_gather (void)
 	  buffer->change_dir = change_dir;
 	  buffer->next = 0;
 	  buffer->found_count = 0;
-	  buffer->matching_flags = INCLUDE_OPTIONS;
+	  buffer->matching_flags = include_options ();
 	  buffer->directory = NULL;
 	  buffer->parent = NULL;
 	  buffer->cmdline = true;
@@ -1237,7 +1243,7 @@ addname (char const *string, idx_t change_dir, bool cmdline,
   name->prev = nametail;
   name->next = NULL;
   name->found_count = 0;
-  name->matching_flags = INCLUDE_OPTIONS;
+  name->matching_flags = include_options ();
   name->change_dir = change_dir;
   name->directory = NULL;
   name->parent = parent;
@@ -1271,7 +1277,7 @@ add_starting_file (char const *file_name)
     nametail = namelist;
 
   name->found_count = 0;
-  name->matching_flags = INCLUDE_OPTIONS;
+  name->matching_flags = include_options ();
   name->change_dir = 0;
   name->directory = NULL;
   name->parent = NULL;
@@ -1353,7 +1359,7 @@ name_match (const char *file_name)
 	    cursor->found_count++; /* remember it matched */
 	  chdir_do (cursor->change_dir);
 	  /* We got a match.  */
-	  return ISFOUND (cursor);
+	  return isfound (cursor);
 	}
 
       /* Filename from archive not found in namelist.  If we have the whole
@@ -1392,7 +1398,7 @@ all_names_found (struct tar_stat_info *p)
   len = strlen (p->file_name);
   for (cursor = namelist; cursor; cursor = cursor->next)
     {
-      if ((cursor->name[0] && !WASFOUND (cursor))
+      if ((cursor->name[0] && !wasfound (cursor))
 	  || (len >= cursor->length && ISSLASH (p->file_name[cursor->length])))
 	return false;
     }
@@ -1410,11 +1416,9 @@ regex_usage_warning (const char *name)
       && fnmatch_pattern_has_wildcards (name, 0))
     {
       warned_once = 1;
-      WARN ((0, 0,
-	     _("Pattern matching characters used in file names")));
-      WARN ((0, 0,
-	     _("Use --wildcards to enable pattern matching,"
-	       " or --no-wildcards to suppress this warning")));
+      paxwarn (0, _("Pattern matching characters used in file names"));
+      paxwarn (0, _("Use --wildcards to enable pattern matching,"
+		    " or --no-wildcards to suppress this warning"));
     }
   return warned_once;
 }
@@ -1426,14 +1430,14 @@ names_notfound (void)
   struct name const *cursor;
 
   for (cursor = namelist; cursor; cursor = cursor->next)
-    if (!WASFOUND (cursor) && cursor->name[0])
+    if (!wasfound (cursor) && cursor->name[0])
       {
 	regex_usage_warning (cursor->name);
-	ERROR ((0, 0,
-		(cursor->found_count == 0) ?
-		     _("%s: Not found in archive") :
-		     _("%s: Required occurrence not found in archive"),
-		quotearg_colon (cursor->name)));
+	paxerror (0,
+		  (cursor->found_count == 0
+		   ? _("%s: Not found in archive")
+		   : _("%s: Required occurrence not found in archive")),
+		  quotearg_colon (cursor->name));
       }
 
   /* Don't bother freeing the name list; we're about to exit.  */
@@ -1447,8 +1451,7 @@ names_notfound (void)
       while ((name = name_next (true)))
 	{
 	  regex_usage_warning (name);
-	  ERROR ((0, 0, _("%s: Not found in archive"),
-		  quotearg_colon (name)));
+	  paxerror (0, _("%s: Not found in archive"), quotearg_colon (name));
 	}
     }
 }
@@ -1462,7 +1465,7 @@ label_notfound (void)
     return;
 
   for (cursor = namelist; cursor; cursor = cursor->next)
-    if (WASFOUND (cursor))
+    if (wasfound (cursor))
       return;
 
   if (verbose_option)
@@ -1495,7 +1498,7 @@ label_notfound (void)
    to order names.  Return the sorted list.  Note that after calling
    this function, the 'prev' links in list elements are messed up.
 
-   Apart from the type 'struct name' and the definition of SUCCESSOR,
+   Apart from the type 'struct name' and its 'next' member,
    this is a generic list-sorting function, but it's too painful to
    make it both generic and portable
    in C.  */
@@ -1513,18 +1516,16 @@ merge_sort_sll (struct name *list, int length,
   struct name *cursor;
   int counter;
 
-# define SUCCESSOR(name) ((name)->next)
-
   if (length == 1)
     return list;
 
   if (length == 2)
     {
-      if ((*compare) (list, SUCCESSOR (list)) > 0)
+      if (compare (list, list->next) > 0)
 	{
-	  result = SUCCESSOR (list);
-	  SUCCESSOR (result) = list;
-	  SUCCESSOR (list) = 0;
+	  result = list->next;
+	  result->next = list;
+	  list->next = 0;
 	  return result;
 	}
       return list;
@@ -1535,28 +1536,28 @@ merge_sort_sll (struct name *list, int length,
   second_length = length / 2;
   for (cursor = list, counter = first_length - 1;
        counter;
-       cursor = SUCCESSOR (cursor), counter--)
+       cursor = cursor->next, counter--)
     continue;
-  second_list = SUCCESSOR (cursor);
-  SUCCESSOR (cursor) = 0;
+  second_list = cursor->next;
+  cursor->next = 0;
 
   first_list = merge_sort_sll (first_list, first_length, compare);
   second_list = merge_sort_sll (second_list, second_length, compare);
 
   merge_point = &result;
   while (first_list && second_list)
-    if ((*compare) (first_list, second_list) < 0)
+    if (compare (first_list, second_list) < 0)
       {
-	cursor = SUCCESSOR (first_list);
+	cursor = first_list->next;
 	*merge_point = first_list;
-	merge_point = &SUCCESSOR (first_list);
+	merge_point = &first_list->next;
 	first_list = cursor;
       }
     else
       {
-	cursor = SUCCESSOR (second_list);
+	cursor = second_list->next;
 	*merge_point = second_list;
-	merge_point = &SUCCESSOR (second_list);
+	merge_point = &second_list->next;
 	second_list = cursor;
       }
   if (first_list)
@@ -1565,8 +1566,6 @@ merge_sort_sll (struct name *list, int length,
     *merge_point = second_list;
 
   return result;
-
-#undef SUCCESSOR
 }
 
 /* Sort doubly linked LIST of names, of given LENGTH, using COMPARE
@@ -1589,7 +1588,7 @@ merge_sort (struct name *list, int length,
 static int
 compare_names_found (struct name const *n1, struct name const *n2)
 {
-  int found_diff = WASFOUND (n2) - WASFOUND (n1);
+  int found_diff = wasfound (n2) - wasfound (n1);
   return found_diff ? found_diff : strcmp (n1->name, n2->name);
 }
 
@@ -1760,15 +1759,13 @@ collect_and_sort_names (void)
 
 	case 1:
 	  if (namelist->change_dir == 0)
-	    USAGE_ERROR ((0, 0,
-			  _("Using -C option inside file list is not "
-			    "allowed with --listed-incremental")));
+	    paxusage (_("Using -C option inside file list is not "
+			"allowed with --listed-incremental"));
 	  break;
 
 	default:
-	  USAGE_ERROR ((0, 0,
-			_("Only one -C option is allowed with "
-			  "--listed-incremental")));
+	  paxusage (_("Only one -C option is allowed with "
+		      "--listed-incremental"));
 	}
 
       read_directory_file ();

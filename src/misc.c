@@ -798,9 +798,9 @@ maybe_backup_file (const char *file_name, bool this_is_the_archive)
     {
       /* The backup operation failed.  */
       int e = errno;
-      ERROR ((0, e, _("%s: Cannot rename to %s"),
-	      quotearg_colon (before_backup_name),
-	      quote_n (1, after_backup_name)));
+      paxerror (e, _("%s: Cannot rename to %s"),
+		quotearg_colon (before_backup_name),
+		quote_n (1, after_backup_name));
       assign_null (&after_backup_name);
       return false;
     }
@@ -817,9 +817,9 @@ undo_last_backup (void)
 	  != 0)
 	{
 	  int e = errno;
-	  ERROR ((0, e, _("%s: Cannot rename to %s"),
-		  quotearg_colon (after_backup_name),
-		  quote_n (1, before_backup_name)));
+	  paxerror (e, _("%s: Cannot rename to %s"),
+		    quotearg_colon (after_backup_name),
+		    quote_n (1, before_backup_name));
 	}
       if (verbose_option)
 	fprintf (stdlis, _("Renaming %s back to %s\n"),
@@ -1116,7 +1116,7 @@ close_diag (char const *name)
 {
   if (ignore_failed_read_option)
     {
-      if (WARNING_ENABLED (WARN_FAILED_READ))
+      if (warning_enabled (WARN_FAILED_READ))
 	close_warn (name);
     }
   else
@@ -1128,7 +1128,7 @@ open_diag (char const *name)
 {
   if (ignore_failed_read_option)
     {
-      if (WARNING_ENABLED (WARN_FAILED_READ))
+      if (warning_enabled (WARN_FAILED_READ))
 	open_warn (name);
     }
   else
@@ -1140,7 +1140,7 @@ read_diag_details (char const *name, off_t offset, size_t size)
 {
   if (ignore_failed_read_option)
     {
-      if (WARNING_ENABLED (WARN_FAILED_READ))
+      if (warning_enabled (WARN_FAILED_READ))
 	read_warn_details (name, offset, size);
     }
   else
@@ -1152,7 +1152,7 @@ readlink_diag (char const *name)
 {
   if (ignore_failed_read_option)
     {
-      if (WARNING_ENABLED (WARN_FAILED_READ))
+      if (warning_enabled (WARN_FAILED_READ))
 	readlink_warn (name);
     }
   else
@@ -1164,7 +1164,7 @@ savedir_diag (char const *name)
 {
   if (ignore_failed_read_option)
     {
-      if (WARNING_ENABLED (WARN_FAILED_READ))
+      if (warning_enabled (WARN_FAILED_READ))
 	savedir_warn (name);
     }
   else
@@ -1176,7 +1176,7 @@ seek_diag_details (char const *name, off_t offset)
 {
   if (ignore_failed_read_option)
     {
-      if (WARNING_ENABLED (WARN_FAILED_READ))
+      if (warning_enabled (WARN_FAILED_READ))
 	seek_warn_details (name, offset);
     }
   else
@@ -1188,7 +1188,7 @@ stat_diag (char const *name)
 {
   if (ignore_failed_read_option)
     {
-      if (WARNING_ENABLED (WARN_FAILED_READ))
+      if (warning_enabled (WARN_FAILED_READ))
 	stat_warn (name);
     }
   else
@@ -1201,9 +1201,8 @@ file_removed_diag (const char *name, bool top_level,
 {
   if (!top_level && errno == ENOENT)
     {
-      WARNOPT (WARN_FILE_REMOVED,
-	       (0, 0, _("%s: File removed before we read it"),
-		quotearg_colon (name)));
+      warnopt (WARN_FILE_REMOVED, 0, _("%s: File removed before we read it"),
+	       quotearg_colon (name));
       set_exit_status (TAREXIT_DIFFERS);
     }
   else

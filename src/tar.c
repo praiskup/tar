@@ -167,8 +167,8 @@ void
 request_stdin (const char *option)
 {
   if (stdin_used_by)
-    USAGE_ERROR ((0, 0, _("Options '%s' and '%s' both want standard input"),
-		  stdin_used_by, option));
+    paxusage (_("Options '%s' and '%s' both want standard input"),
+	      stdin_used_by, option);
 
   stdin_used_by = option;
 }
@@ -242,8 +242,8 @@ set_archive_format (char const *name)
 
   for (p = fmttab; strcmp (p->name, name) != 0; )
     if (! (++p)->name)
-      USAGE_ERROR ((0, 0, _("%s: Invalid archive format"),
-		    quotearg_colon (name)));
+      paxusage (_("%s: Invalid archive format"),
+		quotearg_colon (name));
 
   archive_format = p->fmt;
 }
@@ -267,14 +267,17 @@ archive_format_string (enum archive_format fmt)
   return "unknown?";
 }
 
-#define FORMAT_MASK(n) (1 << (n))
+static int
+format_mask (int n)
+{
+  return 1 << n;
+}
 
 static void
 assert_format (int fmt_mask)
 {
-  if ((FORMAT_MASK (archive_format) & fmt_mask) == 0)
-    USAGE_ERROR ((0, 0,
-		  _("GNU features wanted on incompatible archive format")));
+  if ((format_mask (archive_format) & fmt_mask) == 0)
+    paxusage (_("GNU features wanted on incompatible archive format"));
 }
 
 const char *
@@ -341,8 +344,10 @@ tar_set_quoting_style (char *arg)
 	set_quoting_style (NULL, i);
 	return;
       }
-  FATAL_ERROR ((0, 0,
-		_("Unknown quoting style '%s'. Try '%s --quoting-style=help' to get a list."), arg, program_name));
+  paxfatal (0,
+	    _("Unknown quoting style '%s'."
+	      " Try '%s --quoting-style=help' to get a list."),
+	    arg, program_name);
 }
 
 
@@ -944,7 +949,7 @@ easprintf (char const *format, ...)
   va_end (args);
 
   if (!result)
-    FATAL_ERROR ((0, err, "vasprintf"));
+    paxfatal (err, "vasprintf");
   return result;
 }
 
@@ -972,7 +977,7 @@ option_conflict_error (const char *a, const char *b)
 {
   /* TRANSLATORS: Both %s in this statement are replaced with
      option names. */
-  USAGE_ERROR ((0, 0, _("'%s' cannot be used with '%s'"), a, b));
+  paxusage (_("'%s' cannot be used with '%s'"), a, b);
 }
 
 /* Classes of options that can conflict: */
@@ -1047,8 +1052,8 @@ set_subcommand_option (enum subcommand subcommand)
 {
   if (subcommand_option != UNKNOWN_SUBCOMMAND
       && subcommand_option != subcommand)
-    USAGE_ERROR ((0, 0,
-		  _("You may not specify more than one '-Acdtrux', '--delete' or  '--test-label' option")));
+    paxusage (_("You may not specify more than one '-Acdtrux',"
+		" '--delete' or  '--test-label' option"));
 
   subcommand_option = subcommand;
 }
@@ -1060,7 +1065,7 @@ set_use_compress_program_option (const char *string, struct option_locus *loc)
   if (use_compress_program_option
       && strcmp (use_compress_program_option, string) != 0
       && p->source == OPTS_COMMAND_LINE)
-    USAGE_ERROR ((0, 0, _("Conflicting compression options")));
+    paxusage (_("Conflicting compression options"));
 
   use_compress_program_option = string;
 }
@@ -1114,7 +1119,7 @@ decode_signal (const char *name)
   for (p = sigtab; p < sigtab + sizeof (sigtab) / sizeof (sigtab[0]); p++)
     if (strcmp (p->name, s) == 0)
       return p->signo;
-  FATAL_ERROR ((0, 0, _("Unknown signal name: %s"), name));
+  paxfatal (0, _("Unknown signal name: %s"), name);
 }
 
 static void
@@ -1144,7 +1149,7 @@ get_date_or_file (struct tar_args *args, const char *option,
       if (stat (str, &st) != 0)
 	{
 	  stat_error (str);
-	  USAGE_ERROR ((0, 0, _("Date sample file not found")));
+	  paxusage (_("Date sample file not found"));
 	}
       *ts = get_stat_mtime (&st);
     }
@@ -1152,8 +1157,8 @@ get_date_or_file (struct tar_args *args, const char *option,
     {
       if (! parse_datetime (ts, str, NULL))
 	{
-	  WARN ((0, 0, _("Substituting %s for unknown date format %s"),
-		 tartime (*ts, false), quote (str)));
+	  paxwarn (0, _("Substituting %s for unknown date format %s"),
+		   tartime (*ts, false), quote (str));
 	  ts->tv_nsec = 0;
 	  return 1;
 	}
@@ -1181,8 +1186,8 @@ report_textual_dates (struct tar_args *args)
 	{
 	  char const *treated_as = tartime (p->ts, true);
 	  if (strcmp (p->date, treated_as) != 0)
-	    WARN ((0, 0, _("Option %s: Treating date '%s' as %s"),
-		   p->option, p->date, treated_as));
+	    paxwarn (0, _("Option %s: Treating date '%s' as %s"),
+		     p->option, p->date, treated_as);
 	}
       free (p->date);
       free (p);
@@ -1346,14 +1351,14 @@ parse_owner_group (char *arg, uintmax_t field_max, char const **name_option)
   char *end;
   uintmax_t u = stoint (num, &end, &overflow, 0, field_max);
   if ((end == num) | *end | overflow)
-    FATAL_ERROR ((0, 0, "%s: %s", quotearg_colon (num),
-		  _("Invalid owner or group ID")));
+    paxfatal (0, "%s: %s", quotearg_colon (num),
+	      _("Invalid owner or group ID"));
   if (name_option)
     *name_option = name;
   return u;
 }
 
-#define TAR_SIZE_SUFFIXES "bBcGgkKMmPTtw"
+static char const TAR_SIZE_SUFFIXES[] = "bBcGgkKMmPTtw";
 
 static char const *const sort_mode_arg[] = {
   "none",
@@ -1464,8 +1469,8 @@ parse_opt (int key, char *arg, struct argp_state *state)
 				  (min (IDX_MAX, min (SSIZE_MAX, SIZE_MAX))
 				   / BLOCKSIZE));
 	if ((end == arg) | *end | overflow | !blocking_factor)
-	  USAGE_ERROR ((0, 0, "%s: %s", quotearg_colon (arg),
-			_("Invalid blocking factor")));
+	  paxusage ("%s: %s", quotearg_colon (arg),
+		    _("Invalid blocking factor"));
 	record_size = blocking_factor * BLOCKSIZE;
       }
       break;
@@ -1663,8 +1668,8 @@ parse_opt (int key, char *arg, struct argp_state *state)
 	    break;
 
 	  default:
-	    USAGE_ERROR ((0, 0, "%s: %s", quotearg_colon (arg),
-			  _("Invalid tape length")));
+	    paxusage ("%s: %s", quotearg_colon (arg),
+		      _("Invalid tape length"));
 	  }
 
 	multi_volume_option = true;
@@ -1676,7 +1681,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
 	char *end;
 	incremental_level = stoint (arg, &end, NULL, 0, 1);
 	if ((end == arg) | *end)
-	  USAGE_ERROR ((0, 0, _("Invalid incremental level value")));
+	  paxusage (_("Invalid incremental level value"));
       }
       break;
 
@@ -1721,8 +1726,8 @@ parse_opt (int key, char *arg, struct argp_state *state)
       after_date_option = true;
       FALLTHROUGH;
     case NEWER_MTIME_OPTION:
-      if (TIME_OPTION_INITIALIZED (newer_mtime_option))
-	USAGE_ERROR ((0, 0, _("More than one threshold date")));
+      if (time_option_initialized (newer_mtime_option))
+	paxusage (_("More than one threshold date"));
       get_date_or_file (args,
 			key == NEWER_MTIME_OPTION ? "--newer-mtime"
 			: "--after-date", arg, &newer_mtime_option);
@@ -1798,7 +1803,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
 	if ((p != arg) & (*p == '.'))
 	  tar_sparse_minor = stoint (p + 1, &p, &vminor, 0, INTMAX_MAX);
 	if ((p == arg) | *p | vmajor | vminor)
-	  USAGE_ERROR ((0, 0, _("Invalid sparse version value")));
+	  paxusage (_("Invalid sparse version value"));
       }
       break;
 
@@ -1872,9 +1877,8 @@ parse_opt (int key, char *arg, struct argp_state *state)
 		      atime_preserve_args, atime_preserve_types)
 	 : replace_atime_preserve);
       if (! O_NOATIME && atime_preserve_option == system_atime_preserve)
-	FATAL_ERROR ((0, 0,
-		      _("--atime-preserve='system' is not supported"
-			" on this platform")));
+	paxfatal (0, _("--atime-preserve='system' is not supported"
+		       " on this platform"));
       break;
 
     case CHECK_DEVICE_OPTION:
@@ -1897,8 +1901,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
 	    }
 	  checkpoint_option = stoint (arg, &p, NULL, 0, INTMAX_MAX);
 	  if (*p | (checkpoint_option <= 0))
-	    FATAL_ERROR ((0, 0,
-			  _("invalid --checkpoint value")));
+	    paxfatal (0, _("invalid --checkpoint value"));
 	}
       else
 	checkpoint_option = DEFAULT_CHECKPOINT;
@@ -1976,7 +1979,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
     case MODE_OPTION:
       mode_option = mode_compile (arg);
       if (!mode_option)
-	FATAL_ERROR ((0, 0, _("Invalid mode given on option")));
+	paxfatal (0, _("Invalid mode given on option"));
       initial_umask = umask (0);
       umask (initial_umask);
       break;
@@ -2007,8 +2010,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
 	  char *end;
 	  occurrence_option = stoint (arg, &end, NULL, 0, UINTMAX_MAX);
 	  if (*end)
-	    FATAL_ERROR ((0, 0, "%s: %s", quotearg_colon (arg),
-			  _("Invalid number")));
+	    paxfatal (0, "%s: %s", quotearg_colon (arg), _("Invalid number"));
 	}
       break;
 
@@ -2072,11 +2074,9 @@ parse_opt (int key, char *arg, struct argp_state *state)
 	if (! (xstrtoumax (arg, NULL, 10, &u, TAR_SIZE_SUFFIXES) == LONGINT_OK
 	       && !ckd_add (&record_size, u, 0)
 	       && record_size <= min (SSIZE_MAX, SIZE_MAX)))
-	  USAGE_ERROR ((0, 0, "%s: %s", quotearg_colon (arg),
-			_("Invalid record size")));
+	  paxusage ("%s: %s", quotearg_colon (arg), _("Invalid record size"));
 	if (record_size % BLOCKSIZE != 0)
-	  USAGE_ERROR ((0, 0, _("Record size must be a multiple of %d."),
-			BLOCKSIZE));
+	  paxusage (_("Record size must be a multiple of %d."), BLOCKSIZE);
 	blocking_factor = record_size / BLOCKSIZE;
       }
       break;
@@ -2120,8 +2120,8 @@ parse_opt (int key, char *arg, struct argp_state *state)
 	char *end;
 	strip_name_components = stoint (arg, &end, NULL, 0, SIZE_MAX);
 	if (*end)
-	  USAGE_ERROR ((0, 0, "%s: %s", quotearg_colon (arg),
-			_("Invalid number of elements")));
+	  paxusage ("%s: %s", quotearg_colon (arg),
+		    _("Invalid number of elements"));
       }
       break;
 
@@ -2145,7 +2145,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
 
     case TO_COMMAND_OPTION:
       if (to_command_option)
-        USAGE_ERROR ((0, 0, _("Only one --to-command option allowed")));
+	paxusage (_("Only one --to-command option allowed"));
       to_command_option = arg;
       break;
 
@@ -2287,33 +2287,39 @@ static const char *tar_authors[] = {
 };
 
 /* Subcommand classes */
-#define SUBCL_READ    0x01   /* subcommand reads from the archive */
-#define SUBCL_WRITE   0x02   /* subcommand writes to the archive */
-#define SUBCL_UPDATE  0x04   /* subcommand updates existing archive */
-#define SUBCL_TEST    0x08   /* subcommand tests archive header or meta-info */
-#define SUBCL_OCCUR   0x10   /* subcommand allows the use of the occurrence
-				option */
+enum
+  {
+    SUBCL_READ   = 1 << 0, /* Reads from the archive.  */
+    SUBCL_WRITE  = 1 << 1, /* Writes to the archive.  */
+    SUBCL_UPDATE = 1 << 2, /* Updates existing archive.  */
+    SUBCL_TEST   = 1 << 3, /* Tests archive header or meta-info.  */
+    SUBCL_OCCUR  = 1 << 4, /* Allows the use of the occurrence option.  */
+  };
 
-static int subcommand_class[] = {
-  /* UNKNOWN_SUBCOMMAND */     0,
-  /* APPEND_SUBCOMMAND  */     SUBCL_WRITE|SUBCL_UPDATE,
-  /* CAT_SUBCOMMAND     */     SUBCL_WRITE,
-  /* CREATE_SUBCOMMAND  */     SUBCL_WRITE,
-  /* DELETE_SUBCOMMAND  */     SUBCL_WRITE|SUBCL_UPDATE|SUBCL_OCCUR,
-  /* DIFF_SUBCOMMAND    */     SUBCL_READ|SUBCL_OCCUR,
-  /* EXTRACT_SUBCOMMAND */     SUBCL_READ|SUBCL_OCCUR,
-  /* LIST_SUBCOMMAND    */     SUBCL_READ|SUBCL_OCCUR,
-  /* UPDATE_SUBCOMMAND  */     SUBCL_WRITE|SUBCL_UPDATE,
-  /* TEST_LABEL_SUBCOMMAND */  SUBCL_TEST
+static int const subcommand_class[] = {
+  [UNKNOWN_SUBCOMMAND	] = 0,
+  [APPEND_SUBCOMMAND	] = SUBCL_WRITE | SUBCL_UPDATE,
+  [CAT_SUBCOMMAND	] = SUBCL_WRITE,
+  [CREATE_SUBCOMMAND	] = SUBCL_WRITE,
+  [DELETE_SUBCOMMAND	] = SUBCL_WRITE | SUBCL_UPDATE | SUBCL_OCCUR,
+  [DIFF_SUBCOMMAND	] = SUBCL_READ | SUBCL_OCCUR,
+  [EXTRACT_SUBCOMMAND	] = SUBCL_READ | SUBCL_OCCUR,
+  [LIST_SUBCOMMAND	] = SUBCL_READ | SUBCL_OCCUR,
+  [UPDATE_SUBCOMMAND	] = SUBCL_WRITE | SUBCL_UPDATE,
+  [TEST_LABEL_SUBCOMMAND] = SUBCL_TEST
 };
 
-/* Return t if the subcommand_option is in class(es) f */
-#define IS_SUBCOMMAND_CLASS(f) (subcommand_class[subcommand_option] & (f))
+/* Is subcommand_option in class(es) f?  */
+static bool
+is_subcommand_class (int f)
+{
+  return subcommand_class[subcommand_option] & f;
+}
 
 void
 more_options (int argc, char **argv, struct option_locus *loc)
 {
-  struct tar_args args = TAR_ARGS_INITIALIZER (loc);
+  struct tar_args args = { .loc = loc };
   argp_parse (&names_argp, argc, argv, ARGP_IN_ORDER|ARGP_NO_EXIT|ARGP_NO_ERRS,
 	      NULL, &args);
 }
@@ -2338,8 +2344,7 @@ parse_default_options (struct tar_args *args)
 
   ws.ws_offs = 1;
   if (wordsplit (opts, &ws, WRDSF_DEFFLAGS|WRDSF_DOOFFS))
-    FATAL_ERROR ((0, 0, _("cannot split TAR_OPTIONS: %s"),
-		  wordsplit_strerror (&ws)));
+    paxfatal (0, _("cannot split TAR_OPTIONS: %s"), wordsplit_strerror (&ws));
   if (ws.ws_wordc)
     {
       int idx;
@@ -2348,13 +2353,13 @@ parse_default_options (struct tar_args *args)
       args->loc = &loc;
       int argc;
       if (ckd_add (&argc, ws.ws_offs, ws.ws_wordc))
-	FATAL_ERROR ((0, 0, "too many options"));
+	paxfatal (0, _("too many options"));
       if (argp_parse (&argp, argc, ws.ws_wordv,
 		      ARGP_IN_ORDER | ARGP_NO_EXIT, &idx, args))
 	abort (); /* shouldn't happen */
       args->loc = save_loc_ptr;
       if (name_more_files ())
-	USAGE_ERROR ((0, 0, _("non-option arguments in %s"), loc.name));
+	paxusage (_("non-option arguments in %s"), loc.name);
       /* Don't free consumed words */
       ws.ws_wordc = 0;
     }
@@ -2365,8 +2370,8 @@ static void
 decode_options (int argc, char **argv)
 {
   int idx;
-  struct option_locus loc = { OPTS_COMMAND_LINE, 0, 0, 0 };
-  struct tar_args args = TAR_ARGS_INITIALIZER (&loc);
+  struct option_locus loc = { .source = OPTS_COMMAND_LINE };
+  struct tar_args args = { .loc = &loc };
 
   argp_version_setup ("tar", tar_authors);
 
@@ -2439,11 +2444,9 @@ decode_options (int argc, char **argv)
 	  opt = find_argp_option (&argp, *letter);
 	  if (opt && opt->arg)
 	    {
-	      if (in < argv + argc)
-		*out++ = *in++;
-	      else
-		USAGE_ERROR ((0, 0, _("Old option '%c' requires an argument."),
-			      *letter));
+	      if (! (in < argv + argc))
+		paxusage (_("Old option '%c' requires an argument."), *letter);
+	      *out++ = *in++;
 	    }
 	}
 
@@ -2506,16 +2509,15 @@ decode_options (int argc, char **argv)
       || incremental_option
       || multi_volume_option
       || sparse_option)
-    assert_format (FORMAT_MASK (OLDGNU_FORMAT)
-		   | FORMAT_MASK (GNU_FORMAT)
-		   | FORMAT_MASK (POSIX_FORMAT));
+    assert_format (format_mask (OLDGNU_FORMAT)
+		   | format_mask (GNU_FORMAT)
+		   | format_mask (POSIX_FORMAT));
 
   if (occurrence_option)
     {
       if (!name_more_files ())
-	USAGE_ERROR ((0, 0,
-		      _("--occurrence is meaningless without a file list")));
-      if (!IS_SUBCOMMAND_CLASS (SUBCL_OCCUR))
+	paxusage (_("--occurrence is meaningless without a file list"));
+      if (!is_subcommand_class (SUBCL_OCCUR))
 	{
 	  if (option_set_in_cl (OC_OCCURRENCE))
 	    option_conflict_error ("--occurrence",
@@ -2539,11 +2541,10 @@ decode_options (int argc, char **argv)
   /* Allow multiple archives only with '-M'.  */
 
   if (archive_names > 1 && !multi_volume_option)
-    USAGE_ERROR ((0, 0,
-		  _("Multiple archive files require '-M' option")));
+    paxusage (_("Multiple archive files require '-M' option"));
 
   if (listed_incremental_option
-      && TIME_OPTION_INITIALIZED (newer_mtime_option))
+      && time_option_initialized (newer_mtime_option))
     {
       struct option_locus *listed_loc = optloc_lookup (OC_LISTED_INCREMENTAL);
       struct option_locus *newer_loc = optloc_lookup (OC_NEWER);
@@ -2556,8 +2557,7 @@ decode_options (int argc, char **argv)
     }
 
   if (0 <= incremental_level && !listed_incremental_option)
-    WARN ((0, 0,
-	   _("--level is meaningless without --listed-incremental")));
+    paxwarn (0, _("--level is meaningless without --listed-incremental"));
 
   if (volume_label_option)
     {
@@ -2573,10 +2573,9 @@ decode_options (int argc, char **argv)
 		   - 1 /* for sign, as 0 <= volno */)
 		: 0));
 	  if (volume_label_max_len < strlen (volume_label_option))
-	    USAGE_ERROR ((0, 0,
-			  _("%s: Volume label length exceeds %d bytes"),
-			  quotearg_colon (volume_label_option),
-			  volume_label_max_len));
+	    paxusage (_("%s: Volume label length exceeds %d bytes"),
+		      quotearg_colon (volume_label_option),
+		      volume_label_max_len);
 	}
       /* else FIXME
 	 Label length in PAX format is limited by the volume size. */
@@ -2585,10 +2584,10 @@ decode_options (int argc, char **argv)
   if (verify_option)
     {
       if (multi_volume_option)
-	USAGE_ERROR ((0, 0, _("Cannot verify multi-volume archives")));
+	paxusage (_("Cannot verify multi-volume archives"));
       if (use_compress_program_option)
-	USAGE_ERROR ((0, 0, _("Cannot verify compressed archives")));
-      if (!IS_SUBCOMMAND_CLASS (SUBCL_WRITE))
+	paxusage (_("Cannot verify compressed archives"));
+      if (!is_subcommand_class (SUBCL_WRITE))
 	{
 	  if (option_set_in_cl (OC_VERIFY))
 	    option_conflict_error ("--verify",
@@ -2601,27 +2600,23 @@ decode_options (int argc, char **argv)
   if (use_compress_program_option)
     {
       if (multi_volume_option)
-	USAGE_ERROR ((0, 0, _("Cannot use multi-volume compressed archives")));
-      if (IS_SUBCOMMAND_CLASS (SUBCL_UPDATE))
-	USAGE_ERROR ((0, 0, _("Cannot update compressed archives")));
+	paxusage (_("Cannot use multi-volume compressed archives"));
+      if (is_subcommand_class (SUBCL_UPDATE))
+	paxusage (_("Cannot update compressed archives"));
       if (subcommand_option == CAT_SUBCOMMAND)
-	USAGE_ERROR ((0, 0, _("Cannot concatenate compressed archives")));
+	paxusage (_("Cannot concatenate compressed archives"));
     }
 
   if (set_mtime_command)
     {
       if (set_mtime_option != USE_FILE_MTIME)
-	{
-	  USAGE_ERROR ((0, 0,
-			_("--mtime conflicts with --set-mtime-command")));
-	}
+	paxusage (_("--mtime conflicts with --set-mtime-command"));
       set_mtime_option = COMMAND_MTIME;
     }
   else if (set_mtime_option == CLAMP_MTIME)
     {
-      if (!TIME_OPTION_INITIALIZED (mtime_option))
-	USAGE_ERROR ((0, 0,
-		      _("--clamp-mtime needs a date specified using --mtime")));
+      if (!time_option_initialized (mtime_option))
+	paxusage (_("--clamp-mtime needs a date specified using --mtime"));
     }
 
   /* It is no harm to use --pax-option on non-pax archives in archive
@@ -2630,27 +2625,27 @@ decode_options (int argc, char **argv)
      --gray */
   if (args.pax_option
       && archive_format != POSIX_FORMAT
-      && !IS_SUBCOMMAND_CLASS (SUBCL_READ))
-    USAGE_ERROR ((0, 0, _("--pax-option can be used only on POSIX archives")));
+      && !is_subcommand_class (SUBCL_READ))
+    paxusage (_("--pax-option can be used only on POSIX archives"));
 
   /* star creates non-POSIX typed archives with xattr support, so allow the
      extra headers when reading */
   if ((acls_option > 0)
       && archive_format != POSIX_FORMAT
-      && !IS_SUBCOMMAND_CLASS (SUBCL_READ))
-    USAGE_ERROR ((0, 0, _("--acls can be used only on POSIX archives")));
+      && !is_subcommand_class (SUBCL_READ))
+    paxusage (_("--acls can be used only on POSIX archives"));
 
   if ((selinux_context_option > 0)
       && archive_format != POSIX_FORMAT
-      && !IS_SUBCOMMAND_CLASS (SUBCL_READ))
-    USAGE_ERROR ((0, 0, _("--selinux can be used only on POSIX archives")));
+      && !is_subcommand_class (SUBCL_READ))
+    paxusage (_("--selinux can be used only on POSIX archives"));
 
   if ((xattrs_option > 0)
       && archive_format != POSIX_FORMAT
-      && !IS_SUBCOMMAND_CLASS (SUBCL_READ))
-    USAGE_ERROR ((0, 0, _("--xattrs can be used only on POSIX archives")));
+      && !is_subcommand_class (SUBCL_READ))
+    paxusage (_("--xattrs can be used only on POSIX archives"));
 
-  if (starting_file_option && !IS_SUBCOMMAND_CLASS (SUBCL_READ))
+  if (starting_file_option && !is_subcommand_class (SUBCL_READ))
     {
       if (option_set_in_cl (OC_STARTING_FILE))
 	option_conflict_error ("--starting-file",
@@ -2659,7 +2654,7 @@ decode_options (int argc, char **argv)
 	starting_file_option = false;
     }
 
-  if (same_order_option && !IS_SUBCOMMAND_CLASS (SUBCL_READ))
+  if (same_order_option && !is_subcommand_class (SUBCL_READ))
     {
       if (option_set_in_cl (OC_SAME_ORDER))
 	option_conflict_error ("--same-order",
@@ -2696,9 +2691,8 @@ decode_options (int argc, char **argv)
 	  free (base);
 
 	  if (!one_top_level_dir)
-	    USAGE_ERROR ((0, 0,
-			  _("Cannot deduce top-level directory name; "
-			    "please set it explicitly with --one-top-level=DIR")));
+	    paxusage (_("Cannot deduce top-level directory name; "
+			"please set it explicitly with --one-top-level=DIR"));
 	}
     }
 
@@ -2730,7 +2724,7 @@ decode_options (int argc, char **argv)
     verbose_option = 2;
 
   if (tape_length_option && tape_length_option < record_size)
-    USAGE_ERROR ((0, 0, _("Volume length cannot be less than record size")));
+    paxusage (_("Volume length cannot be less than record size"));
 
   if (same_order_option && listed_incremental_option)
     {
@@ -2753,8 +2747,7 @@ decode_options (int argc, char **argv)
     {
     case CREATE_SUBCOMMAND:
       if (!name_more_files ())
-	USAGE_ERROR ((0, 0,
-		      _("Cowardly refusing to create an empty archive")));
+	paxusage (_("Cowardly refusing to create an empty archive"));
       if (args.compress_autodetect && archive_names
 	  && strcmp (archive_name_array[0], "-"))
 	set_compression_program_by_suffix (archive_name_array[0],
@@ -2780,8 +2773,7 @@ decode_options (int argc, char **argv)
 	   archive_name_cursor < archive_name_array + archive_names;
 	   archive_name_cursor++)
 	if (!strcmp (*archive_name_cursor, "-"))
-	  USAGE_ERROR ((0, 0,
-			_("Options '-Aru' are incompatible with '-f -'")));
+	  paxusage (_("Options '-Aru' are incompatible with '-f -'"));
 
     default:
       break;
@@ -2809,7 +2801,7 @@ decode_options (int argc, char **argv)
       backup_type = xget_version ("--backup", args.version_control_string);
       /* No backup is needed either if explicitly disabled or if
 	 the extracted files are not being written to disk. */
-      if (backup_type == no_backups || EXTRACT_OVER_PIPE)
+      if (backup_type == no_backups || to_stdout_option || to_command_option)
 	backup_option = false;
     }
 
@@ -2864,8 +2856,8 @@ main (int argc, char **argv)
   close_stdout_set_file_name (_("stdout"));
   /* Make sure we have first three descriptors available */
   if (stdopen ())
-    FATAL_ERROR ((0, 0, "%s",
-		  _("failed to assert availability of the standard file descriptors")));
+    paxfatal (0, _("failed to assert availability"
+		   " of the standard file descriptors"));
 
   /* Pre-allocate a few structures.  */
 
@@ -2894,8 +2886,8 @@ main (int argc, char **argv)
   switch (subcommand_option)
     {
     case UNKNOWN_SUBCOMMAND:
-      USAGE_ERROR ((0, 0,
-		    _("You must specify one of the '-Acdtrux', '--delete' or '--test-label' options")));
+      paxusage (_("You must specify one of the '-Acdtrux',"
+		  " '--delete' or '--test-label' options"));
 
     case CAT_SUBCOMMAND:
     case UPDATE_SUBCOMMAND:
@@ -3012,16 +3004,16 @@ tar_stat_destroy (struct tar_stat_info *st)
   memset (st, 0, sizeof (*st));
 }
 
-/* Format mask for all available formats that support nanosecond
-   timestamp resolution. */
-#define NS_PRECISION_FORMAT_MASK FORMAT_MASK (POSIX_FORMAT)
-
 /* Same as timespec_cmp, but ignore nanoseconds if current archive
    format does not provide sufficient resolution.  */
 int
 tar_timespec_cmp (struct timespec a, struct timespec b)
 {
-  if (!(FORMAT_MASK (current_format) & NS_PRECISION_FORMAT_MASK))
+  /* Format mask for all available formats that support nanosecond
+     timestamp resolution. */
+  int ns_precision_format_mask = format_mask (POSIX_FORMAT);
+
+  if (!(format_mask (current_format) & ns_precision_format_mask))
     a.tv_nsec = b.tv_nsec = 0;
   return timespec_cmp (a, b);
 }

@@ -98,8 +98,8 @@ map_read (Hash_table **ptab, char const *file,
 
       ++line;
       if (wordsplit (buf, &ws, wsopt))
-	FATAL_ERROR ((0, 0, _("%s:%jd: cannot split line: %s"),
-		      file, line, wordsplit_strerror (&ws)));
+	paxfatal (0, _("%s:%jd: cannot split line: %s"),
+		  file, line, wordsplit_strerror (&ws));
       wsopt |= WRDSF_REUSE;
       if (ws.ws_wordc == 0)
 	continue;
@@ -177,7 +177,7 @@ map_read (Hash_table **ptab, char const *file,
     wordsplit_free (&ws);
   fclose (fp);
   if (err)
-    FATAL_ERROR ((0, 0, _("errors reading map file")));
+    paxfatal (0, _("errors reading map file"));
 }
 
 /* UID translation */

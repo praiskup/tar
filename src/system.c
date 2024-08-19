@@ -147,14 +147,14 @@ sys_write_archive_buffer (void)
 void
 sys_child_open_for_compress (void)
 {
-  FATAL_ERROR ((0, 0, _("Cannot use compressed or remote archives")));
+  paxfatal (0, _("Cannot use compressed or remote archives"));
 }
 
 /* Set ARCHIVE for uncompressing, then reading an archive.  */
 void
 sys_child_open_for_uncompress (void)
 {
-  FATAL_ERROR ((0, 0, _("Cannot use compressed or remote archives")));
+  paxfatal (0, _("Cannot use compressed or remote archives"));
 }
 
 int
@@ -164,7 +164,7 @@ sys_exec_setmtime_script (const char *script_name,
 			  const char *fmt,
 			  struct timespec *ts)
 {
-  FATAL_ERROR ((0, 0, _("--set-mtime-command not implemented on this platform")));
+  paxfatal (0, _("--set-mtime-command not implemented on this platform"));
 }
 #else
 
@@ -233,11 +233,11 @@ sys_wait_for_child (pid_t child_pid, bool eof)
 	{
 	  int sig = WTERMSIG (wait_status);
 	  if (!(!eof && sig == SIGPIPE))
-	    FATAL_ERROR ((0, 0, _("Child died with signal %d"), sig));
+	    paxfatal (0, _("Child died with signal %d"), sig);
 	}
       else if (WEXITSTATUS (wait_status) != 0)
-	FATAL_ERROR ((0, 0, _("Child returned status %d"),
-		      WEXITSTATUS (wait_status)));
+	paxfatal (0, _("Child returned status %d"),
+		  WEXITSTATUS (wait_status));
     }
 }
 
@@ -312,8 +312,8 @@ sys_write_archive_buffer (void)
   return rmtwrite (archive, record_start->buffer, record_size);
 }
 
-#define	PREAD 0			/* read file descriptor from pipe() */
-#define	PWRITE 1		/* write file descriptor from pipe() */
+/* Read and write file descriptors from a pipe(pipefd) call.  */
+enum { PREAD, PWRITE };
 
 /* Work around GCC bug 109839.  */
 #if 13 <= __GNUC__
@@ -328,10 +328,7 @@ xdup2 (int from, int into)
   if (from != into)
     {
       if (dup2 (from, into) < 0)
-	{
-	  int e = errno;
-	  FATAL_ERROR ((0, e, _("Cannot dup2")));
-	}
+	paxfatal (errno, _("Cannot dup2"));
       xclose (from);
     }
 }
@@ -517,14 +514,12 @@ run_decompress_program (void)
     {
       if (prog)
 	{
-	  WARNOPT (WARN_DECOMPRESS_PROGRAM,
-		   (0, errno, _("cannot run %s"), prog));
-	  WARNOPT (WARN_DECOMPRESS_PROGRAM,
-		   (0, 0, _("trying %s"), p));
+	  warnopt (WARN_DECOMPRESS_PROGRAM, errno, _("cannot run %s"), prog);
+	  warnopt (WARN_DECOMPRESS_PROGRAM, 0, _("trying %s"), p);
 	}
       if (wordsplit (p, &ws, wsflags))
-	FATAL_ERROR ((0, 0, _("cannot split string '%s': %s"),
-		      p, wordsplit_strerror (&ws)));
+	paxfatal (0, _("cannot split string '%s': %s"),
+		  p, wordsplit_strerror (&ws));
       wsflags |= WRDSF_REUSE;
       memmove (ws.ws_wordv, ws.ws_wordv + ws.ws_offs,
 	       ws.ws_wordc * sizeof *ws.ws_wordv);
@@ -534,7 +529,7 @@ run_decompress_program (void)
       ws.ws_wordv[ws.ws_wordc] = NULL;
     }
   if (!prog)
-    FATAL_ERROR ((0, 0, _("unable to run decompression program")));
+    paxfatal (0, _("unable to run decompression program"));
   exec_fatal (prog);
 }
 
@@ -805,17 +800,17 @@ sys_wait_command (void)
   if (WIFEXITED (status))
     {
       if (!ignore_command_error_option && WEXITSTATUS (status))
-	ERROR ((0, 0, _("%jd: Child returned status %d"),
-		intmax (global_pid), WEXITSTATUS (status)));
+	paxerror (0, _("%jd: Child returned status %d"),
+		  intmax (global_pid), WEXITSTATUS (status));
     }
   else if (WIFSIGNALED (status))
     {
-      WARN ((0, 0, _("%jd: Child terminated on signal %d"),
-	     intmax (global_pid), WTERMSIG (status)));
+      paxwarn (0, _("%jd: Child terminated on signal %d"),
+	       intmax (global_pid), WTERMSIG (status));
     }
   else
-    ERROR ((0, 0, _("%jd: Child terminated on unknown reason"),
-	    intmax (global_pid)));
+    paxerror (0, _("%jd: Child terminated on unknown reason"),
+	      intmax (global_pid));
 
   global_pid = -1;
 }
@@ -951,7 +946,7 @@ sys_exec_setmtime_script (const char *script_name,
   int rc = 0;
 
   if (pipe (p))
-    FATAL_ERROR ((0, errno, _("pipe failed")));
+    paxfatal (errno, _("pipe failed"));
 
   if ((pid = xfork ()) == 0)
     {
@@ -964,12 +959,12 @@ sys_exec_setmtime_script (const char *script_name,
       if (dirfd != AT_FDCWD)
 	{
 	  if (fchdir (dirfd))
-	    FATAL_ERROR ((0, errno, _("chdir failed")));
+	    paxfatal (errno, _("chdir failed"));
 	}
 
       close (p[0]);
       if (dup2 (p[1], STDOUT_FILENO) < 0)
-	FATAL_ERROR ((0, errno, _("dup2 failed")));
+	paxfatal (errno, _("dup2 failed"));
       if (p[1] != STDOUT_FILENO)
 	close (p[1]);
 
@@ -992,7 +987,7 @@ sys_exec_setmtime_script (const char *script_name,
 	{
 	  if (errno != EINTR)
 	    {
-	      ERROR ((0, errno, _("poll failed")));
+	      paxerror (errno, _("poll failed"));
 	      stop = 1;
 	      break;
 	    }
@@ -1010,7 +1005,7 @@ sys_exec_setmtime_script (const char *script_name,
 	  ssize_t nread = read (pfd.fd, buffer + buflen, bufsize - buflen);
 	  if (nread < 0)
 	    {
-	      ERROR ((0, errno, _("error reading output of %s"), script_name));
+	      paxerror (errno, _("error reading output of %s"), script_name);
 	      stop = 1;
 	      break;
 	    }
@@ -1036,7 +1031,7 @@ sys_exec_setmtime_script (const char *script_name,
 
   if (buflen == 0)
     {
-      ERROR ((0, 0, _("empty output from \"%s %s\""), script_name, file_name));
+      paxerror (0, _("empty output from \"%s %s\""), script_name, file_name);
       return -1;
     }
 
@@ -1057,14 +1052,15 @@ sys_exec_setmtime_script (const char *script_name,
       cp = strptime (buffer, fmt, &tm);
       if (cp == NULL)
 	{
-	  ERROR ((0, 0, _("output from \"%s %s\" does not satisfy format string: %s"),
-		  script_name, file_name, buffer));
+	  paxerror (0, _("output from \"%s %s\" does not satisfy format string:"
+			 " %s"),
+		    script_name, file_name, buffer);
 	  rc = -1;
 	}
       else if (*cp != 0)
 	{
-	  WARN ((0, 0, _("unconsumed output from \"%s %s\": %s"),
-		 script_name, file_name, cp));
+	  paxwarn (0, _("unconsumed output from \"%s %s\": %s"),
+		   script_name, file_name, cp);
 	  rc = -1;
 	}
       else
@@ -1073,7 +1069,7 @@ sys_exec_setmtime_script (const char *script_name,
 	  t = mktime (&tm);
 	  if (tm.tm_wday < 0)
 	    {
-	      ERROR ((0, errno, _("mktime failed")));
+	      paxerror (errno, _("mktime failed"));
 	      rc = -1;
 	    }
 	  else
@@ -1085,8 +1081,8 @@ sys_exec_setmtime_script (const char *script_name,
     }
   else if (! parse_datetime (ts, buffer, NULL))
     {
-      ERROR ((0, 0, _("unparsable output from \"%s %s\": %s"),
-	      script_name, file_name, buffer));
+      paxerror (0, _("unparsable output from \"%s %s\": %s"),
+		script_name, file_name, buffer);
       rc = -1;
     }
 

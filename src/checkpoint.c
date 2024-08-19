@@ -132,7 +132,7 @@ checkpoint_compile_action (const char *str)
       act = alloc_action (cop_sleep);
       act->v.time = stoint (arg, &p, NULL, 0, TYPE_MAXIMUM (time_t));
       if ((p == arg) | *p)
-	FATAL_ERROR ((0, 0, _("%s: not a valid timeout"), str));
+	paxfatal (0, _("%s: not a valid timeout"), str);
     }
   else if (strcmp (str, "totals") == 0)
     alloc_action (cop_totals);
@@ -143,7 +143,7 @@ checkpoint_compile_action (const char *str)
       sigaddset (&sigs, act->v.signal);
     }
   else
-    FATAL_ERROR ((0, 0, _("%s: unknown checkpoint action"), str));
+    paxfatal (0, _("%s: unknown checkpoint action"), str);
 }
 
 void
@@ -304,10 +304,10 @@ format_checkpoint_string (FILE *fp, size_t len,
 		    if (wordsplit (arg, &ws,
 				   (WRDSF_NOVAR | WRDSF_NOCMD
 				    | WRDSF_QUOTE | WRDSF_DELIM)))
-		      ERROR ((0, 0, _("cannot split string '%s': %s"),
-			      arg, wordsplit_strerror (&ws)));
+		      paxerror (0, _("cannot split string '%s': %s"),
+				arg, wordsplit_strerror (&ws));
 		    else if (3 < ws.ws_wordc)
-		      ERROR ((0, 0, _("too many words in '%s'"), arg));
+		      paxerror (0, _("too many words in '%s'"), arg);
 		    else
 		      {
 			int i;

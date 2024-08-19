@@ -69,12 +69,11 @@ exclusion_tag_warning (const char *dirname, const char *tagname,
 		       const char *message)
 {
   if (verbose_option)
-    WARNOPT (WARN_CACHEDIR,
-	     (0, 0,
-	      _("%s: contains a cache directory tag %s; %s"),
-	      quotearg_colon (dirname),
-	      quotearg_n (1, tagname),
-	      message));
+    warnopt (WARN_CACHEDIR, 0,
+	     _("%s: contains a cache directory tag %s; %s"),
+	     quotearg_colon (dirname),
+	     quotearg_n (1, tagname),
+	     message);
 }
 
 enum exclusion_tag_type
@@ -103,35 +102,40 @@ check_exclusion_tags (struct tar_stat_info const *st, char const **tag_file_name
 
 /* Exclusion predicate to test if the named file (usually "CACHEDIR.TAG")
    contains a valid header, as described at:
-	http://www.brynosaurus.com/cachedir
+	https://bford.info/cachedir/
    Applications can write this file into directories they create
    for use as caches containing purely regenerable, non-precious data,
    allowing us to avoid archiving them if --exclude-caches is specified. */
 
-#define CACHEDIR_SIGNATURE "Signature: 8a477f597d28d172789f06886806bc55"
-#define CACHEDIR_SIGNATURE_SIZE (sizeof CACHEDIR_SIGNATURE - 1)
-
 bool
 cachedir_file_p (int fd)
 {
-  char tagbuf[CACHEDIR_SIGNATURE_SIZE];
-
-  return
-    (read (fd, tagbuf, CACHEDIR_SIGNATURE_SIZE) == CACHEDIR_SIGNATURE_SIZE
-     && memcmp (tagbuf, CACHEDIR_SIGNATURE, CACHEDIR_SIGNATURE_SIZE) == 0);
+  static char const sig[43]
+    = "Signature: 8a477f597d28d172789f06886806bc55";
+  char tagbuf[sizeof sig];
+  return (read (fd, tagbuf, sizeof sig) == sizeof sig
+	  && memcmp (tagbuf, sig, sizeof sig) == 0);
 }
 
 
 /* The maximum uintmax_t value that can be represented with DIGITS digits,
    assuming that each digit is BITS_PER_DIGIT wide.  */
-#define MAX_VAL_WITH_DIGITS(digits, bits_per_digit) \
-   ((digits) * (bits_per_digit) < UINTMAX_WIDTH \
-    ? ((uintmax_t) 1 << ((digits) * (bits_per_digit))) - 1 \
-    : UINTMAX_MAX)
+static uintmax_t
+max_val_with_digits (int digits, int bits_per_digit)
+{
+  uintmax_t one = 1;
+  return (digits * bits_per_digit < UINTMAX_WIDTH
+	  ? (one << (digits * bits_per_digit)) - 1
+	  : UINTMAX_MAX);
+}
 
 /* The maximum uintmax_t value that can be represented with octal
-   digits and a trailing NUL in BUFFER.  */
-#define MAX_OCTAL_VAL(buffer) MAX_VAL_WITH_DIGITS (sizeof (buffer) - 1, LG_8)
+   digits and a trailing NUL in a buffer of size BUFSIZE.  */
+static uintmax_t
+max_octal_val (idx_t bufsize)
+{
+  return max_val_with_digits (bufsize - 1, LG_8);
+}
 
 /* Convert VALUE to an octal representation suitable for tar headers.
    Output to buffer WHERE with size SIZE.
@@ -216,8 +220,8 @@ to_chars_subst (bool negative, bool gnu_format, uintmax_t value, size_t valsize,
 		char *where, size_t size, const char *type)
 {
   uintmax_t maxval = (gnu_format
-		      ? MAX_VAL_WITH_DIGITS (size - 1, LG_256)
-		      : MAX_VAL_WITH_DIGITS (size - 1, LG_8));
+		      ? max_val_with_digits (size - 1, LG_256)
+		      : max_val_with_digits (size - 1, LG_8));
   intmax_t minval = (!gnu_format ? 0
 		     : ckd_sub (&minval, -1, maxval) ? INTMAX_MIN
 		     : minval);
@@ -238,14 +242,14 @@ to_chars_subst (bool negative, bool gnu_format, uintmax_t value, size_t valsize,
 	 Apart from this they are completely identical. */
       uintmax_t s = (negsub &= archive_format == GNU_FORMAT) ? - sub : sub;
       char const *ssign = &"-"[!negsub];
-      WARN ((0, 0, _("value %s%ju out of %s range %jd..%ju;"
-		     " substituting %s%ju"),
-	     valuesign, value, type, minval, maxval, ssign, s));
+      paxwarn (0, _("value %s%ju out of %s range %jd..%ju;"
+		    " substituting %s%ju"),
+	       valuesign, value, type, minval, maxval, ssign, s);
       return to_chars (negsub, s, valsize, 0, where, size, type);
     }
   else
-    ERROR ((0, 0, _("value %s%ju out of %s range %jd..%ju"),
-	    valuesign, value, type, minval, maxval));
+    paxerror (0, _("value %s%ju out of %s range %jd..%ju"),
+	      valuesign, value, type, minval, maxval);
   return false;
 }
 
@@ -272,7 +276,7 @@ to_chars (bool negative, uintmax_t value, size_t valsize,
 		     || archive_format == OLDGNU_FORMAT);
 
   /* Generate the POSIX octal representation if the number fits.  */
-  if (! negative && value <= MAX_VAL_WITH_DIGITS (size - 1, LG_8))
+  if (! negative && value <= max_val_with_digits (size - 1, LG_8))
     {
       where[size - 1] = '\0';
       to_octal (value, where, size - 1);
@@ -285,7 +289,7 @@ to_chars (bool negative, uintmax_t value, size_t valsize,
 
       /* Generate the base-256 representation if the number fits.  */
       if (((negative ? -1 - value : value)
-	   <= MAX_VAL_WITH_DIGITS (size - 1, LG_256)))
+	   <= max_val_with_digits (size - 1, LG_256)))
 	{
 	  where[0] = (char) (negative ? -1 : 1 << (LG_256 - 1));
 	  to_base256 (negative, value, where + 1, size - 1);
@@ -304,10 +308,10 @@ to_chars (bool negative, uintmax_t value, size_t valsize,
 	  if (! warned_once)
 	    {
 	      warned_once = true;
-	      WARN ((0, 0, _("Generating negative octal headers")));
+	      paxwarn (0, _("Generating negative octal headers"));
 	    }
 	  where[size - 1] = '\0';
-	  to_octal (value & MAX_VAL_WITH_DIGITS (valsize * CHAR_BIT, 1),
+	  to_octal (value & max_val_with_digits (valsize * CHAR_BIT, 1),
 		    where, size - 1);
 	  return true;
 	}
@@ -491,7 +495,8 @@ start_private_header (const char *name, size_t size, time_t t)
   tar_name_copy_str (header->header.name, name, NAME_FIELD_SIZE);
   OFF_TO_CHARS (size, header->header.size);
 
-  TIME_TO_CHARS (t < 0 ? 0 : min (t, MAX_OCTAL_VAL (header->header.mtime)),
+  TIME_TO_CHARS ((t < 0 ? 0
+		  : min (t, max_octal_val (sizeof header->header.mtime))),
 		 header->header.mtime);
   MODE_TO_CHARS (S_IFREG|S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH, header->header.mode);
   UID_TO_CHARS (0, header->header.uid);
@@ -581,18 +586,17 @@ write_ustar_long_name (const char *name)
 
   if (length > PREFIX_FIELD_SIZE + NAME_FIELD_SIZE + 1)
     {
-      ERROR ((0, 0, _("%s: file name is too long (max %d); not dumped"),
-	      quotearg_colon (name),
-	      PREFIX_FIELD_SIZE + NAME_FIELD_SIZE + 1));
+      paxerror (0, _("%s: file name is too long (max %d); not dumped"),
+		quotearg_colon (name),
+		PREFIX_FIELD_SIZE + NAME_FIELD_SIZE + 1);
       return NULL;
     }
 
   i = split_long_name (name, length);
   if (i == 0 || (nlen = length - i - 1) > NAME_FIELD_SIZE || nlen == 0)
     {
-      ERROR ((0, 0,
-	      _("%s: file name is too long (cannot be split); not dumped"),
-	      quotearg_colon (name)));
+      paxerror (0, _("%s: file name is too long (cannot be split); not dumped"),
+		quotearg_colon (name));
       return NULL;
     }
 
@@ -617,9 +621,8 @@ write_long_link (struct tar_stat_info *st)
     case V7_FORMAT:			/* old V7 tar format */
     case USTAR_FORMAT:
     case STAR_FORMAT:
-      ERROR ((0, 0,
-	      _("%s: link name is too long; not dumped"),
-	      quotearg_colon (st->link_name)));
+      paxerror (0, _("%s: link name is too long; not dumped"),
+		quotearg_colon (st->link_name));
       break;
 
     case OLDGNU_FORMAT:
@@ -644,9 +647,8 @@ write_long_name (struct tar_stat_info *st)
     case V7_FORMAT:
       if (strlen (st->file_name) > NAME_FIELD_SIZE-1)
 	{
-	  ERROR ((0, 0, _("%s: file name is too long (max %d); not dumped"),
-		  quotearg_colon (st->file_name),
-		  NAME_FIELD_SIZE - 1));
+	  paxerror (0, _("%s: file name is too long (max %d); not dumped"),
+		    quotearg_colon (st->file_name), NAME_FIELD_SIZE - 1);
 	  return NULL;
 	}
       break;
@@ -771,7 +773,7 @@ start_header (struct tar_stat_info *st)
   {
     uid_t uid = st->stat.st_uid;
     if (archive_format == POSIX_FORMAT
-	&& MAX_OCTAL_VAL (header->header.uid) < uid)
+	&& max_octal_val (sizeof header->header.uid) < uid)
       {
 	xheader_store ("uid", st, NULL);
 	uid = 0;
@@ -783,7 +785,7 @@ start_header (struct tar_stat_info *st)
   {
     gid_t gid = st->stat.st_gid;
     if (archive_format == POSIX_FORMAT
-	&& MAX_OCTAL_VAL (header->header.gid) < gid)
+	&& max_octal_val (sizeof header->header.gid) < gid)
       {
 	xheader_store ("gid", st, NULL);
 	gid = 0;
@@ -795,7 +797,7 @@ start_header (struct tar_stat_info *st)
   {
     off_t size = st->stat.st_size;
     if (archive_format == POSIX_FORMAT
-	&& MAX_OCTAL_VAL (header->header.size) < size)
+	&& max_octal_val (sizeof header->header.size) < size)
       {
 	xheader_store ("size", st, NULL);
 	size = 0;
@@ -834,10 +836,10 @@ start_header (struct tar_stat_info *st)
 
     if (archive_format == POSIX_FORMAT)
       {
-	if (MAX_OCTAL_VAL (header->header.mtime) < mtime.tv_sec
+	if (max_octal_val (sizeof header->header.mtime) < mtime.tv_sec
 	    || mtime.tv_nsec != 0)
 	  xheader_store ("mtime", st, &mtime);
-	if (MAX_OCTAL_VAL (header->header.mtime) < mtime.tv_sec)
+	if (max_octal_val (sizeof header->header.mtime) < mtime.tv_sec)
 	  mtime.tv_sec = 0;
       }
     if (!TIME_TO_CHARS (mtime.tv_sec, header->header.mtime))
@@ -852,7 +854,7 @@ start_header (struct tar_stat_info *st)
       minor_t devminor = minor (st->stat.st_rdev);
 
       if (archive_format == POSIX_FORMAT
-	  && MAX_OCTAL_VAL (header->header.devmajor) < devmajor)
+	  && max_octal_val (sizeof header->header.devmajor) < devmajor)
 	{
 	  xheader_store ("devmajor", st, NULL);
 	  devmajor = 0;
@@ -861,7 +863,7 @@ start_header (struct tar_stat_info *st)
 	return NULL;
 
       if (archive_format == POSIX_FORMAT
-	  && MAX_OCTAL_VAL (header->header.devminor) < devminor)
+	  && max_octal_val (sizeof header->header.devminor) < devminor)
 	{
 	  xheader_store ("devminor", st, NULL);
 	  devminor = 0;
@@ -964,7 +966,8 @@ simple_finish_header (union block *header)
   int sum;
   char *p;
 
-  memcpy (header->header.chksum, CHKBLANKS, sizeof header->header.chksum);
+  /* Fill checksum field with spaces while the checksum is computed.  */
+  memset (header->header.chksum, ' ', sizeof header->header.chksum);
 
   sum = 0;
   p = header->buffer;
@@ -1080,15 +1083,14 @@ dump_regular_file (int fd, struct tar_stat_info *st)
       if (count != bufsize)
 	{
 	  memset (blk->buffer + count, 0, bufsize - count);
-	  WARNOPT (WARN_FILE_SHRANK,
-		   (0, 0,
-		    ngettext (("%s: File shrank by %jd byte;"
-			       " padding with zeros"),
-			      ("%s: File shrank by %jd bytes;"
-			       " padding with zeros"),
-			      size_left),
-		    quotearg_colon (st->orig_file_name),
-		    intmax (size_left)));
+	  warnopt (WARN_FILE_SHRANK, 0,
+		   ngettext (("%s: File shrank by %jd byte;"
+			      " padding with zeros"),
+			     ("%s: File shrank by %jd bytes;"
+			      " padding with zeros"),
+			     size_left),
+		   quotearg_colon (st->orig_file_name),
+		   intmax (size_left));
 	  if (! ignore_failed_read_option)
 	    set_exit_status (TAREXIT_DIFFERS);
 	  pad_archive (size_left - (bufsize - count));
@@ -1180,10 +1182,9 @@ dump_dir0 (struct tar_stat_info *st, char const *directory)
       && st->parent->stat.st_dev != st->stat.st_dev)
     {
       if (verbose_option)
-	WARNOPT (WARN_XDEV,
-		 (0, 0,
-		  _("%s: file is on a different filesystem; not dumped"),
-		  quotearg_colon (st->orig_file_name)));
+	warnopt (WARN_XDEV, 0,
+		 _("%s: file is on a different filesystem; not dumped"),
+		 quotearg_colon (st->orig_file_name));
     }
   else
     {
@@ -1433,9 +1434,8 @@ compare_links (void const *entry1, void const *entry2)
 static void
 unknown_file_error (char const *p)
 {
-  WARNOPT (WARN_FILE_IGNORED,
-	   (0, 0, _("%s: Unknown file type; file ignored"),
-	    quotearg_colon (p)));
+  warnopt (WARN_FILE_IGNORED, 0,
+	   _("%s: Unknown file type; file ignored"), quotearg_colon (p));
   if (!ignore_failed_read_option)
     set_exit_status (TAREXIT_FAILURE);
 }
@@ -1535,19 +1535,13 @@ file_count_links (struct tar_stat_info *st)
 void
 check_links (void)
 {
-  struct link *lp;
-
   if (!link_table)
     return;
 
-  for (lp = hash_get_first (link_table); lp;
+  for (struct link *lp = hash_get_first (link_table); lp;
        lp = hash_get_next (link_table, lp))
-    {
-      if (lp->nlink)
-	{
-	  WARN ((0, 0, _("Missing links to %s."), quote (lp->name)));
-	}
-    }
+    if (lp->nlink)
+      paxwarn (0, _("Missing links to %s."), quote (lp->name));
 }
 
 /* Assuming DIR is the working directory, open FILE, using FLAGS to
@@ -1700,22 +1694,21 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
 
   if (! (incremental_option && ! top_level)
       && !S_ISDIR (st->stat.st_mode)
-      && OLDER_TAR_STAT_TIME (*st, m)
-      && (!after_date_option || OLDER_TAR_STAT_TIME (*st, c)))
+      && timespec_cmp (st->mtime, newer_mtime_option) < 0
+      && (!after_date_option
+	  || timespec_cmp (st->ctime, newer_mtime_option) < 0))
     {
       if (!incremental_option && verbose_option)
-	WARNOPT (WARN_FILE_UNCHANGED,
-		 (0, 0, _("%s: file is unchanged; not dumped"),
-		  quotearg_colon (p)));
+	warnopt (WARN_FILE_UNCHANGED, 0, _("%s: file is unchanged; not dumped"),
+		 quotearg_colon (p));
       return allocated;
     }
 
   /* See if we are trying to dump the archive.  */
   if (sys_file_is_archive (st))
     {
-      WARNOPT (WARN_IGNORE_ARCHIVE,
-	       (0, 0, _("%s: archive cannot contain itself; not dumped"),
-		quotearg_colon (p)));
+      warnopt (WARN_IGNORE_ARCHIVE, 0,
+	       _("%s: archive cannot contain itself; not dumped"), quotearg_colon (p));
       return allocated;
     }
 
@@ -1835,9 +1828,8 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
 
 	  if (!ok)
 	    {
-	      WARNOPT (WARN_FILE_CHANGED,
-		       (0, 0, _("%s: file changed as we read it"),
-			quotearg_colon (p)));
+	      warnopt (WARN_FILE_CHANGED, 0, _("%s: file changed as we read it"),
+		       quotearg_colon (p));
 	      if (! ignore_failed_read_option)
 		set_exit_status (TAREXIT_DIFFERS);
 	    }
@@ -1910,14 +1902,12 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
     }
   else if (S_ISSOCK (st->stat.st_mode))
     {
-      WARNOPT (WARN_FILE_IGNORED,
-	       (0, 0, _("%s: socket ignored"), quotearg_colon (p)));
+      warnopt (WARN_FILE_IGNORED, 0, _("%s: socket ignored"), quotearg_colon (p));
       return allocated;
     }
   else if (S_ISDOOR (st->stat.st_mode))
     {
-      WARNOPT (WARN_FILE_IGNORED,
-	       (0, 0, _("%s: door ignored"), quotearg_colon (p)));
+      warnopt (WARN_FILE_IGNORED, 0, _("%s: door ignored"), quotearg_colon (p));
       return allocated;
     }
   else

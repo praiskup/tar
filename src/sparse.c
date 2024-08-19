@@ -360,8 +360,7 @@ sparse_scan_file (struct tar_sparse_file *file)
         return true;
 #else
       if (hole_detection == HOLE_DETECTION_SEEK)
-	WARN((0, 0,
-	      _("\"seek\" hole detection is not supported, using \"raw\".")));
+	paxwarn (0, _("\"seek\" hole detection is not supported, using \"raw\"."));
       /* fall back to "raw" for this and all other files */
       hole_detection = HOLE_DETECTION_RAW;
 #endif
@@ -454,13 +453,12 @@ sparse_dump_region (struct tar_sparse_file *file, size_t i)
 		     + file->stat_info->sparse_map[i].numbytes
 		     - bytes_left);
 
-	      WARNOPT (WARN_FILE_SHRANK,
-		       (0, 0,
-			ngettext ("%s: File shrank by %jd byte; padding with zeros",
-				  "%s: File shrank by %jd bytes; padding with zeros",
-				  n),
-			quotearg_colon (file->stat_info->orig_file_name),
-			intmax (n)));
+	      warnopt (WARN_FILE_SHRANK, 0,
+		       ngettext ("%s: File shrank by %jd byte; padding with zeros",
+				 "%s: File shrank by %jd bytes; padding with zeros",
+				 n),
+		       quotearg_colon (file->stat_info->orig_file_name),
+		       intmax (n));
 	      if (! ignore_failed_read_option)
 		set_exit_status (TAREXIT_DIFFERS);
 	      return false;
@@ -498,7 +496,7 @@ sparse_extract_region (struct tar_sparse_file *file, size_t i)
       union block *blk = find_next_block ();
       if (!blk)
 	{
-	  ERROR ((0, 0, _("Unexpected EOF in archive")));
+	  paxerror (0, _("Unexpected EOF in archive"));
 	  return false;
 	}
       set_next_block_after (blk);
@@ -684,7 +682,7 @@ check_data_region (struct tar_sparse_file *file, size_t i)
       union block *blk = find_next_block ();
       if (!blk)
 	{
-	  ERROR ((0, 0, _("Unexpected EOF in archive")));
+	  paxerror (0, _("Unexpected EOF in archive"));
 	  return false;
 	}
       set_next_block_after (blk);
@@ -843,7 +841,7 @@ oldgnu_get_sparse_info (struct tar_sparse_file *file)
       h = find_next_block ();
       if (!h)
 	{
-	  ERROR ((0, 0, _("Unexpected EOF in archive")));
+	  paxerror (0, _("Unexpected EOF in archive"));
 	  return false;
 	}
       set_next_block_after (h);
@@ -853,8 +851,8 @@ oldgnu_get_sparse_info (struct tar_sparse_file *file)
 
   if (rc == add_fail)
     {
-      ERROR ((0, 0, _("%s: invalid sparse archive member"),
-	      file->stat_info->orig_file_name));
+      paxerror (0, _("%s: invalid sparse archive member"),
+		file->stat_info->orig_file_name);
       return false;
     }
   return true;
@@ -975,7 +973,7 @@ star_get_sparse_info (struct tar_sparse_file *file)
       h = find_next_block ();
       if (!h)
 	{
-	  ERROR ((0, 0, _("Unexpected EOF in archive")));
+	  paxerror (0, _("Unexpected EOF in archive"));
 	  return false;
 	}
       set_next_block_after (h);
@@ -986,8 +984,8 @@ star_get_sparse_info (struct tar_sparse_file *file)
 
   if (rc == add_fail)
     {
-      ERROR ((0, 0, _("%s: invalid sparse archive member"),
-	      file->stat_info->orig_file_name));
+      paxerror (0, _("%s: invalid sparse archive member"),
+		file->stat_info->orig_file_name);
       return false;
     }
   return true;
@@ -1161,48 +1159,65 @@ pax_dump_header_0 (struct tar_sparse_file *file)
   return true;
 }
 
+/* An output block BLOCK, and a pointer PTR into it.  */
+struct block_ptr
+{
+  union block *block;
+  char *ptr;
+};
+
+/* Append to BP the contents of the string SRC, followed by a newline.
+   If the string doesn't fit, put any overflow into the succeeding blocks.
+   Return the updated BP.  */
+static struct block_ptr
+dump_str_nl (struct block_ptr bp, char const *str)
+{
+  char *endp = bp.block->buffer + BLOCKSIZE;
+  char c;
+  do
+    {
+      c = *str++;
+      if (bp.ptr == endp)
+	{
+	  set_next_block_after (bp.block);
+	  bp.block = find_next_block ();
+	  bp.ptr = bp.block->buffer;
+	  endp = bp.block->buffer + BLOCKSIZE;
+	}
+      *bp.ptr++ = c ? c : '\n';
+    }
+  while (c);
+
+  return bp;
+}
+
+/* Return the floor of the log base 10 of N.  If N is 0, return 0.  */
+static int
+floorlog10 (uintmax_t n)
+{
+  for (int f = 0; ; f++)
+    if ((n /= 10) == 0)
+      return f;
+}
+
 static bool
 pax_dump_header_1 (struct tar_sparse_file *file)
 {
   off_t block_ordinal = current_block_ordinal ();
-  union block *blk;
-  char *p, *q;
-  size_t i;
   char nbuf[UINTMAX_STRSIZE_BOUND];
-  off_t size = 0;
   struct sp_array *map = file->stat_info->sparse_map;
   char *save_file_name = file->stat_info->file_name;
 
-#define COPY_STRING(b,dst,src) do                \
- {                                               \
-   char *endp = b->buffer + BLOCKSIZE;           \
-   char const *srcp = src;                       \
-   while (*srcp)                                 \
-     {                                           \
-       if (dst == endp)                          \
-	 {                                       \
-	   set_next_block_after (b);             \
-	   b = find_next_block ();               \
-           dst = b->buffer;                      \
-	   endp = b->buffer + BLOCKSIZE;         \
-	 }                                       \
-       *dst++ = *srcp++;                         \
-     }                                           \
-   } while (0)
-
   /* Compute stored file size */
-  p = umaxtostr (file->stat_info->sparse_map_avail, nbuf);
-  size += strlen (p) + 1;
-  for (i = 0; i < file->stat_info->sparse_map_avail; i++)
+  off_t size = floorlog10 (file->stat_info->sparse_map_avail) + 2;
+  for (idx_t i = 0; i < file->stat_info->sparse_map_avail; i++)
     {
-      p = umaxtostr (map[i].offset, nbuf);
-      size += strlen (p) + 1;
-      p = umaxtostr (map[i].numbytes, nbuf);
-      size += strlen (p) + 1;
+      size += floorlog10 (map[i].offset) + 2;
+      size += floorlog10 (map[i].numbytes) + 2;
     }
-  size = (size + BLOCKSIZE - 1) / BLOCKSIZE;
-  file->stat_info->archive_file_size += size * BLOCKSIZE;
-  file->dumped_size += size * BLOCKSIZE;
+  size = (size + BLOCKSIZE - 1) / BLOCKSIZE * BLOCKSIZE;
+  file->stat_info->archive_file_size += size;
+  file->dumped_size += size;
 
   /* Store sparse file identification */
   xheader_store ("GNU.sparse.major", file->stat_info, NULL);
@@ -1216,27 +1231,22 @@ pax_dump_header_1 (struct tar_sparse_file *file)
   if (strlen (file->stat_info->file_name) > NAME_FIELD_SIZE)
     file->stat_info->file_name[NAME_FIELD_SIZE] = 0;
 
-  blk = pax_start_header (file->stat_info);
-  finish_header (file->stat_info, blk, block_ordinal);
+  struct block_ptr bp;
+  bp.block = pax_start_header (file->stat_info);
+  finish_header (file->stat_info, bp.block, block_ordinal);
   free (file->stat_info->file_name);
   file->stat_info->file_name = save_file_name;
 
-  blk = find_next_block ();
-  q = blk->buffer;
-  p = umaxtostr (file->stat_info->sparse_map_avail, nbuf);
-  COPY_STRING (blk, q, p);
-  COPY_STRING (blk, q, "\n");
-  for (i = 0; i < file->stat_info->sparse_map_avail; i++)
+  bp.block = find_next_block ();
+  bp.ptr = bp.block->buffer;
+  bp = dump_str_nl (bp, umaxtostr (file->stat_info->sparse_map_avail, nbuf));
+  for (idx_t i = 0; i < file->stat_info->sparse_map_avail; i++)
     {
-      p = umaxtostr (map[i].offset, nbuf);
-      COPY_STRING (blk, q, p);
-      COPY_STRING (blk, q, "\n");
-      p = umaxtostr (map[i].numbytes, nbuf);
-      COPY_STRING (blk, q, p);
-      COPY_STRING (blk, q, "\n");
+      bp = dump_str_nl (bp, umaxtostr (map[i].offset, nbuf));
+      bp = dump_str_nl (bp, umaxtostr (map[i].numbytes, nbuf));
     }
-  memset (q, 0, BLOCKSIZE - (q - blk->buffer));
-  set_next_block_after (blk);
+  memset (bp.ptr, 0, BLOCKSIZE - (bp.ptr - bp.block->buffer));
+  set_next_block_after (bp.block);
   return true;
 }
 
@@ -1250,13 +1260,52 @@ pax_dump_header (struct tar_sparse_file *file)
            pax_dump_header_0 (file) : pax_dump_header_1 (file);
 }
 
-static bool
-decode_num (uintmax_t *num, char const *arg, uintmax_t maxval)
+/* A success flag OK, a computed integer N, and block + ptr BP.  */
+struct ok_n_block_ptr
 {
-  char *arg_lim;
-  bool overflow;
-  *num = stoint (arg, &arg_lim, &overflow, 0, maxval);
-  return ! ((arg_lim == arg) | *arg_lim | overflow);
+  bool ok;
+  uintmax_t n;
+  struct block_ptr bp;
+};
+
+static struct ok_n_block_ptr
+decode_num (struct block_ptr bp, uintmax_t nmax, struct tar_sparse_file *file)
+{
+  char *endp = bp.block->buffer + BLOCKSIZE;
+  uintmax_t n = 0;
+  bool digit_seen = false, nondigit_seen = false, overflow = false;
+  while (true)
+    {
+      if (bp.ptr == endp)
+	{
+	  set_next_block_after (bp.block);
+	  bp.block = find_next_block ();
+	  if (!bp.block)
+	    paxfatal (0, _("Unexpected EOF in archive"));
+	  bp.ptr = bp.block->buffer;
+	  endp = bp.block->buffer + BLOCKSIZE;
+	}
+      char c = *bp.ptr++;
+      if (c == '\n')
+	break;
+      if (c_isdigit (c))
+	{
+	  digit_seen = true;
+	  overflow |= ckd_mul (&n, n, 10);
+	  overflow |= ckd_add (&n, n, c - '0');
+	}
+      else
+	nondigit_seen = true;
+    }
+
+  overflow |= nmax < n;
+  char const *msgid
+    = (!digit_seen | nondigit_seen ? N_("%s: malformed sparse archive member")
+       : overflow ? N_("%s: numeric overflow in sparse archive member")
+       : NULL);
+  if (msgid)
+    paxerror (0, gettext (msgid), file->stat_info->orig_file_name);
+  return (struct ok_n_block_ptr) { .ok = !msgid, .n = n, .bp = bp };
 }
 
 static bool
@@ -1264,83 +1313,38 @@ pax_decode_header (struct tar_sparse_file *file)
 {
   if (file->stat_info->sparse_major > 0)
     {
-      uintmax_t u;
-      char nbuf[UINTMAX_STRSIZE_BOUND];
-      union block *blk;
-      char *p;
-      size_t i;
-      off_t start;
-
-#define COPY_BUF(b,buf,src) do                                     \
- {                                                                 \
-   char *endp = b->buffer + BLOCKSIZE;                             \
-   char *dst = buf;                                                \
-   do                                                              \
-     {                                                             \
-       if (dst == buf + UINTMAX_STRSIZE_BOUND -1)                  \
-         {                                                         \
-           ERROR ((0, 0, _("%s: numeric overflow in sparse archive member"), \
-	          file->stat_info->orig_file_name));               \
-           return false;                                           \
-         }                                                         \
-       if (src == endp)                                            \
-	 {                                                         \
-	   set_next_block_after (b);                               \
-           b = find_next_block ();                                 \
-           if (!b)                                                 \
-             FATAL_ERROR ((0, 0, _("Unexpected EOF in archive"))); \
-           src = b->buffer;                                        \
-	   endp = b->buffer + BLOCKSIZE;                           \
-	 }                                                         \
-       *dst = *src++;                                              \
-     }                                                             \
-   while (*dst++ != '\n');                                         \
-   dst[-1] = 0;                                                    \
- } while (0)
-
-      start = current_block_ordinal ();
+      off_t start = current_block_ordinal ();
       set_next_block_after (current_header);
-      blk = find_next_block ();
-      if (!blk)
-        FATAL_ERROR ((0, 0, _("Unexpected EOF in archive")));
-      p = blk->buffer;
-      COPY_BUF (blk,nbuf,p);
-      if (!decode_num (&u, nbuf, SIZE_MAX))
-	{
-	  ERROR ((0, 0, _("%s: malformed sparse archive member"),
-		  file->stat_info->orig_file_name));
-	  return false;
-	}
-      file->stat_info->sparse_map_size = u;
-      file->stat_info->sparse_map = xcalloc (file->stat_info->sparse_map_size,
-					     sizeof (*file->stat_info->sparse_map));
+      struct block_ptr bp;
+      bp.block = find_next_block ();
+      if (!bp.block)
+	paxfatal (0, _("Unexpected EOF in archive"));
+      bp.ptr = bp.block->buffer;
+      struct ok_n_block_ptr onbp = decode_num (bp, SIZE_MAX, file);
+      if (!onbp.ok)
+	return false;
+      bp = onbp.bp;
+      file->stat_info->sparse_map_size = onbp.n;
+      file->stat_info->sparse_map
+	= xicalloc (file->stat_info->sparse_map_size,
+		    sizeof *file->stat_info->sparse_map);
       file->stat_info->sparse_map_avail = 0;
-      for (i = 0; i < file->stat_info->sparse_map_size; i++)
+      for (idx_t i = 0; i < file->stat_info->sparse_map_size; i++)
 	{
 	  struct sp_array sp;
-
-	  COPY_BUF (blk,nbuf,p);
-	  if (!decode_num (&u, nbuf, TYPE_MAXIMUM (off_t)))
-	    {
-	      ERROR ((0, 0, _("%s: malformed sparse archive member"),
-		      file->stat_info->orig_file_name));
-	      return false;
-	    }
-	  sp.offset = u;
-	  COPY_BUF (blk,nbuf,p);
-	  off_t size;
-	  if (!decode_num (&u, nbuf, TYPE_MAXIMUM (off_t))
-	      || ckd_add (&size, sp.offset, u)
-	      || file->stat_info->stat.st_size < size)
-	    {
-	      ERROR ((0, 0, _("%s: malformed sparse archive member"),
-		      file->stat_info->orig_file_name));
-	      return false;
-	    }
-	  sp.numbytes = u;
+	  onbp = decode_num (bp, file->stat_info->stat.st_size, file);
+	  if (!onbp.ok)
+	    return false;
+	  sp.offset = onbp.n;
+	  off_t numbytes_max = file->stat_info->stat.st_size - sp.offset;
+	  onbp = decode_num (onbp.bp, numbytes_max, file);
+	  if (!onbp.ok)
+	    return false;
+	  sp.numbytes = onbp.n;
+	  bp = onbp.bp;
 	  sparse_add_map (file->stat_info, &sp);
 	}
-      set_next_block_after (blk);
+      set_next_block_after (bp.block);
 
       file->dumped_size += BLOCKSIZE * (current_block_ordinal () - start);
     }

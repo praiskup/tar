@@ -20,22 +20,24 @@
 /* Declare the GNU tar archive format.  */
 #include "tar.h"
 
-/* The checksum field is filled with this while the checksum is computed.  */
-#define CHKBLANKS	"        "	/* 8 blanks, no null */
-
 /* Some constants from POSIX are given names.  */
-#define NAME_FIELD_SIZE   100
-#define PREFIX_FIELD_SIZE 155
-#define UNAME_FIELD_SIZE   32
-#define GNAME_FIELD_SIZE   32
-
+enum
+  {
+    NAME_FIELD_SIZE = 100,
+    PREFIX_FIELD_SIZE = 155,
+    UNAME_FIELD_SIZE = 32,
+    GNAME_FIELD_SIZE = 32
+  };
 
 
 /* Some various global definitions.  */
 
-#define TAREXIT_SUCCESS PAXEXIT_SUCCESS
-#define TAREXIT_DIFFERS PAXEXIT_DIFFERS
-#define TAREXIT_FAILURE PAXEXIT_FAILURE
+enum
+  {
+    TAREXIT_SUCCESS = PAXEXIT_SUCCESS,
+    TAREXIT_DIFFERS = PAXEXIT_DIFFERS,
+    TAREXIT_FAILURE = PAXEXIT_FAILURE
+  };
 
 
 #include "arith.h"
@@ -63,8 +65,7 @@
 #include <xvasprintf.h>
 
 /* Log base 2 of common values.  */
-#define LG_8 3
-#define LG_256 8
+enum { LG_8 = 3, LG_256 = 8 };
 
 _GL_INLINE_HEADER_BEGIN
 #ifndef COMMON_INLINE
@@ -130,7 +131,7 @@ extern enum backup_type backup_type;
 extern bool block_number_option;
 
 extern intmax_t checkpoint_option;
-#define DEFAULT_CHECKPOINT 10
+enum { DEFAULT_CHECKPOINT = 10 };
 
 /* Specified name of compression program, or "gzip" as implied by -z.  */
 extern const char *use_compress_program_option;
@@ -183,7 +184,7 @@ enum old_files
   SKIP_OLD_FILES,             /* --skip-old-files */
   KEEP_NEWER_FILES	      /* --keep-newer-files */
 };
-#define MAX_OLD_FILES (KEEP_NEWER_FILES+1)
+enum { MAX_OLD_FILES = KEEP_NEWER_FILES + 1 };
 extern enum old_files old_files_option;
 
 extern bool keep_directory_symlink_option;
@@ -228,16 +229,11 @@ extern char *set_mtime_command;
 extern char *set_mtime_format;
 
 /* Return true if mtime_option or newer_mtime_option is initialized.  */
-#define TIME_OPTION_INITIALIZED(opt) (0 <= (opt).tv_nsec)
-
-/* Return true if the struct stat ST's M time is less than
-   newer_mtime_option.  */
-#define OLDER_STAT_TIME(st, m) \
-  (timespec_cmp (get_stat_##m##time (&(st)), newer_mtime_option) < 0)
-
-/* Likewise, for struct tar_stat_info ST.  */
-#define OLDER_TAR_STAT_TIME(st, m) \
-  (timespec_cmp ((st).m##time, newer_mtime_option) < 0)
+COMMON_INLINE bool
+time_option_initialized (struct timespec opt)
+{
+  return 0 <= opt.tv_nsec;
+}
 
 /* Zero if there is no recursion, otherwise FNM_LEADING_DIR.  */
 extern int recursion_option;
@@ -319,9 +315,6 @@ extern bool ignore_command_error_option;
 
 /* Restrict some potentially harmful tar options */
 extern bool restrict_option;
-
-/* Return true if the extracted files are not being written to disk */
-#define EXTRACT_OVER_PIPE (to_stdout_option || to_command_option)
 
 /* Count how many times the option has been set, multiple setting yields
    more verbose behavior.  Value 0 means no verbosity, 1 means file name
@@ -473,9 +466,7 @@ void archive_read_error (void);
 off_t seek_archive (off_t size);
 void set_start_time (void);
 
-#define TF_READ    0
-#define TF_WRITE   1
-#define TF_DELETED 2
+enum { TF_READ, TF_WRITE, TF_DELETED };
 int format_total_stats (FILE *fp, char const *const *formats, int eor, int eol);
 void print_total_stats (void);
 
@@ -697,7 +688,7 @@ represent_uintmax (uintmax_t n)
     }
 }
 
-enum { UINTMAX_STRSIZE_BOUND = INT_BUFSIZE_BOUND (intmax_t) };
+enum { UINTMAX_STRSIZE_BOUND = INT_BUFSIZE_BOUND (uintmax_t) };
 enum { SYSINT_BUFSIZE =
 	 max (UINTMAX_STRSIZE_BOUND, INT_BUFSIZE_BOUND (intmax_t)) };
 char *sysinttostr (uintmax_t, intmax_t, uintmax_t, char buf[SYSINT_BUFSIZE]);
@@ -813,12 +804,21 @@ bool is_avoided_name (char const *name);
 
 bool contains_dot_dot (char const *name);
 
-#define ISFOUND(c) (occurrence_option == 0			\
-		    ? (c)->found_count != 0			\
-		    : (c)->found_count == occurrence_option)
-#define WASFOUND(c) (occurrence_option == 0			\
-		     ? (c)->found_count != 0			\
-		     : (c)->found_count >= occurrence_option)
+COMMON_INLINE bool
+isfound (struct name const *c)
+{
+  return (occurrence_option == 0
+	  ? (c)->found_count != 0
+	  : (c)->found_count == occurrence_option);
+}
+
+COMMON_INLINE bool
+wasfound (struct name const *c)
+{
+  return (occurrence_option == 0
+	  ? (c)->found_count != 0
+	  : occurrence_option <= (c)->found_count);
+}
 
 /* Module tar.c.  */
 
@@ -871,9 +871,6 @@ struct tar_args        /* Variables used during option parsing */
   char const *backup_suffix_string;   /* --suffix option argument */
   char const *version_control_string; /* --backup option argument */
 };
-
-#define TAR_ARGS_INITIALIZER(loc)              \
-  { loc, NULL, false, false, false, NULL, NULL }
 
 void more_options (int argc, char **argv, struct option_locus *loc);
 
@@ -965,10 +962,13 @@ bool string_ascii_p (const char *str);
 bool utf8_convert (bool to_utf, char const *input, char **output);
 
 /* Module transform.c */
-#define XFORM_REGFILE  0x01
-#define XFORM_LINK     0x02
-#define XFORM_SYMLINK  0x04
-#define XFORM_ALL      (XFORM_REGFILE|XFORM_LINK|XFORM_SYMLINK)
+enum
+  {
+    XFORM_REGFILE	= 1 << 0,
+    XFORM_LINK		= 1 << 1,
+    XFORM_SYMLINK	= 1 << 2,
+    XFORM_ALL = XFORM_REGFILE | XFORM_LINK | XFORM_SYMLINK
+  };
 
 void set_transform_expr (const char *expr);
 bool transform_name (char **pinput, int type);
@@ -989,50 +989,55 @@ void checkpoint_finish (void);
 void checkpoint_flush_actions (void);
 
 /* Module warning.c */
-#define WARN_ALONE_ZERO_BLOCK    0x00000001
-#define WARN_BAD_DUMPDIR         0x00000002
-#define WARN_CACHEDIR            0x00000004
-#define WARN_CONTIGUOUS_CAST     0x00000008
-#define WARN_FILE_CHANGED        0x00000010
-#define WARN_FILE_IGNORED        0x00000020
-#define WARN_FILE_REMOVED        0x00000040
-#define WARN_FILE_SHRANK         0x00000080
-#define WARN_FILE_UNCHANGED      0x00000100
-#define WARN_FILENAME_WITH_NULS  0x00000200
-#define WARN_IGNORE_ARCHIVE      0x00000400
-#define WARN_IGNORE_NEWER        0x00000800
-#define WARN_NEW_DIRECTORY       0x00001000
-#define WARN_RENAME_DIRECTORY    0x00002000
-#define WARN_SYMLINK_CAST        0x00004000
-#define WARN_TIMESTAMP           0x00008000
-#define WARN_UNKNOWN_CAST        0x00010000
-#define WARN_UNKNOWN_KEYWORD     0x00020000
-#define WARN_XDEV                0x00040000
-#define WARN_DECOMPRESS_PROGRAM  0x00080000
-#define WARN_EXISTING_FILE       0x00100000
-#define WARN_XATTR_WRITE         0x00200000
-#define WARN_RECORD_SIZE         0x00400000
-#define WARN_FAILED_READ         0x00800000
-#define WARN_MISSING_ZERO_BLOCKS 0x01000000
-
+enum
+  {
+    WARN_ALONE_ZERO_BLOCK	= 1 <<  0,
+    WARN_BAD_DUMPDIR		= 1 <<  1,
+    WARN_CACHEDIR		= 1 <<  2,
+    WARN_CONTIGUOUS_CAST	= 1 <<  3,
+    WARN_FILE_CHANGED		= 1 <<  4,
+    WARN_FILE_IGNORED		= 1 <<  5,
+    WARN_FILE_REMOVED		= 1 <<  6,
+    WARN_FILE_SHRANK		= 1 <<  7,
+    WARN_FILE_UNCHANGED		= 1 <<  8,
+    WARN_FILENAME_WITH_NULS	= 1 <<  9,
+    WARN_IGNORE_ARCHIVE		= 1 << 10,
+    WARN_IGNORE_NEWER		= 1 << 11,
+    WARN_NEW_DIRECTORY		= 1 << 12,
+    WARN_RENAME_DIRECTORY	= 1 << 13,
+    WARN_SYMLINK_CAST		= 1 << 14,
+    WARN_TIMESTAMP		= 1 << 15,
+    WARN_UNKNOWN_CAST		= 1 << 16,
+    WARN_UNKNOWN_KEYWORD	= 1 << 17,
+    WARN_XDEV			= 1 << 18,
+    WARN_DECOMPRESS_PROGRAM	= 1 << 19,
+    WARN_EXISTING_FILE		= 1 << 20,
+    WARN_XATTR_WRITE		= 1 << 21,
+    WARN_RECORD_SIZE		= 1 << 22,
+    WARN_FAILED_READ		= 1 << 23,
+    WARN_MISSING_ZERO_BLOCKS	= 1 << 24
+  };
 /* These warnings are enabled by default in verbose mode: */
-#define WARN_VERBOSE_WARNINGS    (WARN_RENAME_DIRECTORY|WARN_NEW_DIRECTORY|\
-				  WARN_DECOMPRESS_PROGRAM|WARN_EXISTING_FILE|\
-		                  WARN_RECORD_SIZE)
-#define WARN_ALL                 0xffffffff
+enum
+  {
+    WARN_VERBOSE_WARNINGS = (WARN_RENAME_DIRECTORY | WARN_NEW_DIRECTORY
+			     | WARN_DECOMPRESS_PROGRAM | WARN_EXISTING_FILE
+			     | WARN_RECORD_SIZE),
+    WARN_ALL = ~0
+  };
 
 void set_warning_option (const char *arg);
 
 extern int warning_option;
 
-#define WARNING_ENABLED(opt) (warning_option & (opt))
+COMMON_INLINE bool
+warning_enabled (int opt)
+{
+  return warning_option & opt;
+}
 
-#define WARNOPT(opt,args)			\
-  do						\
-    {						\
-      if (WARNING_ENABLED (opt)) WARN (args);	\
-    }						\
-  while (0)
+extern void warnopt (int, int, char const *, ...)
+  ATTRIBUTE_COLD ATTRIBUTE_FORMAT ((printf, 3, 4));
 
 /* Module unlink.c */
 
@@ -1043,9 +1048,7 @@ void finish_deferred_unlinks (void);
 extern void (*fatal_exit_hook) (void);
 
 /* Module exclist.c */
-#define EXCL_DEFAULT       0x00
-#define EXCL_RECURSIVE     0x01
-#define EXCL_NON_RECURSIVE 0x02
+enum { EXCL_DEFAULT, EXCL_RECURSIVE, EXCL_NON_RECURSIVE };
 
 void excfile_add (const char *name, int flags);
 void info_attach_exclist (struct tar_stat_info *dir);
