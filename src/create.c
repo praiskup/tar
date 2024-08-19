@@ -960,7 +960,8 @@ simple_finish_header (union block *header)
   int sum;
   char *p;
 
-  memcpy (header->header.chksum, CHKBLANKS, sizeof header->header.chksum);
+  /* Fill checksum field with spaces while the checksum is computed.  */
+  memset (header->header.chksum, ' ', sizeof header->header.chksum);
 
   sum = 0;
   p = header->buffer;
@@ -1687,8 +1688,9 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
 
   if (! (incremental_option && ! top_level)
       && !S_ISDIR (st->stat.st_mode)
-      && OLDER_TAR_STAT_TIME (*st, m)
-      && (!after_date_option || OLDER_TAR_STAT_TIME (*st, c)))
+      && timespec_cmp (st->mtime, newer_mtime_option) < 0
+      && (!after_date_option
+	  || timespec_cmp (st->ctime, newer_mtime_option) < 0))
     {
       if (!incremental_option && verbose_option)
 	warnopt (WARN_FILE_UNCHANGED, 0, _("%s: file is unchanged; not dumped"),

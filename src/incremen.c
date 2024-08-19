@@ -553,9 +553,12 @@ procdir (const char *name_buffer, struct tar_stat_info *st,
 		   quotearg_colon (name_buffer));
 	  directory->children =
 	    (listed_incremental_option
-	     || (OLDER_STAT_TIME (*stat_data, m)
-		 || (after_date_option
-		     && OLDER_STAT_TIME (*stat_data, c))))
+	     || (timespec_cmp (get_stat_mtime (stat_data), newer_mtime_option)
+		 < 0)
+	     || (after_date_option
+		 && (timespec_cmp (get_stat_ctime (stat_data),
+				   newer_mtime_option)
+		     < 0)))
 	    ? ALL_CHILDREN
 	    : CHANGED_CHILDREN;
 	}
@@ -820,9 +823,13 @@ scan_directory (struct tar_stat_info *st)
 		  else if (*entry == 'Y')
 		    /* New entry, skip further checks */;
 		  /* FIXME: if (S_ISHIDDEN (stat_data.st_mode))?? */
-		  else if (OLDER_STAT_TIME (stsub.stat, m)
+		  else if ((timespec_cmp (get_stat_mtime (&stsub.stat),
+					  newer_mtime_option)
+			    < 0)
 			   && (!after_date_option
-			       || OLDER_STAT_TIME (stsub.stat, c)))
+			       || (timespec_cmp (get_stat_ctime (&stsub.stat),
+						 newer_mtime_option)
+				   < 0)))
 		    *entry = 'N';
 		  else
 		    *entry = 'Y';

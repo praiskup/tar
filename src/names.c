@@ -1352,7 +1352,7 @@ name_match (const char *file_name)
 	    cursor->found_count++; /* remember it matched */
 	  chdir_do (cursor->change_dir);
 	  /* We got a match.  */
-	  return ISFOUND (cursor);
+	  return isfound (cursor);
 	}
 
       /* Filename from archive not found in namelist.  If we have the whole
@@ -1391,7 +1391,7 @@ all_names_found (struct tar_stat_info *p)
   len = strlen (p->file_name);
   for (cursor = namelist; cursor; cursor = cursor->next)
     {
-      if ((cursor->name[0] && !WASFOUND (cursor))
+      if ((cursor->name[0] && !wasfound (cursor))
 	  || (len >= cursor->length && ISSLASH (p->file_name[cursor->length])))
 	return false;
     }
@@ -1423,7 +1423,7 @@ names_notfound (void)
   struct name const *cursor;
 
   for (cursor = namelist; cursor; cursor = cursor->next)
-    if (!WASFOUND (cursor) && cursor->name[0])
+    if (!wasfound (cursor) && cursor->name[0])
       {
 	regex_usage_warning (cursor->name);
 	paxerror (0,
@@ -1458,7 +1458,7 @@ label_notfound (void)
     return;
 
   for (cursor = namelist; cursor; cursor = cursor->next)
-    if (WASFOUND (cursor))
+    if (wasfound (cursor))
       return;
 
   if (verbose_option)
@@ -1585,7 +1585,7 @@ merge_sort (struct name *list, int length,
 static int
 compare_names_found (struct name const *n1, struct name const *n2)
 {
-  int found_diff = WASFOUND (n2) - WASFOUND (n1);
+  int found_diff = wasfound (n2) - wasfound (n1);
   return found_diff ? found_diff : strcmp (n1->name, n2->name);
 }
 

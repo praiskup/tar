@@ -1722,7 +1722,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
       after_date_option = true;
       FALLTHROUGH;
     case NEWER_MTIME_OPTION:
-      if (TIME_OPTION_INITIALIZED (newer_mtime_option))
+      if (time_option_initialized (newer_mtime_option))
 	paxusage (_("More than one threshold date"));
       get_date_or_file (args,
 			key == NEWER_MTIME_OPTION ? "--newer-mtime"
@@ -2309,7 +2309,7 @@ static int subcommand_class[] = {
 void
 more_options (int argc, char **argv, struct option_locus *loc)
 {
-  struct tar_args args = TAR_ARGS_INITIALIZER (loc);
+  struct tar_args args = { .loc = loc };
   argp_parse (&names_argp, argc, argv, ARGP_IN_ORDER|ARGP_NO_EXIT|ARGP_NO_ERRS,
 	      NULL, &args);
 }
@@ -2360,8 +2360,8 @@ static void
 decode_options (int argc, char **argv)
 {
   int idx;
-  struct option_locus loc = { OPTS_COMMAND_LINE, 0, 0, 0 };
-  struct tar_args args = TAR_ARGS_INITIALIZER (&loc);
+  struct option_locus loc = { .source = OPTS_COMMAND_LINE };
+  struct tar_args args = { .loc = &loc };
 
   argp_version_setup ("tar", tar_authors);
 
@@ -2534,7 +2534,7 @@ decode_options (int argc, char **argv)
     paxusage (_("Multiple archive files require '-M' option"));
 
   if (listed_incremental_option
-      && TIME_OPTION_INITIALIZED (newer_mtime_option))
+      && time_option_initialized (newer_mtime_option))
     {
       struct option_locus *listed_loc = optloc_lookup (OC_LISTED_INCREMENTAL);
       struct option_locus *newer_loc = optloc_lookup (OC_NEWER);
@@ -2605,7 +2605,7 @@ decode_options (int argc, char **argv)
     }
   else if (set_mtime_option == CLAMP_MTIME)
     {
-      if (!TIME_OPTION_INITIALIZED (mtime_option))
+      if (!time_option_initialized (mtime_option))
 	paxusage (_("--clamp-mtime needs a date specified using --mtime"));
     }
 
@@ -2791,7 +2791,7 @@ decode_options (int argc, char **argv)
       backup_type = xget_version ("--backup", args.version_control_string);
       /* No backup is needed either if explicitly disabled or if
 	 the extracted files are not being written to disk. */
-      if (backup_type == no_backups || EXTRACT_OVER_PIPE)
+      if (backup_type == no_backups || to_stdout_option || to_command_option)
 	backup_option = false;
     }
 

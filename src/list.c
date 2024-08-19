@@ -195,7 +195,7 @@ read_and (void (*do_something) (void))
 	  decode_header (current_header, &current_stat_info,
 			 &current_format, 1);
 	  if (! name_match (current_stat_info.file_name)
-	      || (TIME_OPTION_INITIALIZED (newer_mtime_option)
+	      || (time_option_initialized (newer_mtime_option)
 		  /* FIXME: We get mtime now, and again later; this causes
 		     duplicate diagnostics if header.mtime is bogus.  */
 		  && ((mtime.tv_sec
@@ -204,7 +204,7 @@ read_and (void (*do_something) (void))
 			 extended header.  */
 		      mtime.tv_nsec = 0,
 		      current_stat_info.mtime = mtime,
-		      OLDER_TAR_STAT_TIME (current_stat_info, m)))
+		      timespec_cmp (mtime, newer_mtime_option) < 0))
 	      || excluded_name (current_stat_info.file_name,
 				current_stat_info.parent))
 	    {

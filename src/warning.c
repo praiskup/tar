@@ -115,7 +115,7 @@ set_warning_option (const char *arg)
 void
 warnopt (int opt, int errnum, char const *format, ...)
 {
-  if (WARNING_ENABLED (opt))
+  if (warning_enabled (opt))
     {
       if (error_hook)
 	error_hook ();

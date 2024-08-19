@@ -1768,7 +1768,7 @@ prepare_to_extract (char const *file_name, int typeflag, tar_extractor_t *fun)
       extractor = extract_file;
     }
 
-  if (EXTRACT_OVER_PIPE)
+  if (to_stdout_option || to_command_option)
     {
       if (extractor != extract_file)
 	return false;

@@ -179,7 +179,7 @@ delete_archive_members (void)
 	      break;
 	    }
 	  name->found_count++;
-	  if (!ISFOUND (name))
+	  if (!isfound (name))
 	    {
 	      skim_member (acting_as_filter);
 	      break;
@@ -271,7 +271,7 @@ delete_archive_members (void)
 	      if ((name = name_scan (current_stat_info.file_name, false)) != NULL)
 		{
 		  name->found_count++;
-		  if (ISFOUND (name))
+		  if (isfound (name))
 		    {
 		      flush_file ();
 		      break;
