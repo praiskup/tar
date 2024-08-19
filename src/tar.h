@@ -48,34 +48,41 @@ struct posix_header
 #define TVERSLEN 2
 
 /* Values used in typeflag field.  */
-#define REGTYPE	 '0'		/* regular file */
-#define AREGTYPE '\0'		/* regular file */
-#define LNKTYPE  '1'		/* link */
-#define SYMTYPE  '2'		/* reserved */
-#define CHRTYPE  '3'		/* character special */
-#define BLKTYPE  '4'		/* block special */
-#define DIRTYPE  '5'		/* directory */
-#define FIFOTYPE '6'		/* FIFO special */
-#define CONTTYPE '7'		/* reserved */
+enum
+  {
 
-#define XHDTYPE  'x'            /* Extended header referring to the
+    REGTYPE	= '0',		/* regular file */
+    AREGTYPE	= '\0',		/* regular file */
+    LNKTYPE	= '1',		/* link */
+    SYMTYPE	= '2',		/* reserved */
+    CHRTYPE	= '3',		/* character special */
+    BLKTYPE	= '4',		/* block special */
+    DIRTYPE	= '5',		/* directory */
+    FIFOTYPE	= '6',		/* FIFO special */
+    CONTTYPE	= '7',		/* reserved */
+
+    XHDTYPE	= 'x',		/* Extended header referring to the
 				   next file in the archive */
-#define XGLTYPE  'g'            /* Global extended header */
+    XGLTYPE	= 'g'		/* Global extended header */
+  };
 
 /* Bits used in the mode field, values in octal.  */
-#define TSUID    04000		/* set UID on execution */
-#define TSGID    02000		/* set GID on execution */
-#define TSVTX    01000		/* reserved */
+enum
+  {
+    TSUID	= 04000,	/* set UID on execution */
+    TSGID	= 02000,	/* set GID on execution */
+    TSVTX	= 01000,	/* reserved */
 				/* file permissions */
-#define TUREAD   00400		/* read by owner */
-#define TUWRITE  00200		/* write by owner */
-#define TUEXEC   00100		/* execute/search by owner */
-#define TGREAD   00040		/* read by group */
-#define TGWRITE  00020		/* write by group */
-#define TGEXEC   00010		/* execute/search by group */
-#define TOREAD   00004		/* read by other */
-#define TOWRITE  00002		/* write by other */
-#define TOEXEC   00001		/* execute/search by other */
+    TUREAD	= 00400,	/* read by owner */
+    TUWRITE	= 00200,	/* write by owner */
+    TUEXEC	= 00100,	/* execute/search by owner */
+    TGREAD	= 00040,	/* read by group */
+    TGWRITE	= 00020,	/* write by group */
+    TGEXEC	= 00010,	/* execute/search by group */
+    TOREAD	= 00004,	/* read by other */
+    TOWRITE	= 00002,	/* write by other */
+    TOEXEC	= 00001		/* execute/search by other */
+  };
 
 /* tar Header Block, GNU extensions.  */
 
@@ -111,9 +118,12 @@ struct sparse
    necessary.  The following constants tell how many sparse descriptors fit
    in each kind of header able to hold them.  */
 
-#define SPARSES_IN_EXTRA_HEADER  16
-#define SPARSES_IN_OLDGNU_HEADER 4
-#define SPARSES_IN_SPARSE_HEADER 21
+enum
+  {
+    SPARSES_IN_EXTRA_HEADER	= 16,
+    SPARSES_IN_OLDGNU_HEADER	=  4,
+    SPARSES_IN_SPARSE_HEADER	= 21
+  };
 
 /* Extension header for sparse files, used immediately after the GNU extra
    header, and used only if all sparse information cannot fit into that
@@ -168,29 +178,32 @@ struct oldgnu_header
    'N' Obsolete GNU tar, for file names that do not fit into the main header.
    'X' POSIX 1003.1-2001 eXtended (VU version)  */
 
-/* This is a dir entry that contains the names of files that were in the
-   dir at the time the dump was made.  */
-#define GNUTYPE_DUMPDIR	'D'
+enum
+  {
+    /* This is a dir entry that contains the names of files that were in the
+       dir at the time the dump was made.  */
+    GNUTYPE_DUMPDIR = 'D',
 
-/* Identifies the *next* file on the tape as having a long linkname.  */
-#define GNUTYPE_LONGLINK 'K'
+    /* Identifies the *next* file on the tape as having a long linkname.  */
+    GNUTYPE_LONGLINK = 'K',
 
-/* Identifies the *next* file on the tape as having a long name.  */
-#define GNUTYPE_LONGNAME 'L'
+    /* Identifies the *next* file on the tape as having a long name.  */
+    GNUTYPE_LONGNAME = 'L',
 
-/* This is the continuation of a file that began on another volume.  */
-#define GNUTYPE_MULTIVOL 'M'
+    /* This is the continuation of a file that began on another volume.  */
+    GNUTYPE_MULTIVOL = 'M',
 
-/* This is for sparse files.  */
-#define GNUTYPE_SPARSE 'S'
+    /* This is for sparse files.  */
+    GNUTYPE_SPARSE = 'S',
 
-/* This file is a tape/volume header.  Ignore it on extraction.  */
-#define GNUTYPE_VOLHDR 'V'
+    /* This file is a tape/volume header.  Ignore it on extraction.  */
+    GNUTYPE_VOLHDR = 'V',
 
-/* Solaris extended header */
-#define SOLARIS_XHDTYPE 'X'
+    /* Solaris extended header.  */
+    SOLARIS_XHDTYPE = 'X'
+  };
 
-/* J@"org Schilling star header */
+/* Jörg Schilling star header.  */
 
 struct star_header
 {				/* byte offset */
@@ -215,8 +228,11 @@ struct star_header
                                 /* 500 */
 };
 
-#define SPARSES_IN_STAR_HEADER      4
-#define SPARSES_IN_STAR_EXT_HEADER  21
+enum
+  {
+    SPARSES_IN_STAR_HEADER = 4,
+    SPARSES_IN_STAR_EXT_HEADER = 21
+  };
 
 struct star_in_header
 {
@@ -246,7 +262,7 @@ struct star_ext_header
 /* tar Header Block, overall structure.  */
 
 /* tar files are made in basic blocks of this size.  */
-#define BLOCKSIZE 512
+enum { BLOCKSIZE = 512 };
 
 enum archive_format
 {
