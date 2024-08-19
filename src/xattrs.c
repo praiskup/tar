@@ -30,8 +30,8 @@
 #include "xattr-at.h"
 #include "selinux-at.h"
 
-#define XATTRS_PREFIX "SCHILY.xattr."
-#define XATTRS_PREFIX_LEN (sizeof XATTRS_PREFIX - 1)
+static char const XATTRS_PREFIX[] = "SCHILY.xattr.";
+enum { XATTRS_PREFIX_LEN = sizeof XATTRS_PREFIX - 1 };
 
 void
 xheader_xattr_init (struct tar_stat_info *st)
@@ -713,11 +713,10 @@ xattrs_matches_mask (const char *kw, struct xattrs_mask_map *mm)
   return false;
 }
 
-#define USER_DOT_PFX "user."
-
 static bool
 xattrs_kw_included (const char *kw, bool archiving)
 {
+  static char const USER_DOT_PFX[] = "user.";
   if (xattrs_setup.incl.size)
     return xattrs_matches_mask (kw, &xattrs_setup.incl);
   else if (archiving)
