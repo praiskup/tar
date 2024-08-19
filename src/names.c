@@ -239,16 +239,22 @@ static int matching_flags = 0;
 static int include_anchored = EXCLUDE_ANCHORED;
   /* Pattern anchoring options used for file inclusion */
 
-#define EXCLUDE_OPTIONS						\
-  (((wildcards != disable_wildcards) ? EXCLUDE_WILDCARDS : 0)	\
-  | matching_flags						\
-  | recursion_option)
+static int
+exclude_options (void)
+{
+  return (((wildcards != disable_wildcards) ? EXCLUDE_WILDCARDS : 0)
+	  | matching_flags
+	  | recursion_option);
+}
 
-#define INCLUDE_OPTIONS						    \
-  (((wildcards == enable_wildcards) ? EXCLUDE_WILDCARDS : 0)	    \
-  | include_anchored						    \
-  | matching_flags						    \
-  | recursion_option)
+static int
+include_options (void)
+{
+  return (((wildcards == enable_wildcards) ? EXCLUDE_WILDCARDS : 0)
+	  | include_anchored
+	  | matching_flags
+	  | recursion_option);
+}
 
 static char const *const vcs_file_table[] = {
   /* CVS: */
@@ -310,7 +316,7 @@ handle_file_selection_option (int key, const char *arg)
       break;
 
     case EXCLUDE_OPTION:
-      add_exclude (excluded, arg, EXCLUDE_OPTIONS);
+      add_exclude (excluded, arg, exclude_options ());
       break;
 
     case EXCLUDE_CACHES_OPTION:
@@ -383,7 +389,8 @@ handle_file_selection_option (int key, const char *arg)
       break;
 
     case 'X':
-      if (add_exclude_file (add_exclude, excluded, arg, EXCLUDE_OPTIONS, '\n')
+      if (add_exclude_file (add_exclude, excluded, arg,
+			    exclude_options (), '\n')
 	  != 0)
 	paxfatal (errno, "%s", quotearg_colon (arg));
       break;
@@ -1192,7 +1199,7 @@ name_gather (void)
 	  buffer->change_dir = change_dir;
 	  buffer->next = 0;
 	  buffer->found_count = 0;
-	  buffer->matching_flags = INCLUDE_OPTIONS;
+	  buffer->matching_flags = include_options ();
 	  buffer->directory = NULL;
 	  buffer->parent = NULL;
 	  buffer->cmdline = true;
@@ -1236,7 +1243,7 @@ addname (char const *string, idx_t change_dir, bool cmdline,
   name->prev = nametail;
   name->next = NULL;
   name->found_count = 0;
-  name->matching_flags = INCLUDE_OPTIONS;
+  name->matching_flags = include_options ();
   name->change_dir = change_dir;
   name->directory = NULL;
   name->parent = parent;
@@ -1270,7 +1277,7 @@ add_starting_file (char const *file_name)
     nametail = namelist;
 
   name->found_count = 0;
-  name->matching_flags = INCLUDE_OPTIONS;
+  name->matching_flags = include_options ();
   name->change_dir = 0;
   name->directory = NULL;
   name->parent = NULL;
@@ -1491,7 +1498,7 @@ label_notfound (void)
    to order names.  Return the sorted list.  Note that after calling
    this function, the 'prev' links in list elements are messed up.
 
-   Apart from the type 'struct name' and the definition of SUCCESSOR,
+   Apart from the type 'struct name' and its 'next' member,
    this is a generic list-sorting function, but it's too painful to
    make it both generic and portable
    in C.  */
@@ -1509,18 +1516,16 @@ merge_sort_sll (struct name *list, int length,
   struct name *cursor;
   int counter;
 
-# define SUCCESSOR(name) ((name)->next)
-
   if (length == 1)
     return list;
 
   if (length == 2)
     {
-      if ((*compare) (list, SUCCESSOR (list)) > 0)
+      if (compare (list, list->next) > 0)
 	{
-	  result = SUCCESSOR (list);
-	  SUCCESSOR (result) = list;
-	  SUCCESSOR (list) = 0;
+	  result = list->next;
+	  result->next = list;
+	  list->next = 0;
 	  return result;
 	}
       return list;
@@ -1531,28 +1536,28 @@ merge_sort_sll (struct name *list, int length,
   second_length = length / 2;
   for (cursor = list, counter = first_length - 1;
        counter;
-       cursor = SUCCESSOR (cursor), counter--)
+       cursor = cursor->next, counter--)
     continue;
-  second_list = SUCCESSOR (cursor);
-  SUCCESSOR (cursor) = 0;
+  second_list = cursor->next;
+  cursor->next = 0;
 
   first_list = merge_sort_sll (first_list, first_length, compare);
   second_list = merge_sort_sll (second_list, second_length, compare);
 
   merge_point = &result;
   while (first_list && second_list)
-    if ((*compare) (first_list, second_list) < 0)
+    if (compare (first_list, second_list) < 0)
       {
-	cursor = SUCCESSOR (first_list);
+	cursor = first_list->next;
 	*merge_point = first_list;
-	merge_point = &SUCCESSOR (first_list);
+	merge_point = &first_list->next;
 	first_list = cursor;
       }
     else
       {
-	cursor = SUCCESSOR (second_list);
+	cursor = second_list->next;
 	*merge_point = second_list;
-	merge_point = &SUCCESSOR (second_list);
+	merge_point = &second_list->next;
 	second_list = cursor;
       }
   if (first_list)
@@ -1561,8 +1566,6 @@ merge_sort_sll (struct name *list, int length,
     *merge_point = second_list;
 
   return result;
-
-#undef SUCCESSOR
 }
 
 /* Sort doubly linked LIST of names, of given LENGTH, using COMPARE
