@@ -464,15 +464,6 @@ _single_transform_name_to_obstack (struct transform *tf, char *input)
   size_t nmatches = 0;
   enum case_ctl_type case_ctl = ctl_stop,  /* Current case conversion op */
                      save_ctl = ctl_stop;  /* Saved case_ctl for \u and \l */
-
-  /* Reset case conversion after a single-char operation */
-#define CASE_CTL_RESET()  if (case_ctl == ctl_upcase_next     \
-			      || case_ctl == ctl_locase_next) \
-                            {                                 \
-                              case_ctl = save_ctl;            \
-                              save_ctl = ctl_stop;            \
-			    }
-
   regmatch_t *rmp = xinmalloc (tf->regex.re_nsub + 1, sizeof *rmp);
 
   while (*input)
@@ -506,7 +497,14 @@ _single_transform_name_to_obstack (struct transform *tf, char *input)
 		  run_case_conv (case_ctl,
 				 segm->v.literal.ptr,
 				 segm->v.literal.size);
-		  CASE_CTL_RESET ();
+		case_ctl_reset:
+		  /* Reset case conversion after a single-char operation.  */
+		  if (case_ctl == ctl_upcase_next
+		      || case_ctl == ctl_locase_next)
+		    {
+		      case_ctl = save_ctl;
+		      save_ctl = ctl_stop;
+		    }
 		  break;
 
 		case segm_backref:    /* Back-reference segment */
@@ -517,7 +515,7 @@ _single_transform_name_to_obstack (struct transform *tf, char *input)
 			              - rmp[segm->v.ref].rm_so;
 		      run_case_conv (case_ctl,
 				     input + rmp[segm->v.ref].rm_so, size);
-		      CASE_CTL_RESET ();
+		      goto case_ctl_reset;
 		    }
 		  break;
 
