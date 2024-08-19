@@ -39,7 +39,7 @@
 # endif
 
 /* Number of retries before giving up on read.  */
-#define READ_ERROR_MAX 10
+enum { READ_ERROR_MAX = 10 };
 
 /* Variables.  */
 
@@ -326,8 +326,7 @@ static struct zip_magic const magic[] = {
   { ct_xz,       6, "\xFD" "7zXZ" },
   { ct_zstd,     4, "\x28\xB5\x2F\xFD" },
 };
-
-#define NMAGIC (sizeof(magic)/sizeof(magic[0]))
+enum { n_zip_magic = sizeof magic / sizeof *magic };
 
 static struct zip_program zip_program[] = {
   { ct_compress, COMPRESS_PROGRAM, "-Z" },
@@ -427,7 +426,7 @@ check_compressed_archive (bool *pshort)
     /* Probably a valid header */
     return ct_tar;
 
-  for (p = magic + 2; p < magic + NMAGIC; p++)
+  for (p = magic + 2; p < magic + n_zip_magic; p++)
     if (memcmp (record_start->buffer, p->magic, p->length) == 0)
       return p->type;
 
@@ -1672,12 +1671,11 @@ _write_volume_label (const char *str)
     }
 }
 
-#define VOL_SUFFIX "Volume"
-
 /* Add a volume label to a part of multi-volume archive */
 static void
 add_volume_label (void)
 {
+  static char const VOL_SUFFIX[] = "Volume";
   char *s = xmalloc (strlen (volume_label_option) + sizeof VOL_SUFFIX
 		     + INT_BUFSIZE_BOUND (int) + 2);
   sprintf (s, "%s %s %d", volume_label_option, VOL_SUFFIX, volno);
