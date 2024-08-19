@@ -33,30 +33,31 @@ enum children
     ALL_CHILDREN
   };
 
-#define DIRF_INIT     0x0001    /* directory structure is initialized
-				   (procdir called at least once) */
-#define DIRF_NFS      0x0002    /* directory is mounted on nfs */
-#define DIRF_FOUND    0x0004    /* directory is found on fs */
-#define DIRF_NEW      0x0008    /* directory is new (not found
-				   in the previous dump) */
-#define DIRF_RENAMED  0x0010    /* Last target in a chain of renames */
-/* A directory which is renamed from another one is recognized by its
-   orig member, which is not-NULL.  This directory may eventually be
-   the source for another rename, in which case it will be pointed to by
-   the orig member of another directory structure.  The last directory
-   in such a chain of renames (the one which is not pointed to by any
-   other orig) is marked with the DIRF_RENAMED flag.  This marks a starting
-   point from which append_incremental_renames starts encoding renames for
-   this chain. */
+enum
+  {
+    /* Directory structure is initialized (procdir called at least once).  */
+    DIRF_INIT	= 1 << 0,
 
-#define DIR_IS_INITED(d) ((d)->flags & DIRF_INIT)
-#define DIR_IS_NFS(d) ((d)->flags & DIRF_NFS)
-#define DIR_IS_FOUND(d) ((d)->flags & DIRF_FOUND)
-/* #define DIR_IS_NEW(d) ((d)->flags & DIRF_NEW) FIXME: not used */
-#define DIR_IS_RENAMED(d) ((d)->flags & DIRF_RENAMED)
+    /* Directory is mounted on nfs.  */
+    DIRF_NFS	= 1 << 1,
 
-#define DIR_SET_FLAG(d,f) (d)->flags |= (f)
-#define DIR_CLEAR_FLAG(d,f) (d)->flags &= ~(f)
+    /* Directory is found on fs.  */
+    DIRF_FOUND	= 1 << 2,
+
+    /* Directory is new (not found in the previous dump).  */
+    DIRF_NEW	= 1 << 3,
+
+    /* Last target in a chain of renames.
+       A directory which is renamed from another one is recognized by its
+       orig member, which is not-NULL.  This directory may eventually be
+       the source for another rename, in which case it will be pointed to by
+       the orig member of another directory structure.  The last directory
+       in such a chain of renames (the one which is not pointed to by any
+       other orig) is marked with the DIRF_RENAMED flag.  This marks a starting
+       point from which append_incremental_renames starts encoding renames for
+       this chain. */
+    DIRF_RENAMED= 1 << 4
+  };
 
 struct dumpdir                 /* Dump directory listing */
 {
@@ -85,6 +86,45 @@ struct directory
     char *caname;               /* canonical name */
     char *name;	     	        /* file name of directory */
   };
+
+static bool
+dir_is_inited (struct directory const *d)
+{
+  return !!(d->flags & DIRF_INIT);
+}
+static bool
+dir_is_nfs (struct directory const *d)
+{
+  return !!(d->flags & DIRF_NFS);
+}
+static bool
+dir_is_found (struct directory const *d)
+{
+  return !!(d->flags & DIRF_FOUND);
+}
+#if false
+/* FIXME: not used.  */
+static bool
+dir_is_new (struct directory const *d)
+{
+  return !!(d->flags & DIRF_NEW);
+}
+#endif
+static bool
+dir_is_renamed (struct directory const *d)
+{
+  return !!(d->flags & DIRF_RENAMED);
+}
+static void
+dir_set_flag (struct directory *d, int f)
+{
+  d->flags |= f;
+}
+static void
+dir_clear_flag (struct directory *d, int f)
+{
+  d->flags &= ~f;
+}
 
 static struct dumpdir *
 dumpdir_create0 (const char *contents, const char *cmask)
@@ -212,13 +252,15 @@ static struct directory *dirhead, *dirtail;
 static Hash_table *directory_table;
 static Hash_table *directory_meta_table;
 
+static bool
+nfs_file_stat (struct stat const *st)
+{
 #if HAVE_ST_FSTYPE_STRING
-  static char const nfs_string[] = "nfs";
-# define NFS_FILE_STAT(st) (strcmp ((st).st_fstype, nfs_string) == 0)
+  return strcmp (st->st_fstype, "nfs") == 0;
 #else
-# define ST_DEV_MSB(st) (~ (dev_t) 0 << (TYPE_WIDTH ((st).st_dev) - 1))
-# define NFS_FILE_STAT(st) (((st).st_dev & ST_DEV_MSB (st)) != 0)
+  return (st->st_dev >> (TYPE_WIDTH (st->st_dev) - 1)) & 1;
 #endif
+}
 
 /* Calculate the hash of a directory.  */
 static size_t
@@ -338,9 +380,9 @@ note_directory (char const *name, struct timespec mtime,
   directory->inode_number = ino;
   directory->children = CHANGED_CHILDREN;
   if (nfs)
-    DIR_SET_FLAG (directory, DIRF_NFS);
+    dir_set_flag (directory, DIRF_NFS);
   if (found)
-    DIR_SET_FLAG (directory, DIRF_FOUND);
+    dir_set_flag (directory, DIRF_FOUND);
   if (contents)
     directory->dump = dumpdir_create (contents);
   else
@@ -438,9 +480,16 @@ update_parent_directory (struct tar_stat_info *parent)
     }
 }
 
-#define PD_FORCE_CHILDREN 0x10
-#define PD_FORCE_INIT     0x20
-#define PD_CHILDREN(f) ((f) & 3)
+enum
+  {
+    PD_FORCE_CHILDREN	= 0x10,
+    PD_FORCE_INIT	= 0x20,
+  };
+static enum children
+pd_children (int f)
+{
+  return f & 3;
+}
 
 static struct directory *
 procdir (const char *name_buffer, struct tar_stat_info *st,
@@ -449,12 +498,12 @@ procdir (const char *name_buffer, struct tar_stat_info *st,
 {
   struct directory *directory;
   struct stat *stat_data = &st->stat;
-  bool nfs = NFS_FILE_STAT (*stat_data);
+  bool nfs = nfs_file_stat (stat_data);
   bool perhaps_renamed = false;
 
   if ((directory = find_directory (name_buffer)) != NULL)
     {
-      if (DIR_IS_INITED (directory))
+      if (dir_is_inited (directory))
 	{
 	  if (flag & PD_FORCE_INIT)
 	    {
@@ -481,7 +530,7 @@ procdir (const char *name_buffer, struct tar_stat_info *st,
 	 relying on the i-node to establish differences.  */
 
       if (! ((!check_device_option
-	      || (DIR_IS_NFS (directory) && nfs)
+	      || (dir_is_nfs (directory) && nfs)
 	      || directory->device_number == stat_data->st_dev)
 	     && directory->inode_number == stat_data->st_ino))
 	{
@@ -497,8 +546,8 @@ procdir (const char *name_buffer, struct tar_stat_info *st,
 			   quotearg_colon (name_buffer),
 			   quote_n (1, d->name));
 		  directory->orig = d;
-		  DIR_SET_FLAG (directory, DIRF_RENAMED);
-		  DIR_CLEAR_FLAG (d, DIRF_RENAMED);
+		  dir_set_flag (directory, DIRF_RENAMED);
+		  dir_clear_flag (d, DIRF_RENAMED);
 		  dirlist_replace_prefix (d->name, name_buffer);
 		}
 	      directory->children = CHANGED_CHILDREN;
@@ -511,12 +560,12 @@ procdir (const char *name_buffer, struct tar_stat_info *st,
 	      directory->inode_number = stat_data->st_ino;
 	    }
 	  if (nfs)
-	    DIR_SET_FLAG (directory, DIRF_NFS);
+	    dir_set_flag (directory, DIRF_NFS);
 	}
       else
 	directory->children = CHANGED_CHILDREN;
 
-      DIR_SET_FLAG (directory, DIRF_FOUND);
+      dir_set_flag (directory, DIRF_FOUND);
     }
   else
     {
@@ -540,15 +589,15 @@ procdir (const char *name_buffer, struct tar_stat_info *st,
 		       quotearg_colon (name_buffer),
 		       quote_n (1, d->name));
 	      directory->orig = d;
-	      DIR_SET_FLAG (directory, DIRF_RENAMED);
-	      DIR_CLEAR_FLAG (d, DIRF_RENAMED);
+	      dir_set_flag (directory, DIRF_RENAMED);
+	      dir_clear_flag (d, DIRF_RENAMED);
 	      dirlist_replace_prefix (d->name, name_buffer);
 	    }
 	  directory->children = CHANGED_CHILDREN;
 	}
       else
 	{
-	  DIR_SET_FLAG (directory, DIRF_NEW);
+	  dir_set_flag (directory, DIRF_NEW);
 	  warnopt (WARN_NEW_DIRECTORY, 0, _("%s: Directory is new"),
 		   quotearg_colon (name_buffer));
 	  directory->children =
@@ -582,7 +631,7 @@ procdir (const char *name_buffer, struct tar_stat_info *st,
 
   else if (flag & PD_FORCE_CHILDREN)
     {
-      directory->children = PD_CHILDREN(flag);
+      directory->children = pd_children (flag);
       if (directory->children == NO_CHILDREN)
 	*entry = 'N';
     }
@@ -591,7 +640,7 @@ procdir (const char *name_buffer, struct tar_stat_info *st,
     warnopt (WARN_RENAME_DIRECTORY, 0, _("%s: Directory has been renamed"),
 	     quotearg_colon (name_buffer));
 
-  DIR_SET_FLAG (directory, DIRF_INIT);
+  dir_set_flag (directory, DIRF_INIT);
 
   if (directory->children != NO_CHILDREN)
     {
@@ -942,7 +991,7 @@ append_incremental_renames (struct directory *dir)
     size = 0;
 
   for (dp = dirhead; dp; dp = dp->next)
-    if (DIR_IS_RENAMED (dp))
+    if (dir_is_renamed (dp))
       store_rename (dp, &stk);
 
   /* FIXME: Is this the right thing to do when DIR is null?  */
@@ -967,7 +1016,7 @@ static FILE *listed_incremental_stream;
    0 up to TAR_INCREMENTAL_VERSION, inclusive.
    It is able to create only snapshots of TAR_INCREMENTAL_VERSION */
 
-#define TAR_INCREMENTAL_VERSION 2
+enum { TAR_INCREMENTAL_VERSION = 2 };
 
 /* Read incremental snapshot formats 0 and 1 */
 static void
@@ -1387,12 +1436,12 @@ write_directory_file_entry (void *entry, void *data)
   struct directory const *directory = entry;
   FILE *fp = data;
 
-  if (DIR_IS_FOUND (directory))
+  if (dir_is_found (directory))
     {
       char buf[SYSINT_BUFSIZE];
       char const *s;
 
-      s = DIR_IS_NFS (directory) ? "1" : "0";
+      s = dir_is_nfs (directory) ? "1" : "0";
       fwrite (s, 2, 1, fp);
       s = timetostr (directory->mtime.tv_sec, buf);
       fwrite (s, strlen (s) + 1, 1, fp);
@@ -1612,7 +1661,7 @@ try_purge_directory (char const *directory_name)
     {
       if (*arc == 'X')
 	{
-#define TEMP_DIR_TEMPLATE "tar.XXXXXX"
+	  static char const TEMP_DIR_TEMPLATE[] = "tar.XXXXXX";
 	  size_t len = strlen (arc + 1);
 	  temp_stub = xrealloc (temp_stub, len + 1 + sizeof TEMP_DIR_TEMPLATE);
 	  memcpy (temp_stub, arc + 1, len);
