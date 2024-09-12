@@ -1,0 +1,25 @@
+From b6e70d8a404cdd0522564be4fa666483448b9b05 Mon Sep 17 00:00:00 2001
+From: Collin Funk <collin.funk1@gmail.com>
+Date: Wed, 11 Sep 2024 19:02:47 -0700
+Subject: [PATCH 2/2] maint: Fix build error caused by xgettext.
+
+* bootstrap.conf (XGETTEXT_OPTIONS): Add --from-code=UTF-8.
+---
+ bootstrap.conf | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/bootstrap.conf b/bootstrap.conf
+index fb75422c..497e5765 100644
+--- a/bootstrap.conf
++++ b/bootstrap.conf
+@@ -41,6 +41,7 @@ XGETTEXT_OPTIONS=$XGETTEXT_OPTIONS'\\\
+  --flag=__argp_failure:4:c-format\\\
+  --flag=argp_fmtstream_printf:2:c-format\\\
+  --flag=__argp_fmtstream_printf:2:c-format\\\
++ --from-code=UTF-8\\\
+ '
+ 
+ # Gettext supplies these files, but we don't need them since
+-- 
+2.46.0
+
