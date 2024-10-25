@@ -838,6 +838,12 @@ sys_exec_info_script (const char **archive_name, int volume_number)
 
       xclose (p[PWRITE]);
       fp = fdopen (p[PREAD], "r");
+      if (!fp)
+	{
+	  signal (SIGPIPE, saved_handler);
+	  call_arg_error ("fdopen", info_script_option);
+	  return -1;
+	}
       rc = getline (&buf, &size, fp);
       fclose (fp);
 
