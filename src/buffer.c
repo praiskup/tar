@@ -724,7 +724,7 @@ _open_archive (enum access_mode wanted_access)
   bool backed_up_flag = false;
 
   if (record_size == 0)
-    paxfatal (0, 0, _("Invalid value for record_size"));
+    paxfatal (0, _("Invalid value for record_size"));
 
   if (archive_names == 0)
     paxfatal (0, _("No archive name given"));
