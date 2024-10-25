@@ -80,7 +80,7 @@ info_attach_exclist (struct tar_stat_info *dir)
     return;
   for (file = excfile_head; file; file = file->next)
     {
-      if (faccessat (dir ? dir->fd : chdir_fd, file->name, F_OK, 0) == 0)
+      if (faccessat (dir->fd, file->name, F_OK, 0) == 0)
 	{
 	  FILE *fp;
 	  struct exclude *ex = NULL;
