@@ -65,6 +65,7 @@ union block *current_block;     /* current block of archive */
 enum access_mode access_mode;   /* how do we handle the archive */
 off_t records_read;             /* number of records read from this archive */
 off_t records_written;          /* likewise, for records written */
+off_t start_offset;             /* start offset in the archive */
 
 /* When file status was last computed.  */
 static struct timespec last_stat_time;
@@ -710,7 +711,20 @@ get_archive_status (enum access_mode wanted_access, bool backed_up_flag)
 	      || S_ISBLK (archive_stat.st_mode))
 	   : seek_option));
 
-  if (wanted_access != ACCESS_READ)
+  if (wanted_access == ACCESS_READ)
+    {
+      if (archive == STDIN_FILENO && seekable_archive)
+	{
+	  start_offset = lseek (archive, 0, SEEK_CUR);
+	  if (start_offset == -1)
+	    seekable_archive = false;
+	  else
+	    start_offset -= (record_end - record_start) * BLOCKSIZE;
+	}
+      else
+	start_offset = 0;
+    }
+  else
     sys_detect_dev_null_output ();
 
   SET_BINARY_MODE (archive);
@@ -1095,6 +1109,8 @@ seek_archive (off_t size)
   offset = rmtlseek (archive, nrec * record_size, SEEK_CUR);
   if (offset < 0)
     return offset;
+
+  offset -= start_offset;
 
   if (offset % record_size)
     paxfatal (0, _("rmtlseek not stopped at a record boundary"));
