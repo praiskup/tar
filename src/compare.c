@@ -114,33 +114,29 @@ process_rawdata (idx_t bytes, char *buffer)
   return true;
 }
 
-/* Some other routine wants SIZE bytes in the archive.  For each chunk
-   of the archive, call PROCESSOR with the size of the chunk, and the
-   address of the chunk it can work with.  PROCESSOR should return
+/* Some other routine wants ST->stat.st_size bytes in the archive.
+   For each chunk of the archive, call PROCESSOR with the size of the chunk,
+   and the address of the chunk it can work with.  PROCESSOR should return
    true for success.  Once it fails, continue skipping without calling
    PROCESSOR anymore.  */
 
 static void
 read_and_process (struct tar_stat_info *st, bool (*processor) (idx_t, char *))
 {
-  union block *data_block;
-  size_t data_size;
-  off_t size = st->stat.st_size;
-
   mv_begin_read (st);
-  while (size)
+  for (off_t size = st->stat.st_size; size; )
     {
-      data_block = find_next_block ();
+      union block *data_block = find_next_block ();
       if (! data_block)
 	{
 	  paxerror (0, _("Unexpected EOF in archive"));
 	  return;
 	}
 
-      data_size = available_space_after (data_block);
+      idx_t data_size = available_space_after (data_block);
       if (data_size > size)
 	data_size = size;
-      if (!(*processor) (data_size, data_block->buffer))
+      if (!processor (data_size, data_block->buffer))
 	processor = process_noop;
       set_next_block_after ((union block *)
 			    (data_block->buffer + data_size - 1));
@@ -275,7 +271,7 @@ static void
 diff_symlink (void)
 {
   char buf[1024];
-  size_t len = strlen (current_stat_info.link_name);
+  idx_t len = strlen (current_stat_info.link_name);
   char *linkbuf = len < sizeof buf ? buf : xmalloc (len + 1);
 
   ssize_t status = readlinkat (chdir_fd, current_stat_info.file_name,
