@@ -195,7 +195,7 @@ dumpdir_locate (struct dumpdir *dump, const char *name)
 struct dumpdir_iter
 {
   struct dumpdir *dump; /* Dumpdir being iterated */
-  int all;              /* Iterate over all entries, not only D/N/Y */
+  bool all;		/* Iterate over all entries, not only D/N/Y */
   idx_t next;		/* Index of the next element */
 };
 
@@ -222,7 +222,7 @@ dumpdir_next (struct dumpdir_iter *itr)
 }
 
 static char *
-dumpdir_first (struct dumpdir *dump, int all, struct dumpdir_iter **pitr)
+dumpdir_first (struct dumpdir *dump, bool all, struct dumpdir_iter **pitr)
 {
   struct dumpdir_iter *itr = xmalloc (sizeof (*itr));
   itr->dump = dump;
@@ -808,7 +808,7 @@ scan_directory (struct tar_stat_info *st)
 
 	  makedumpdir (directory, dirp);
 
-	  for (entry = dumpdir_first (directory->dump, 1, &itr);
+	  for (entry = dumpdir_first (directory->dump, true, &itr);
 	       entry;
 	       entry = dumpdir_next (itr))
 	    {
@@ -1020,15 +1020,14 @@ enum { TAR_INCREMENTAL_VERSION = 2 };
 
 /* Read incremental snapshot formats 0 and 1 */
 static void
-read_incr_db_01 (int version, const char *initbuf)
+read_incr_db_01 (bool version_1, const char *initbuf)
 {
-  int n;
   char *buf = NULL;
   size_t bufsize = 0;
   char *ebuf;
   intmax_t lineno = 1;
 
-  if (version == 1)
+  if (version_1)
     {
       if (getline (&buf, &bufsize, listed_incremental_stream) <= 0)
 	{
@@ -1052,7 +1051,7 @@ read_incr_db_01 (int version, const char *initbuf)
 	      lineno, _("Invalid time stamp"));
   else
     {
-      if (version == 1 && *ebuf)
+      if (version_1 && *ebuf)
 	{
 	  char const *buf_ns = ebuf + 1;
 	  bool overflow;
@@ -1069,7 +1068,8 @@ read_incr_db_01 (int version, const char *initbuf)
 	}
     }
 
-  while (0 < (n = getline (&buf, &bufsize, listed_incremental_stream)))
+  for (ssize_t n;
+       0 < (n = getline (&buf, &bufsize, listed_incremental_stream)); )
     {
       dev_t dev;
       ino_t ino;
@@ -1082,7 +1082,7 @@ read_incr_db_01 (int version, const char *initbuf)
       if (buf[n - 1] == '\n')
 	buf[n - 1] = '\0';
 
-      if (version == 1)
+      if (version_1)
 	{
 	  mtime = decode_timespec (strp, &ebuf, false);
 	  strp = ebuf;
@@ -1460,7 +1460,7 @@ write_directory_file_entry (void *entry, void *data)
 	  const char *p;
 	  struct dumpdir_iter *itr;
 
-	  for (p = dumpdir_first (directory->dump, 0, &itr);
+	  for (p = dumpdir_first (directory->dump, false, &itr);
 	       p;
 	       p = dumpdir_next (itr))
 	    fwrite (p, strlen (p) + 1, 1, fp);
@@ -1557,8 +1557,8 @@ static bool
 dumpdir_ok (char *dumpdir)
 {
   char *p;
-  int has_tempdir = 0;
-  int expect = 0;
+  bool has_tempdir = false;
+  char expect = '\0';
 
   for (p = dumpdir; *p; p += strlen (p) + 1)
     {
@@ -1578,7 +1578,7 @@ dumpdir_ok (char *dumpdir)
 	      return false;
 	    }
 	  else
-	    has_tempdir = 1;
+	    has_tempdir = true;
 	  break;
 
 	case 'R':
@@ -1590,7 +1590,7 @@ dumpdir_ok (char *dumpdir)
 		  return false;
 		}
 	      else
-		has_tempdir = 0;
+		has_tempdir = false;
 	    }
 	  expect = 'T';
 	  break;
@@ -1606,7 +1606,7 @@ dumpdir_ok (char *dumpdir)
 	      paxerror (0, _("Malformed dumpdir: empty name in 'T'"));
 	      return false;
 	    }
-	  expect = 0;
+	  expect = '\0';
 	  break;
 
 	case 'N':
@@ -1775,7 +1775,7 @@ purge_directory (char const *directory_name)
 void
 list_dumpdir (char *buffer, idx_t size)
 {
-  int state = 0;
+  bool state = false;
   while (size)
     {
       switch (*buffer)
@@ -1787,20 +1787,20 @@ list_dumpdir (char *buffer, idx_t size)
 	case 'T':
 	case 'X':
 	  fprintf (stdlis, "%c", *buffer);
-	  if (state == 0)
+	  if (!state)
 	    {
 	      fprintf (stdlis, " ");
-	      state = 1;
+	      state = true;
 	    }
 	  buffer++;
 	  size--;
 	  break;
 
-	case 0:
+	case '\0':
 	  fputc ('\n', stdlis);
 	  buffer++;
 	  size--;
-	  state = 0;
+	  state = false;
 	  break;
 
 	default:
