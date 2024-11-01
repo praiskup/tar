@@ -87,7 +87,7 @@ int same_permissions_option;
 int selinux_context_option;
 int acls_option;
 int xattrs_option;
-size_t strip_name_components;
+idx_t strip_name_components;
 bool show_omitted_dirs_option;
 bool sparse_option;
 intmax_t tar_sparse_major;
@@ -107,7 +107,7 @@ const char *volno_file_option;
 const char *volume_label_option;
 bool posixly_correct;
 const char **archive_name_array;
-size_t archive_names;
+idx_t archive_names;
 const char **archive_name_cursor;
 char const *index_file_name;
 int open_read_flags;
@@ -154,7 +154,7 @@ bool delay_directory_restore_option;
 static int check_links_option;
 
 /* Number of allocated tape drive names.  */
-static size_t allocated_archive_names;
+static idx_t allocated_archive_names;
 
 
 /* Miscellaneous.  */
@@ -322,7 +322,7 @@ static void
 tar_list_quoting_styles (struct obstack *stk, char const *prefix)
 {
   int i;
-  size_t prefixlen = strlen (prefix);
+  idx_t prefixlen = strlen (prefix);
 
   for (i = 0; quoting_style_args[i]; i++)
     {
@@ -1288,11 +1288,11 @@ expand_pax_option (struct tar_args *targs, const char *arg)
   obstack_init (&stk);
   while (*arg)
     {
-      size_t seglen = strcspn (arg, ",");
+      idx_t seglen = strcspn (arg, ",");
       char *p = memchr (arg, '=', seglen);
       if (p)
 	{
-	  size_t len = p - arg + 1;
+	  idx_t len = p - arg + 1;
 	  obstack_grow (&stk, arg, len);
 	  len = seglen - len;
 	  for (++p; *p && c_isspace (*p); p++)
@@ -1508,10 +1508,9 @@ parse_opt (int key, char *arg, struct argp_state *state)
 
     case 'f':
       if (archive_names == allocated_archive_names)
-	archive_name_array = x2nrealloc (archive_name_array,
-					 &allocated_archive_names,
-					 sizeof (archive_name_array[0]));
-
+	archive_name_array = xpalloc (archive_name_array,
+				      &allocated_archive_names,
+				      1, -1, sizeof *archive_name_array);
       archive_name_array[archive_names++] = arg;
       break;
 
@@ -1565,9 +1564,9 @@ parse_opt (int key, char *arg, struct argp_state *state)
 #endif /* not DENSITY_LETTER */
 
 	if (archive_names == allocated_archive_names)
-	  archive_name_array = x2nrealloc (archive_name_array,
-					   &allocated_archive_names,
-					   sizeof (archive_name_array[0]));
+	  archive_name_array = xpalloc (archive_name_array,
+					&allocated_archive_names,
+					1, -1, sizeof *archive_name_array);
 	archive_name_array[archive_names++] = xstrdup (buf);
       }
       break;
@@ -2118,7 +2117,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
     case STRIP_COMPONENTS_OPTION:
       {
 	char *end;
-	strip_name_components = stoint (arg, &end, NULL, 0, SIZE_MAX);
+	strip_name_components = stoint (arg, &end, NULL, 0, IDX_MAX);
 	if (*end)
 	  paxusage ("%s: %s", quotearg_colon (arg),
 		    _("Invalid number of elements"));
@@ -2532,10 +2531,12 @@ decode_options (int argc, char **argv)
       /* If no archive file name given, try TAPE from the environment, or
 	 else, DEFAULT_ARCHIVE from the configuration process.  */
 
+      static char const *default_archive = DEFAULT_ARCHIVE;
+      char const *tape = getenv ("TAPE");
+      if (tape)
+	default_archive = tape;
+      archive_name_array = &default_archive;
       archive_names = 1;
-      archive_name_array[0] = getenv ("TAPE");
-      if (! archive_name_array[0])
-	archive_name_array[0] = DEFAULT_ARCHIVE;
     }
 
   /* Allow multiple archives only with '-M'.  */
@@ -2859,13 +2860,6 @@ main (int argc, char **argv)
     paxfatal (0, _("failed to assert availability"
 		   " of the standard file descriptors"));
 
-  /* Pre-allocate a few structures.  */
-
-  allocated_archive_names = 10;
-  archive_name_array =
-    xmalloc (sizeof (const char *) * allocated_archive_names);
-  archive_names = 0;
-
   /* System V fork+wait does not work if SIGCHLD is ignored.  */
   signal (SIGCHLD, SIG_DFL);
 
@@ -2936,11 +2930,6 @@ main (int argc, char **argv)
 
   if (volno_file_option)
     closeout_volume_number ();
-
-  /* There is little point to freeing, as we are about to exit,
-     and freeing is more likely to cause than cure trouble.  */
-  if (false)
-    free (archive_name_array);
 
   if (exit_status == TAREXIT_FAILURE)
     error (0, 0, _("Exiting with failure status due to previous errors"));

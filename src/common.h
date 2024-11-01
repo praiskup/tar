@@ -279,7 +279,7 @@ extern int xattrs_option;
 
 /* When set, strip the given number of file name components from the file name
    before extracting */
-extern size_t strip_name_components;
+extern idx_t strip_name_components;
 
 extern bool show_omitted_dirs_option;
 
@@ -337,7 +337,7 @@ extern bool posixly_correct;
 /* List of tape drive names, number of such tape drives,
    and current cursor in list.  */
 extern const char **archive_name_array;
-extern size_t archive_names;
+extern idx_t archive_names;
 extern const char **archive_name_cursor;
 
 /* Output index file name.  */
