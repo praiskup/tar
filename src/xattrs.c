@@ -434,7 +434,7 @@ acls_one_line (const char *prefix, char delim,
 
   obstack_1grow (&stk, '\0');
 
-  fprintf (stdlis, "%s", (char *) obstack_finish (&stk));
+  fputs (obstack_finish (&stk), stdlis);
 
   obstack_free (&stk, NULL);
 }

@@ -187,8 +187,8 @@ static void
 to_base256 (bool negative, uintmax_t value, char *where, idx_t size)
 {
   uintmax_t v = value;
-  uintmax_t propagated_sign_bits =
-    ((uintmax_t) - negative << (UINTMAX_WIDTH - LG_256));
+  uintmax_t sign_bits = - negative;
+  uintmax_t propagated_sign_bits = sign_bits << (UINTMAX_WIDTH - LG_256);
   idx_t i = size;
 
   do
@@ -342,19 +342,19 @@ gid_substitute (bool *negative)
 static bool
 gid_to_chars (gid_t v, char *p, idx_t s)
 {
-  return to_chars (v < 0, (uintmax_t) v, sizeof v, gid_substitute, p, s, "gid_t");
+  return to_chars (v < 0, v, sizeof v, gid_substitute, p, s, "gid_t");
 }
 
 static bool
 major_to_chars (major_t v, char *p, idx_t s)
 {
-  return to_chars (v < 0, (uintmax_t) v, sizeof v, 0, p, s, "major_t");
+  return to_chars (v < 0, v, sizeof v, 0, p, s, "major_t");
 }
 
 static bool
 minor_to_chars (minor_t v, char *p, idx_t s)
 {
-  return to_chars (v < 0, (uintmax_t) v, sizeof v, 0, p, s, "minor_t");
+  return to_chars (v < 0, v, sizeof v, 0, p, s, "minor_t");
 }
 
 static bool
@@ -400,13 +400,13 @@ mode_to_chars (mode_t v, char *p, idx_t s)
 bool
 off_to_chars (off_t v, char *p, idx_t s)
 {
-  return to_chars (v < 0, (uintmax_t) v, sizeof v, 0, p, s, "off_t");
+  return to_chars (v < 0, v, sizeof v, 0, p, s, "off_t");
 }
 
 bool
 time_to_chars (time_t v, char *p, idx_t s)
 {
-  return to_chars (v < 0, (uintmax_t) v, sizeof v, 0, p, s, "time_t");
+  return to_chars (v < 0, v, sizeof v, 0, p, s, "time_t");
 }
 
 static uintmax_t
@@ -428,13 +428,7 @@ uid_substitute (bool *negative)
 static bool
 uid_to_chars (uid_t v, char *p, idx_t s)
 {
-  return to_chars (v < 0, (uintmax_t) v, sizeof v, uid_substitute, p, s, "uid_t");
-}
-
-static bool
-uintmax_to_chars (uintmax_t v, char *p, idx_t s)
-{
-  return to_chars (false, v, sizeof v, 0, p, s, "uintmax_t");
+  return to_chars (v < 0, v, sizeof v, uid_substitute, p, s, "uid_t");
 }
 
 static void
@@ -970,9 +964,10 @@ simple_finish_header (union block *header)
 
      This is a fast way to do:
 
-     sprintf(header->header.chksum, "%6o", sum);  */
+     sprintf (header->header.chksum, "%6o", sum);  */
 
-  uintmax_to_chars ((uintmax_t) sum, header->header.chksum, 7);
+  header->header.chksum[6] = '\0';
+  to_octal (sum, header->header.chksum, 6);
 
   set_next_block_after (header);
 }

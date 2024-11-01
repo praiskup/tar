@@ -1066,7 +1066,7 @@ backspace_output (void)
     return;
 
   {
-    off_t position = rmtlseek (archive, (off_t) 0, SEEK_CUR);
+    off_t position = rmtlseek (archive, 0, SEEK_CUR);
 
     /* Seek back to the beginning of this record and start writing there.  */
 

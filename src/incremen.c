@@ -142,7 +142,7 @@ dumpdir_create0 (const char *contents, const char *cmask)
 	i++;
     }
   dump = xmalloc (sizeof (*dump) + ctsize);
-  dump->contents = (char*)(dump + 1);
+  dump->contents = (char *) (dump + 1);
   memcpy (dump->contents, contents, ctsize);
   dump->total = total;
   dump->elc = i;

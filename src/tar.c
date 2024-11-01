@@ -1222,7 +1222,7 @@ tar_help_filter (int key, const char *text, MAYBE_UNUSED void *input)
   switch (key)
     {
     default:
-      s = (char*) text;
+      s = (char *) text;
       break;
 
     case 'j':
@@ -2239,7 +2239,7 @@ static struct argp argp = {
 void
 usage (int status)
 {
-  argp_help (&argp, stderr, ARGP_HELP_SEE, (char*) program_name);
+  argp_help (&argp, stderr, ARGP_HELP_SEE, (char *) program_name);
   close_stdout ();
   exit (status);
 }
@@ -2347,7 +2347,7 @@ parse_default_options (struct tar_args *args)
   if (ws.ws_wordc)
     {
       int idx;
-      ws.ws_wordv[0] = (char*) program_name;
+      ws.ws_wordv[0] = (char *) program_name;
       save_loc_ptr = args->loc;
       args->loc = &loc;
       int argc;

@@ -289,7 +289,7 @@ sys_compare_links (struct stat *link_data, struct stat *stat_data)
 int
 sys_truncate (int fd)
 {
-  off_t pos = lseek (fd, (off_t) 0, SEEK_CUR);
+  off_t pos = lseek (fd, 0, SEEK_CUR);
   return pos < 0 ? -1 : ftruncate (fd, pos);
 }
 

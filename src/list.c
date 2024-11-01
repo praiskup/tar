@@ -802,11 +802,15 @@ from_header (char const *where0, idx_t digs, char const *type,
 	  if (!overflow && value <= minus_minval)
 	    {
 	      if (!silent)
-		paxwarn (0,
-			 /* TRANSLATORS: Second %s is a type name (gid_t,uid_t,etc.) */
-			 _("Archive octal value %.*s is out of %s range;"
-			   " assuming two's complement"),
-			 (int) (where - where1), where1, type);
+		{
+		  int width = where - where1;
+		  paxwarn (0,
+			   /* TRANSLATORS: Second %s is a type name
+			      (gid_t, uid_t, etc.).  */
+			   _("Archive octal value %.*s is out of %s range;"
+			     " assuming two's complement"),
+			   width, where1, type);
+		}
 	      negative = true;
 	    }
 	}
@@ -814,10 +818,14 @@ from_header (char const *where0, idx_t digs, char const *type,
       if (overflow)
 	{
 	  if (type && !silent)
-	    paxerror (0,
-		      /* TRANSLATORS: Second %s is a type name (gid_t,uid_t,etc.) */
-		      _("Archive octal value %.*s is out of %s range"),
-		      (int) (where - where1), where1, type);
+	    {
+	      int width = where - where1;
+	      paxerror (0,
+			/* TRANSLATORS: Second %s is a type name
+			   (gid_t, uid_t, etc.).  */
+			_("Archive octal value %.*s is out of %s range"),
+			width, where1, type);
+	    }
 	  return -1;
 	}
     }
@@ -849,7 +857,8 @@ from_header (char const *where0, idx_t digs, char const *type,
 	  if (ckd_mul (&value, value, 64))
 	    {
 	      if (type && !silent)
-		paxerror (0, _("Archive signed base-64 string %s is out of %s range"),
+		paxerror (0, _("Archive signed base-64 string %s"
+			       " is out of %s range"),
 			  quote_mem (where0, digs), type);
 	      return -1;
 	    }
@@ -868,8 +877,8 @@ from_header (char const *where0, idx_t digs, char const *type,
 	 always on, so that we don't confuse this format with the
 	 others (assuming ASCII bytes of 8 bits or more).  */
       int signbit = *where & (1 << (LG_256 - 2));
-      uintmax_t topbits = (((uintmax_t) - signbit)
-			   << (UINTMAX_WIDTH - LG_256 - (LG_256 - 2)));
+      uintmax_t signbits = - signbit;
+      uintmax_t topbits = signbits << (UINTMAX_WIDTH - LG_256 - (LG_256 - 2));
       value = (*where++ & ((1 << (LG_256 - 2)) - 1)) - signbit;
       for (;;)
 	{
@@ -880,7 +889,8 @@ from_header (char const *where0, idx_t digs, char const *type,
 	  if (((value << LG_256 >> LG_256) | topbits) != value)
 	    {
 	      if (type && !silent)
-		paxerror (0, _("Archive base-256 value is out of %s range"), type);
+		paxerror (0, _("Archive base-256 value is out of %s range"),
+			  type);
 	      return -1;
 	    }
 	}
@@ -894,6 +904,7 @@ from_header (char const *where0, idx_t digs, char const *type,
       if (type)
 	{
 	  char buf[1000]; /* Big enough to represent any header.  */
+	  int bufsize = sizeof buf;
 	  static struct quoting_options *o;
 
 	  if (!o)
@@ -907,9 +918,11 @@ from_header (char const *where0, idx_t digs, char const *type,
 	  quotearg_buffer (buf, sizeof buf, where0, lim - where0, o);
 	  if (!silent)
 	    paxerror (0,
-		      /* TRANSLATORS: Second %s is a type name (gid_t,uid_t,etc.) */
-		      _("Archive contains %.*s where numeric %s value expected"),
-		      (int) sizeof buf, buf, type);
+		      /* TRANSLATORS: Second %s is a type name
+			 (gid_t, uid_t, etc.).  */
+		      _("Archive contains %.*s"
+			" where numeric %s value expected"),
+		      bufsize, buf, type);
 	}
 
       return -1;
@@ -1045,7 +1058,9 @@ tartime (struct timespec t, bool full_time)
      is out of range.  Convert it as an integer,
      right-adjusted in a field with the same width as the usual
      4-year ISO time format.  */
-  p = umaxtostr (negative ? - (uintmax_t) s : s,
+
+  uintmax_t us = s;
+  p = umaxtostr (negative ? - us : s,
 		 buffer + sizeof buffer - UINTMAX_STRSIZE_BOUND - fraclen);
   if (negative)
     *--p = '-';

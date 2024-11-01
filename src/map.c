@@ -216,7 +216,8 @@ owner_map_translate (uid_t uid, uid_t *new_uid, char const **new_name)
 	}
     }
 
-  if (owner_option != (uid_t) -1)
+  uid_t minus_1 = -1;
+  if (owner_option != minus_1)
     {
       *new_uid = owner_option;
       rc = 0;
@@ -266,7 +267,8 @@ group_map_translate (gid_t gid, gid_t *new_gid, char const **new_name)
 	}
     }
 
-  if (group_option != (uid_t) -1)
+  gid_t minus_1 = -1;
+  if (group_option != minus_1)
     {
       *new_gid = group_option;
       rc = 0;
