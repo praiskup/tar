@@ -874,8 +874,6 @@ static idx_t name_buffer_length; /* allocated length of name_buffer */
 void
 name_init (void)
 {
-  name_buffer = xmalloc (NAME_FIELD_SIZE + 2);
-  name_buffer_length = NAME_FIELD_SIZE;
   name_list_adjust ();
 }
 
