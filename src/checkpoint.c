@@ -62,12 +62,11 @@ static struct checkpoint_action *checkpoint_action,
   **checkpoint_action_tail = &checkpoint_action;
 
 /* State of the checkpoint system */
-enum {
+static enum {
   CHKP_INIT,       /* Needs initialization */
   CHKP_COMPILE,    /* Actions are being compiled */
   CHKP_RUN         /* Actions are being run */
-};
-static int checkpoint_state;
+} checkpoint_state;
 /* Blocked signals */
 static sigset_t sigs;
 
@@ -199,7 +198,7 @@ getarg (char const *input, char const **endp, char **argbuf, idx_t *arglen)
   return NULL;
 }
 
-static int tty_cleanup;
+static bool tty_cleanup;
 
 static const char *def_format =
   "%{%Y-%m-%d %H:%M:%S}t: %ds, %{read,wrote}T%*\r";
@@ -343,7 +342,7 @@ format_checkpoint_string (FILE *fp, idx_t len,
 	  if (*ip == '\r')
 	    {
 	      len = 0;
-	      tty_cleanup = 1;
+	      tty_cleanup = true;
 	    }
 	  else
 	    len++;
