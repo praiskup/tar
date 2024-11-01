@@ -263,7 +263,6 @@ static void
 hg_addfn (struct exclude *ex, char const *pattern, int options, void *data)
 {
   int *hgopt = data;
-  size_t len;
 
   while (c_isspace (*pattern))
     ++pattern;
@@ -282,7 +281,7 @@ hg_addfn (struct exclude *ex, char const *pattern, int options, void *data)
       return;
     }
 
-  len = strlen(pattern);
+  idx_t len = strlen (pattern);
   if (pattern[len-1] == '/')
     {
       char *p;
