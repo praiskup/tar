@@ -148,23 +148,18 @@ read_and_process (struct tar_stat_info *st, bool (*processor) (idx_t, char *))
 
 /* Call either stat or lstat over STAT_DATA, depending on
    --dereference (-h), for a file which should exist.  Diagnose any
-   problem.  Return nonzero for success, zero otherwise.  */
-static int
+   problem.  Return true for success, false otherwise.  */
+static bool
 get_stat_data (char const *file_name, struct stat *stat_data)
 {
-  int status = deref_stat (file_name, stat_data);
-
-  if (status != 0)
+  if (deref_stat (file_name, stat_data) < 0)
     {
-      if (errno == ENOENT)
-	stat_warn (file_name);
-      else
-	stat_error (file_name);
+      (errno == ENOENT ? stat_warn : stat_error) (file_name);
       report_difference (&current_stat_info, NULL);
-      return 0;
+      return false;
     }
 
-  return 1;
+  return true;
 }
 
 
@@ -228,8 +223,6 @@ diff_file (void)
 	    }
 	  else
 	    {
-	      int status;
-
 	      if (current_stat_info.is_sparse)
 		sparse_diff_file (diff_handle, &current_stat_info);
 	      else
@@ -244,8 +237,7 @@ diff_file (void)
 		    utime_error (file_name);
 		}
 
-	      status = close (diff_handle);
-	      if (status != 0)
+	      if (close (diff_handle) < 0)
 		close_error (file_name);
 	    }
 	}
@@ -522,17 +514,17 @@ diff_archive (void)
 void
 verify_volume (void)
 {
-  int may_fail = 0;
+  bool may_fail = false;
   if (removed_prefixes_p ())
     {
       paxwarn (0,
 	       _("Archive contains file names with leading prefixes removed."));
-      may_fail = 1;
+      may_fail = true;
     }
   if (transform_program_p ())
     {
       paxwarn (0, _("Archive contains transformed file names."));
-      may_fail = 1;
+      may_fail = true;
     }
   if (may_fail)
     paxwarn (0, _("Verification may fail to locate original files."));
@@ -578,7 +570,7 @@ verify_volume (void)
 
       if (status == HEADER_FAILURE)
 	{
-	  int counter = 0;
+	  intmax_t counter = 0;
 
 	  do
 	    {
@@ -590,8 +582,8 @@ verify_volume (void)
 	  while (status == HEADER_FAILURE);
 
 	  paxerror (0,
-		    ngettext ("VERIFY FAILURE: %d invalid header detected",
-			      "VERIFY FAILURE: %d invalid headers detected",
+		    ngettext ("VERIFY FAILURE: %jd invalid header detected",
+			      "VERIFY FAILURE: %jd invalid headers detected",
 			      counter),
 		    counter);
 	}
