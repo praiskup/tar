@@ -598,8 +598,8 @@ extern union block *current_header;
 extern enum archive_format current_format;
 extern union block *recent_long_name;
 extern union block *recent_long_link;
-extern size_t recent_long_name_blocks;
-extern size_t recent_long_link_blocks;
+extern idx_t recent_long_name_blocks;
+extern idx_t recent_long_link_blocks;
 
 void decode_header (union block *header, struct tar_stat_info *stat_info,
 		    enum archive_format *format_pointer, int do_user_group);
@@ -609,8 +609,8 @@ char const *tartime (struct timespec t, bool full_time);
 #define OFF_FROM_HEADER(where) off_from_header (where, sizeof (where))
 #define UINTMAX_FROM_HEADER(where) uintmax_from_header (where, sizeof (where))
 
-off_t off_from_header (const char *buf, size_t size);
-uintmax_t uintmax_from_header (const char *buf, size_t size);
+off_t off_from_header (const char *buf, idx_t size);
+uintmax_t uintmax_from_header (const char *buf, idx_t size);
 
 void list_archive (void);
 void test_archive_label (void);

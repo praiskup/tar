@@ -30,8 +30,8 @@ union block *current_header;	/* points to current archive header */
 enum archive_format current_format; /* recognized format */
 union block *recent_long_name;	/* recent long name header and contents */
 union block *recent_long_link;	/* likewise, for long link */
-size_t recent_long_name_blocks;	/* number of blocks in recent_long_name */
-size_t recent_long_link_blocks;	/* likewise, for long link */
+idx_t recent_long_name_blocks;	/* number of blocks in recent_long_name */
+idx_t recent_long_link_blocks;	/* likewise, for long link */
 static union block *recent_global_header; /* Recent global header block */
 
 #define GID_FROM_HEADER(where) gid_from_header (where, sizeof (where))
@@ -42,13 +42,13 @@ static union block *recent_global_header; /* Recent global header block */
 #define TIME_FROM_HEADER(where) time_from_header (where, sizeof (where))
 #define UID_FROM_HEADER(where) uid_from_header (where, sizeof (where))
 
-static gid_t gid_from_header (const char *buf, size_t size);
-static major_t major_from_header (const char *buf, size_t size);
-static minor_t minor_from_header (const char *buf, size_t size);
-static mode_t mode_from_header (const char *buf, size_t size, bool *hbits);
-static time_t time_from_header (const char *buf, size_t size);
-static uid_t uid_from_header (const char *buf, size_t size);
-static intmax_t from_header (const char *, size_t, const char *,
+static gid_t gid_from_header (const char *buf, idx_t size);
+static major_t major_from_header (const char *buf, idx_t size);
+static minor_t minor_from_header (const char *buf, idx_t size);
+static mode_t mode_from_header (const char *buf, idx_t size, bool *hbits);
+static time_t time_from_header (const char *buf, idx_t size);
+static uid_t uid_from_header (const char *buf, idx_t size);
+static intmax_t from_header (const char *, idx_t, const char *,
 			     intmax_t, uintmax_t, bool, bool);
 
 /* Table of base-64 digit values + 1, indexed by unsigned chars.
@@ -398,11 +398,11 @@ read_header (union block **return_block, struct tar_stat_info *info,
   union block *header;
   char *bp;
   union block *data_block;
-  size_t size, written;
+  idx_t size, written;
   union block *next_long_name = NULL;
   union block *next_long_link = NULL;
-  size_t next_long_name_blocks = 0;
-  size_t next_long_link_blocks = 0;
+  idx_t next_long_name_blocks = 0;
+  idx_t next_long_link_blocks = 0;
   enum read_header status = HEADER_SUCCESS;
 
   while (1)
@@ -722,7 +722,7 @@ decode_header (union block *header, struct tar_stat_info *stat_info,
    numbers instead of the other GNU extensions.  Return -1 on error,
    diagnosing the error if TYPE is nonnull and if !SILENT.  */
 static intmax_t
-from_header (char const *where0, size_t digs, char const *type,
+from_header (char const *where0, idx_t digs, char const *type,
 	     intmax_t minval, uintmax_t maxval,
 	     bool octal_only, bool silent)
 {
@@ -930,7 +930,7 @@ from_header (char const *where0, size_t digs, char const *type,
 }
 
 static gid_t
-gid_from_header (const char *p, size_t s)
+gid_from_header (const char *p, idx_t s)
 {
   return from_header (p, s, "gid_t",
 		      TYPE_MINIMUM (gid_t), TYPE_MAXIMUM (gid_t),
@@ -938,7 +938,7 @@ gid_from_header (const char *p, size_t s)
 }
 
 static major_t
-major_from_header (const char *p, size_t s)
+major_from_header (const char *p, idx_t s)
 {
   return from_header (p, s, "major_t",
 		      TYPE_MINIMUM (major_t), TYPE_MAXIMUM (major_t),
@@ -946,7 +946,7 @@ major_from_header (const char *p, size_t s)
 }
 
 static minor_t
-minor_from_header (const char *p, size_t s)
+minor_from_header (const char *p, idx_t s)
 {
   return from_header (p, s, "minor_t",
 		      TYPE_MINIMUM (minor_t), TYPE_MAXIMUM (minor_t),
@@ -956,7 +956,7 @@ minor_from_header (const char *p, size_t s)
 /* Convert P to the file mode, as understood by tar.
    Set *HBITS if there are any unrecognized bits.  */
 static mode_t
-mode_from_header (const char *p, size_t s, bool *hbits)
+mode_from_header (const char *p, idx_t s, bool *hbits)
 {
   intmax_t u = from_header (p, s, "mode_t",
 			    INTMAX_MIN, UINTMAX_MAX,
@@ -978,7 +978,7 @@ mode_from_header (const char *p, size_t s, bool *hbits)
 }
 
 off_t
-off_from_header (const char *p, size_t s)
+off_from_header (const char *p, idx_t s)
 {
   /* Negative offsets are not allowed in tar files, so invoke
      from_header with minimum value 0, not TYPE_MINIMUM (off_t).  */
@@ -988,7 +988,7 @@ off_from_header (const char *p, size_t s)
 }
 
 static time_t
-time_from_header (const char *p, size_t s)
+time_from_header (const char *p, idx_t s)
 {
   return from_header (p, s, "time_t",
 		      TYPE_MINIMUM (time_t), TYPE_MAXIMUM (time_t),
@@ -996,7 +996,7 @@ time_from_header (const char *p, size_t s)
 }
 
 static uid_t
-uid_from_header (const char *p, size_t s)
+uid_from_header (const char *p, idx_t s)
 {
   return from_header (p, s, "uid_t",
 		      TYPE_MINIMUM (uid_t), TYPE_MAXIMUM (uid_t),
@@ -1004,7 +1004,7 @@ uid_from_header (const char *p, size_t s)
 }
 
 uintmax_t
-uintmax_from_header (const char *p, size_t s)
+uintmax_from_header (const char *p, idx_t s)
 {
   return from_header (p, s, "uintmax_t", 0, UINTMAX_MAX, false, false);
 }
@@ -1039,7 +1039,7 @@ tartime (struct timespec t, bool full_time)
     {
       if (full_time)
 	{
-	  size_t n = strftime (buffer, sizeof buffer, "%Y-%m-%d %H:%M:%S", tm);
+	  idx_t n = strftime (buffer, sizeof buffer, "%Y-%m-%d %H:%M:%S", tm);
 	  code_ns_fraction (ns, buffer + n);
 	}
       else
