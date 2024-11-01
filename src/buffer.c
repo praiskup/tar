@@ -33,7 +33,7 @@
 #include "common.h"
 #include <rmt.h>
 
-/* Work around GCC bug 109856.  */
+/* Work around GCC bug 117236.  */
 # if 13 <= __GNUC__
 #  pragma GCC diagnostic ignored "-Wnull-dereference"
 # endif
@@ -65,7 +65,7 @@ union block *current_block;     /* current block of archive */
 enum access_mode access_mode;   /* how do we handle the archive */
 off_t records_read;             /* number of records read from this archive */
 off_t records_written;          /* likewise, for records written */
-off_t start_offset;             /* start offset in the archive */
+static off_t start_offset;	/* start offset in the archive */
 
 /* When file status was last computed.  */
 static struct timespec last_stat_time;
