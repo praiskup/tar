@@ -650,8 +650,7 @@ static void
 dec_to_env (char const *envar, uintmax_t num)
 {
   char numstr[UINTMAX_STRSIZE_BOUND];
-  sprintf (numstr, "%ju", num);
-  if (setenv (envar, numstr, 1) != 0)
+  if (setenv (envar, umaxtostr (num, numstr), 1) != 0)
     xalloc_die ();
 }
 
@@ -863,19 +862,15 @@ sys_exec_info_script (const char **archive_name, int volume_number)
     }
 
   /* Child */
-  setenv ("TAR_VERSION", PACKAGE_VERSION, 1);
-  setenv ("TAR_ARCHIVE", *archive_name, 1);
-  char intbuf[INT_BUFSIZE_BOUND (intmax_t)];
-  sprintf (intbuf, "%d", volume_number);
-  setenv ("TAR_VOLUME", intbuf, 1);
-  sprintf (intbuf, "%jd", blocking_factor);
-  setenv ("TAR_BLOCKING_FACTOR", intbuf, 1);
+  str_to_env ("TAR_VERSION", PACKAGE_VERSION);
+  str_to_env ("TAR_ARCHIVE", *archive_name);
+  dec_to_env ("TAR_VOLUME", volume_number);
+  dec_to_env ("TAR_BLOCKING_FACTOR", blocking_factor);
   setenv ("TAR_SUBCOMMAND", subcommand_string (subcommand_option), 1);
   setenv ("TAR_FORMAT",
 	  archive_format_string (current_format == DEFAULT_FORMAT ?
 				 archive_format : current_format), 1);
-  sprintf (intbuf, "%d", p[PWRITE]);
-  setenv ("TAR_FD", intbuf, 1);
+  dec_to_env ("TAR_FD", p[PWRITE]);
 
   xclose (p[PREAD]);
 
@@ -907,17 +902,14 @@ sys_exec_checkpoint_script (const char *script_name,
     }
 
   /* Child */
-  setenv ("TAR_VERSION", PACKAGE_VERSION, 1);
-  setenv ("TAR_ARCHIVE", archive_name, 1);
-  char intbuf[INT_BUFSIZE_BOUND (intmax_t)];
-  sprintf (intbuf, "%jd", checkpoint_number);
-  setenv ("TAR_CHECKPOINT", intbuf, 1);
-  sprintf (intbuf, "%td", blocking_factor);
-  setenv ("TAR_BLOCKING_FACTOR", intbuf, 1);
-  setenv ("TAR_SUBCOMMAND", subcommand_string (subcommand_option), 1);
-  setenv ("TAR_FORMAT",
-	  archive_format_string (current_format == DEFAULT_FORMAT ?
-				 archive_format : current_format), 1);
+  str_to_env ("TAR_VERSION", PACKAGE_VERSION);
+  str_to_env ("TAR_ARCHIVE", archive_name);
+  dec_to_env ("TAR_CHECKPOINT", checkpoint_number);
+  dec_to_env ("TAR_BLOCKING_FACTOR", blocking_factor);
+  str_to_env ("TAR_SUBCOMMAND", subcommand_string (subcommand_option));
+  str_to_env ("TAR_FORMAT",
+	      archive_format_string (current_format == DEFAULT_FORMAT
+				     ? archive_format : current_format));
   priv_set_restore_linkdir ();
   xexec (script_name);
 }
