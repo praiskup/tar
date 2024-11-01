@@ -47,15 +47,10 @@ static struct deferred_unlink *dunlink_avail;
 static struct deferred_unlink *
 dunlink_alloc (void)
 {
-  struct deferred_unlink *p;
-  if (dunlink_avail)
-    {
-      p = dunlink_avail;
-      dunlink_avail = p->next;
-      p->next  = NULL;
-    }
-  else
-    p = xmalloc (sizeof (*p));
+  struct deferred_unlink *p = dunlink_avail;
+  if (!p)
+    return xmalloc (sizeof *p);
+  dunlink_avail = p->next;
   return p;
 }
 
