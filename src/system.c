@@ -830,25 +830,33 @@ sys_exec_info_script (const char **archive_name, int volume_number)
     {
       /* Master */
 
-      int rc;
       int status;
       char *buf = NULL;
       size_t size = 0;
-      FILE *fp;
 
       xclose (p[PWRITE]);
-      fp = fdopen (p[PREAD], "r");
+      FILE *fp = fdopen (p[PREAD], "r");
       if (!fp)
 	{
 	  signal (SIGPIPE, saved_handler);
 	  call_arg_error ("fdopen", info_script_option);
 	  return -1;
 	}
-      rc = getline (&buf, &size, fp);
-      fclose (fp);
-
-      if (rc > 0 && buf[rc-1] == '\n')
-	buf[--rc] = 0;
+      ssize_t rc = getline (&buf, &size, fp);
+      if (rc < 0)
+	{
+	  signal (SIGPIPE, saved_handler);
+	  read_error (info_script_option);
+	  return -1;
+	}
+      *archive_name = buf;
+      buf[rc - 1] = '\0';
+      if (fclose (fp) < 0)
+	{
+	  signal (SIGPIPE, saved_handler);
+	  close_error (info_script_option);
+	  return -1;
+	}
 
       while (waitpid (pid, &status, 0) < 0)
 	if (errno != EINTR)
@@ -859,18 +867,7 @@ sys_exec_info_script (const char **archive_name, int volume_number)
 	  }
 
       signal (SIGPIPE, saved_handler);
-
-      if (WIFEXITED (status))
-	{
-	  if (WEXITSTATUS (status) == 0 && rc > 0)
-	    *archive_name = buf;
-	  else
-	    free (buf);
-	  return WEXITSTATUS (status);
-	}
-
-      free (buf);
-      return -1;
+      return WIFEXITED (status) ? WEXITSTATUS (status) : -1;
     }
 
   /* Child */
