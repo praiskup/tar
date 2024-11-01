@@ -1228,14 +1228,26 @@ simple_print_header (struct tar_stat_info *st, union block *blk,
 	{
 	case CHRTYPE:
 	case BLKTYPE:
-	  sizelen = ((EXPR_SIGNED (major (st->stat.st_rdev))
-		      && EXPR_SIGNED (minor (st->stat.st_rdev)))
-		     ? sprintf (size, "%jd,%jd",
-				(intmax) (major (st->stat.st_rdev)),
-				(intmax) (minor (st->stat.st_rdev)))
-		     : sprintf (size, "%ju,%ju",
-				(uintmax) (major (st->stat.st_rdev)),
-				(uintmax) (minor (st->stat.st_rdev))));
+	  if (EXPR_SIGNED (major (st->stat.st_rdev)))
+	    {
+	      intmax_t m = major (st->stat.st_rdev);
+	      sizelen = sprintf (size, "%jd", m);
+	    }
+	  else
+	    {
+	      uintmax_t m = major (st->stat.st_rdev);
+	      sizelen = sprintf (size, "%ju", m);
+	    }
+	  if (EXPR_SIGNED (minor (st->stat.st_rdev)))
+	    {
+	      intmax_t m = minor (st->stat.st_rdev);
+	      sizelen += sprintf (size + sizelen, ",%jd", m);
+	    }
+	  else
+	    {
+	      uintmax_t m = minor (st->stat.st_rdev);
+	      sizelen += sprintf (size + sizelen, ",%ju", m);
+	    }
 	  break;
 
 	default:

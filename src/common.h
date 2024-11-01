@@ -650,21 +650,15 @@ char *namebuf_name (namebuf_t buf, const char *name);
 const char *tar_dirname (void);
 
 /* intmax (N) is like ((intmax_t) (N)) except without a cast so
-   that it is an error if N is a pointer.  Similarly for uintmax.  */
+   that it is an error if N is a pointer.  */
 COMMON_INLINE intmax_t
 intmax (intmax_t n)
 {
   return n;
 }
-COMMON_INLINE uintmax_t
-uintmax (uintmax_t n)
-{
-  return n;
-}
-/* intmax should be used only with signed types, and uintmax for unsigned.
+/* intmax should be used only with signed types.
    To bypass this check parenthesize the function, e.g., (intmax) (n).  */
 #define intmax(n) verify_expr (EXPR_SIGNED (n), (intmax) (n))
-#define uintmax(n) verify_expr (!EXPR_SIGNED (n), (uintmax) (n))
 
 /* Represent N using a signed integer I such that (uintmax_t) I == N.
    With a good optimizing compiler, this is equivalent to (intmax_t) i
