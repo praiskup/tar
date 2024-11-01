@@ -688,9 +688,12 @@ represent_uintmax (uintmax_t n)
     }
 }
 
-enum { UINTMAX_STRSIZE_BOUND = INT_BUFSIZE_BOUND (uintmax_t) };
-enum { SYSINT_BUFSIZE =
-	 max (UINTMAX_STRSIZE_BOUND, INT_BUFSIZE_BOUND (intmax_t)) };
+enum
+  {
+    INTMAX_STRSIZE_BOUND = INT_BUFSIZE_BOUND (intmax_t),
+    UINTMAX_STRSIZE_BOUND = INT_BUFSIZE_BOUND (uintmax_t),
+    SYSINT_BUFSIZE = max (INTMAX_STRSIZE_BOUND, UINTMAX_STRSIZE_BOUND)
+  };
 char *sysinttostr (uintmax_t, intmax_t, uintmax_t, char buf[SYSINT_BUFSIZE]);
 intmax_t stoint (char const *, char **, bool *, intmax_t, uintmax_t);
 char *timetostr (time_t, char buf[SYSINT_BUFSIZE]);
@@ -903,7 +906,7 @@ void xheader_string_add (struct xheader *xhdr, char const *s);
 bool xheader_string_end (struct xheader *xhdr, char const *keyword);
 bool xheader_keyword_deleted_p (const char *kw);
 char *xheader_format_name (struct tar_stat_info *st, const char *fmt,
-			   size_t n);
+			   intmax_t n);
 void xheader_xattr_init (struct tar_stat_info *st);
 
 void xattr_map_init (struct xattr_map *map);

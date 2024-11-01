@@ -36,7 +36,7 @@ static void code_string (char const *string, char const *keyword,
 			 struct xheader *xhdr);
 
 /* Number of global headers written so far. */
-static size_t global_header_count;
+static intmax_t global_header_count;
 /* FIXME: Possibly it should be reset after changing the volume.
    POSIX %n specification says that it is expanded to the sequence
    number of current global header in *the* archive. However, for
@@ -254,7 +254,7 @@ xheader_set_option (char *string)
      %%                       A '%' character. */
 
 char *
-xheader_format_name (struct tar_stat_info *st, const char *fmt, size_t n)
+xheader_format_name (struct tar_stat_info *st, const char *fmt, intmax_t n)
 {
   char *buf;
   size_t len;
@@ -265,7 +265,7 @@ xheader_format_name (struct tar_stat_info *st, const char *fmt, size_t n)
   char *base = NULL;
   char pidbuf[UINTMAX_STRSIZE_BOUND];
   char const *pptr = NULL;
-  char nbuf[UINTMAX_STRSIZE_BOUND];
+  char nbuf[INTMAX_STRSIZE_BOUND];
   char const *nptr = NULL;
 
   len = 0;
@@ -303,7 +303,7 @@ xheader_format_name (struct tar_stat_info *st, const char *fmt, size_t n)
 	      break;
 
 	    case 'n':
-	      nptr = umaxtostr (n, nbuf);
+	      nptr = imaxtostr (n, nbuf);
 	      len += nbuf + sizeof nbuf - 1 - nptr;
 	      break;
 
