@@ -43,7 +43,7 @@ struct link
 struct exclusion_tag
 {
   const char *name;
-  size_t length;
+  idx_t length;
   enum exclusion_tag_type type;
   bool (*predicate) (int fd);
   struct exclusion_tag *next;
@@ -142,10 +142,10 @@ max_octal_val (idx_t bufsize)
    The result is undefined if SIZE is 0 or if VALUE is too large to fit.  */
 
 static void
-to_octal (uintmax_t value, char *where, size_t size)
+to_octal (uintmax_t value, char *where, idx_t size)
 {
   uintmax_t v = value;
-  size_t i = size;
+  idx_t i = size;
 
   do
     {
@@ -159,10 +159,9 @@ to_octal (uintmax_t value, char *where, size_t size)
    NUL unless SRC is LEN or more bytes long.  */
 
 static void
-tar_copy_str (char *dst, const char *src, size_t len)
+tar_copy_str (char *dst, const char *src, idx_t len)
 {
-  size_t i;
-  for (i = 0; i < len; i++)
+  for (idx_t i = 0; i < len; i++)
     if (! (dst[i] = src[i]))
       break;
 }
@@ -171,7 +170,7 @@ tar_copy_str (char *dst, const char *src, size_t len)
    is OLDGNU format */
 
 static void
-tar_name_copy_str (char *dst, const char *src, size_t len)
+tar_name_copy_str (char *dst, const char *src, idx_t len)
 {
   tar_copy_str (dst, src, len);
   if (archive_format == OLDGNU_FORMAT)
@@ -185,12 +184,12 @@ tar_name_copy_str (char *dst, const char *src, size_t len)
    fit.  */
 
 static void
-to_base256 (bool negative, uintmax_t value, char *where, size_t size)
+to_base256 (bool negative, uintmax_t value, char *where, idx_t size)
 {
   uintmax_t v = value;
   uintmax_t propagated_sign_bits =
     ((uintmax_t) - negative << (UINTMAX_WIDTH - LG_256));
-  size_t i = size;
+  idx_t i = size;
 
   do
     {
@@ -210,14 +209,14 @@ to_base256 (bool negative, uintmax_t value, char *where, size_t size)
 #define GNAME_TO_CHARS(name, buf) string_to_chars (name, buf, sizeof (buf))
 
 static bool
-to_chars (bool negative, uintmax_t value, size_t valsize,
+to_chars (bool negative, uintmax_t value, idx_t valsize,
 	  uintmax_t (*substitute) (bool *),
-	  char *where, size_t size, const char *type);
+	  char *where, idx_t size, const char *type);
 
 static bool
-to_chars_subst (bool negative, bool gnu_format, uintmax_t value, size_t valsize,
+to_chars_subst (bool negative, bool gnu_format, uintmax_t value, idx_t valsize,
 		uintmax_t (*substitute) (bool *),
-		char *where, size_t size, const char *type)
+		char *where, idx_t size, const char *type)
 {
   uintmax_t maxval = (gnu_format
 		      ? max_val_with_digits (size - 1, LG_256)
@@ -268,9 +267,9 @@ to_chars_subst (bool negative, bool gnu_format, uintmax_t value, size_t valsize,
    substitute value is negative.  */
 
 static bool
-to_chars (bool negative, uintmax_t value, size_t valsize,
+to_chars (bool negative, uintmax_t value, idx_t valsize,
 	  uintmax_t (*substitute) (bool *),
-	  char *where, size_t size, const char *type)
+	  char *where, idx_t size, const char *type)
 {
   bool gnu_format = (archive_format == GNU_FORMAT
 		     || archive_format == OLDGNU_FORMAT);
@@ -341,25 +340,25 @@ gid_substitute (bool *negative)
 }
 
 static bool
-gid_to_chars (gid_t v, char *p, size_t s)
+gid_to_chars (gid_t v, char *p, idx_t s)
 {
   return to_chars (v < 0, (uintmax_t) v, sizeof v, gid_substitute, p, s, "gid_t");
 }
 
 static bool
-major_to_chars (major_t v, char *p, size_t s)
+major_to_chars (major_t v, char *p, idx_t s)
 {
   return to_chars (v < 0, (uintmax_t) v, sizeof v, 0, p, s, "major_t");
 }
 
 static bool
-minor_to_chars (minor_t v, char *p, size_t s)
+minor_to_chars (minor_t v, char *p, idx_t s)
 {
   return to_chars (v < 0, (uintmax_t) v, sizeof v, 0, p, s, "minor_t");
 }
 
 static bool
-mode_to_chars (mode_t v, char *p, size_t s)
+mode_to_chars (mode_t v, char *p, idx_t s)
 {
   /* In the common case where the internal and external mode bits are the same,
      and we are not using POSIX or GNU format,
@@ -399,13 +398,13 @@ mode_to_chars (mode_t v, char *p, size_t s)
 }
 
 bool
-off_to_chars (off_t v, char *p, size_t s)
+off_to_chars (off_t v, char *p, idx_t s)
 {
   return to_chars (v < 0, (uintmax_t) v, sizeof v, 0, p, s, "off_t");
 }
 
 bool
-time_to_chars (time_t v, char *p, size_t s)
+time_to_chars (time_t v, char *p, idx_t s)
 {
   return to_chars (v < 0, (uintmax_t) v, sizeof v, 0, p, s, "time_t");
 }
@@ -427,19 +426,19 @@ uid_substitute (bool *negative)
 }
 
 static bool
-uid_to_chars (uid_t v, char *p, size_t s)
+uid_to_chars (uid_t v, char *p, idx_t s)
 {
   return to_chars (v < 0, (uintmax_t) v, sizeof v, uid_substitute, p, s, "uid_t");
 }
 
 static bool
-uintmax_to_chars (uintmax_t v, char *p, size_t s)
+uintmax_to_chars (uintmax_t v, char *p, idx_t s)
 {
   return to_chars (false, v, sizeof v, 0, p, s, "uintmax_t");
 }
 
 static void
-string_to_chars (char const *str, char *p, size_t s)
+string_to_chars (char const *str, char *p, idx_t s)
 {
   tar_copy_str (p, str, s);
   p[s - 1] = '\0';
@@ -486,7 +485,7 @@ write_eot (void)
 
 /* Write a "private" header */
 union block *
-start_private_header (const char *name, size_t size, time_t t)
+start_private_header (const char *name, idx_t size, time_t t)
 {
   union block *header = find_next_block ();
 
@@ -522,11 +521,8 @@ write_short_name (struct tar_stat_info *st)
 static void
 write_gnu_long_link (struct tar_stat_info *st, const char *p, char type)
 {
-  size_t size = strlen (p) + 1;
-  size_t bufsize;
-  union block *header;
-
-  header = start_private_header ("././@LongLink", size, 0);
+  idx_t size = strlen (p) + 1;
+  union block *header = start_private_header ("././@LongLink", size, 0);
   if (! numeric_owner_option)
     {
       static char *uname, *gname;
@@ -546,7 +542,7 @@ write_gnu_long_link (struct tar_stat_info *st, const char *p, char type)
 
   header = find_next_block ();
 
-  bufsize = available_space_after (header);
+  idx_t bufsize = available_space_after (header);
 
   while (bufsize < size)
     {
@@ -562,10 +558,10 @@ write_gnu_long_link (struct tar_stat_info *st, const char *p, char type)
   set_next_block_after (header + (size - 1) / BLOCKSIZE);
 }
 
-static size_t
-split_long_name (const char *name, size_t length)
+static idx_t
+split_long_name (const char *name, idx_t length)
 {
-  size_t i;
+  idx_t i;
 
   if (length > PREFIX_FIELD_SIZE + 1)
     length = PREFIX_FIELD_SIZE + 1;
@@ -580,9 +576,7 @@ split_long_name (const char *name, size_t length)
 static union block *
 write_ustar_long_name (const char *name)
 {
-  size_t length = strlen (name);
-  size_t i, nlen;
-  union block *header;
+  idx_t length = strlen (name);
 
   if (length > PREFIX_FIELD_SIZE + NAME_FIELD_SIZE + 1)
     {
@@ -592,7 +586,7 @@ write_ustar_long_name (const char *name)
       return NULL;
     }
 
-  i = split_long_name (name, length);
+  idx_t i = split_long_name (name, length), nlen;
   if (i == 0 || (nlen = length - i - 1) > NAME_FIELD_SIZE || nlen == 0)
     {
       paxerror (0, _("%s: file name is too long (cannot be split); not dumped"),
@@ -600,7 +594,7 @@ write_ustar_long_name (const char *name)
       return NULL;
     }
 
-  header = find_next_block ();
+  union block *header = find_next_block ();
   memset (header->buffer, 0, sizeof (header->buffer));
   memcpy (header->header.prefix, name, i);
   memcpy (header->header.name, name + i + 1, length - i - 1);
@@ -949,11 +943,8 @@ start_header (struct tar_stat_info *st)
       if ((selinux_context_option > 0) && st->cntx_name)
         xheader_store ("RHT.security.selinux", st, NULL);
       if (xattrs_option > 0)
-        {
-          size_t i;
-	  for (i = 0; i < st->xattr_map.xm_size; i++)
-	    xheader_store (st->xattr_map.xm_map[i].xkey, st, &i);
-        }
+	for (idx_t i = 0; i < st->xattr_map.xm_size; i++)
+	  xheader_store (st->xattr_map.xm_map[i].xkey, st, &i);
     }
 
   return header;
@@ -962,16 +953,12 @@ start_header (struct tar_stat_info *st)
 void
 simple_finish_header (union block *header)
 {
-  size_t i;
-  int sum;
-  char *p;
-
   /* Fill checksum field with spaces while the checksum is computed.  */
   memset (header->header.chksum, ' ', sizeof header->header.chksum);
 
-  sum = 0;
-  p = header->buffer;
-  for (i = sizeof *header; i-- != 0; )
+  int sum = 0;
+  char *p = header->buffer;
+  for (idx_t i = sizeof *header; i-- != 0; )
     /* We can't use unsigned char here because of old compilers, e.g. V7.  */
     sum += 0xFF & *p++;
 
@@ -1139,29 +1126,24 @@ dump_dir0 (struct tar_stat_info *st, char const *directory)
 	}
       else
 	{
-	  off_t size_left;
-	  off_t totsize;
-	  size_t bufsize;
-	  ssize_t count;
-	  const char *buffer, *p_buffer;
-
 	  block_ordinal = current_block_ordinal ();
-	  buffer = safe_directory_contents (gnu_list_name->directory);
-	  totsize = dumpdir_size (buffer);
+	  char const *buffer
+	    = safe_directory_contents (gnu_list_name->directory);
+	  off_t totsize = dumpdir_size (buffer);
 	  OFF_TO_CHARS (totsize, blk->header.size);
 	  finish_header (st, blk, block_ordinal);
-	  p_buffer = buffer;
-	  size_left = totsize;
+	  char const *p_buffer = buffer;
+	  off_t size_left = totsize;
 
 	  mv_begin_write (st->file_name, totsize, totsize);
 	  while (size_left > 0)
 	    {
 	      blk = find_next_block ();
-	      bufsize = available_space_after (blk);
+	      idx_t bufsize = available_space_after (blk);
 	      if (size_left < bufsize)
 		{
 		  bufsize = size_left;
-		  count = bufsize % BLOCKSIZE;
+		  idx_t count = bufsize % BLOCKSIZE;
 		  if (count)
 		    memset (blk->buffer + size_left, 0, BLOCKSIZE - count);
 		}
@@ -1189,7 +1171,7 @@ dump_dir0 (struct tar_stat_info *st, char const *directory)
   else
     {
       char *name_buf;
-      size_t name_size;
+      idx_t name_size;
 
       switch (check_exclusion_tags (st, &tag_file_name))
 	{
@@ -1199,15 +1181,13 @@ dump_dir0 (struct tar_stat_info *st, char const *directory)
 
 	case exclusion_tag_none:
 	  {
-	    char const *entry;
-	    size_t entry_len;
-	    size_t name_len;
-
 	    name_buf = xstrdup (st->orig_file_name);
-	    name_size = name_len = strlen (name_buf);
+	    idx_t name_len = name_size = strlen (name_buf);
 
 	    /* Now output all the files in the directory.  */
-	    for (entry = directory; (entry_len = strlen (entry)) != 0;
+	    idx_t entry_len;
+	    for (char const *entry = directory;
+		 (entry_len = strlen (entry)) != 0;
 		 entry += entry_len + 1)
 	      {
 		if (name_size < name_len + entry_len)
@@ -1247,7 +1227,7 @@ dump_dir0 (struct tar_stat_info *st, char const *directory)
 static void
 ensure_slash (char **pstr)
 {
-  size_t len = strlen (*pstr);
+  idx_t len = strlen (*pstr);
   while (len >= 1 && ISSLASH ((*pstr)[len - 1]))
     len--;
   if (!ISSLASH ((*pstr)[len]))
@@ -1338,7 +1318,7 @@ create_archive (void)
 
   if (incremental_option)
     {
-      size_t buffer_size = 0;
+      idx_t buffer_size = 0;
       char *buffer = NULL;
       const char *q;
 
@@ -1353,9 +1333,10 @@ create_archive (void)
 	if (!excluded_name (p->name, NULL))
 	  {
 	    struct tar_stat_info st;
-	    size_t plen = strlen (p->name);
-	    while (buffer_size <= plen)
-	      buffer = x2realloc (buffer, &buffer_size);
+	    idx_t plen = strlen (p->name);
+	    if (buffer_size <= plen)
+	      buffer = xpalloc (buffer, &buffer_size,
+				plen - buffer_size + 1, -1, 1);
 	    memcpy (buffer, p->name, plen);
 	    if (! ISSLASH (buffer[plen - 1]))
 	      buffer[plen++] = DIRECTORY_SEPARATOR;
@@ -1364,7 +1345,7 @@ create_archive (void)
 	    if (q)
 	      while (*q)
 		{
-		  size_t qlen = strlen (q);
+		  idx_t qlen = strlen (q);
 		  if (*q == 'Y')
 		    {
 		      if (! st.orig_file_name)
@@ -1386,8 +1367,9 @@ create_archive (void)
 			    }
 			  st.orig_file_name = xstrdup (p->name);
 			}
-		      while (buffer_size < plen + qlen)
-			buffer = x2realloc (buffer, &buffer_size);
+		      if (buffer_size < plen + qlen)
+			buffer = xpalloc (buffer, &buffer_size,
+					  plen + qlen - buffer_size, -1, 1);
 		      strcpy (buffer + plen, q + 1);
 		      dump_file (&st, q + 1, buffer);
 		    }

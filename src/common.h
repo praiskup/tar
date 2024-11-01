@@ -507,7 +507,7 @@ void finish_header (struct tar_stat_info *st, union block *header,
 void simple_finish_header (union block *header);
 union block *write_extended (bool global, struct tar_stat_info *st,
 			     union block *old_header);
-union block *start_private_header (const char *name, size_t size, time_t t);
+union block *start_private_header (const char *name, idx_t size, time_t t);
 void write_eot (void);
 void check_links (void);
 int subfile_open (struct tar_stat_info const *dir, char const *file, int flags);
@@ -520,8 +520,8 @@ enum exclusion_tag_type check_exclusion_tags (struct tar_stat_info const *st,
 #define OFF_TO_CHARS(val, where) off_to_chars (val, where, sizeof (where))
 #define TIME_TO_CHARS(val, where) time_to_chars (val, where, sizeof (where))
 
-bool off_to_chars (off_t off, char *buf, size_t size);
-bool time_to_chars (time_t t, char *buf, size_t size);
+bool off_to_chars (off_t off, char *buf, idx_t size);
+bool time_to_chars (time_t t, char *buf, idx_t size);
 
 /* Module diffarch.c.  */
 
