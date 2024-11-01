@@ -120,13 +120,12 @@ struct delayed_set_stat
     /* extended attributes*/
     char *cntx_name;
     char *acls_a_ptr;
-    size_t acls_a_len;
+    idx_t acls_a_len;
     char *acls_d_ptr;
-    size_t acls_d_len;
-    size_t xattr_map_size;
+    idx_t acls_d_len;
     struct xattr_map xattr_map;
     /* Length and contents of name.  */
-    size_t file_name_len;
+    idx_t file_name_len;
     char *file_name;
   };
 
@@ -176,9 +175,9 @@ struct delayed_link
 
     /* ACLs */
     char *acls_a_ptr;
-    size_t acls_a_len;
+    idx_t acls_a_len;
     char *acls_d_ptr;
-    size_t acls_d_len;
+    idx_t acls_d_len;
 
     struct xattr_map xattr_map;
 
@@ -527,7 +526,7 @@ delay_set_stat (char const *file_name, struct tar_stat_info const *st,
 		mode_t current_mode, mode_t current_mode_mask,
 		mode_t mode, int atflag)
 {
-  size_t file_name_len = strlen (file_name);
+  idx_t file_name_len = strlen (file_name);
   struct delayed_set_stat *data;
 
   if (! (delayed_set_stat_table
@@ -959,7 +958,7 @@ set_xattr (char const *file_name, struct tar_stat_info const *st,
 static void
 apply_nonancestor_delayed_set_stat (char const *file_name, bool after_links)
 {
-  size_t file_name_len = strlen (file_name);
+  idx_t file_name_len = strlen (file_name);
   bool check_for_renamed_directories = 0;
 
   while (delayed_set_stat_head)
@@ -1277,7 +1276,6 @@ extract_file (char *file_name, int typeflag)
   off_t size;
   union block *data_block;
   int status;
-  size_t written;
   bool interdir_made = false;
   mode_t mode = (current_stat_info.stat.st_mode & MODE_RWX
 		 & ~ (0 < same_owner_option ? S_IRWXG | S_IRWXO : 0));
@@ -1342,7 +1340,7 @@ extract_file (char *file_name, int typeflag)
 	    break;		/* FIXME: What happens, then?  */
 	  }
 
-	written = available_space_after (data_block);
+	idx_t written = available_space_after (data_block);
 
 	if (written > size)
 	  written = size;
