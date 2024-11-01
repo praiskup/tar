@@ -22,7 +22,7 @@
 struct compression_suffix
 {
   const char *suffix;
-  size_t length;
+  idx_t length;
   const char *program;
 };
 
@@ -60,13 +60,13 @@ static struct compression_suffix compression_suffixes[] = {
    there the length of NAME with that suffix stripped, or 0 if NAME has
    no suffix. */
 static struct compression_suffix const *
-find_compression_suffix (const char *name, size_t *ret_len)
+find_compression_suffix (const char *name, idx_t *ret_len)
 {
   char *suf = strrchr (name, '.');
 
   if (suf && suf[1] != 0 && suf[1] != '/')
     {
-      size_t len;
+      idx_t len;
       struct compression_suffix *p;
 
       suf++;
@@ -95,7 +95,7 @@ void
 set_compression_program_by_suffix (const char *name, const char *defprog,
 				   bool verbose)
 {
-  size_t len;
+  idx_t len;
   struct compression_suffix const *p = find_compression_suffix (name, &len);
   if (p)
     use_compress_program_option = p->program;
@@ -115,7 +115,7 @@ char *
 strip_compression_suffix (const char *name)
 {
   char *s = NULL;
-  size_t len;
+  idx_t len;
   struct compression_suffix const *p = find_compression_suffix (name, &len);
 
   if (p)
