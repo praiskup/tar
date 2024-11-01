@@ -2943,7 +2943,6 @@ main (int argc, char **argv)
     {
       free (archive_name_array);
       xattrs_clear_setup ();
-      name_term ();
     }
 
   if (exit_status == TAREXIT_FAILURE)

@@ -782,7 +782,6 @@ int uname_to_uid (char const *uname, uid_t *puid);
 
 void name_init (void);
 void name_add_name (const char *name);
-void name_term (void);
 char const *name_next (bool);
 void name_gather (void);
 struct name *addname (char const *, idx_t, bool, struct name *);

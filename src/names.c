@@ -878,12 +878,6 @@ name_init (void)
   name_buffer_length = NAME_FIELD_SIZE;
   name_list_adjust ();
 }
-
-void
-name_term (void)
-{
-  free (name_buffer);
-}
 
 /* Prevent recursive inclusion of the same file */
 struct file_id_list
