@@ -172,7 +172,7 @@ extern const char *info_script_option;
 extern bool interactive_option;
 
 /* If nonzero, extract only Nth occurrence of each named file */
-extern uintmax_t occurrence_option;
+extern intmax_t occurrence_option;
 
 enum old_files
 {
@@ -361,7 +361,7 @@ struct name
 
     idx_t change_dir;		/* Number of the directory to change to.
 				   Set with the -C option. */
-    uintmax_t found_count;	/* number of times a matching file has
+    intmax_t found_count;	/* number of times a matching file has
 				   been found */
 
     /* The following members are used for incremental dumps only,

@@ -56,7 +56,7 @@ bool ignore_zeros_option;
 bool incremental_option;
 const char *info_script_option;
 bool interactive_option;
-uintmax_t occurrence_option;
+intmax_t occurrence_option;
 enum old_files old_files_option;
 bool keep_directory_symlink_option;
 const char *listed_incremental_option;
@@ -2007,7 +2007,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
       else
 	{
 	  char *end;
-	  occurrence_option = stoint (arg, &end, NULL, 0, UINTMAX_MAX);
+	  occurrence_option = stoint (arg, &end, NULL, 0, INTMAX_MAX);
 	  if (*end)
 	    paxfatal (0, "%s: %s", quotearg_colon (arg), _("Invalid number"));
 	}
