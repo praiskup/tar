@@ -168,12 +168,6 @@ checkpoint_finish_compile (void)
     }
 }
 
-static const char *checkpoint_total_format[] = {
-  "R",
-  "W",
-  "D"
-};
-
 static intmax_t
 getwidth (FILE *fp)
 {
@@ -289,7 +283,9 @@ format_checkpoint_string (FILE *fp, idx_t len,
 
 	    case 'T':
 	      {
-		const char **fmt = checkpoint_total_format, *fmtbuf[3];
+		static char const *const checkpoint_total_format[]
+		  = { "R", "W", "D" };
+		char const *const *fmt = checkpoint_total_format, *fmtbuf[3];
 		struct wordsplit ws;
 		compute_duration_ns ();
 
