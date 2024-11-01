@@ -199,7 +199,8 @@ cvs_addfn (struct exclude *ex, char const *pattern, int options,
 
   options |= EXCLUDE_ALLOC;
   if (wordsplit (pattern, &ws,
-		 WRDSF_NOVAR | WRDSF_NOCMD | WRDSF_SQUEEZE_DELIMS))
+		 WRDSF_NOVAR | WRDSF_NOCMD | WRDSF_SQUEEZE_DELIMS)
+      != WRDSE_OK)
     return;
   for (idx_t i = 0; i < ws.ws_wordc; i++)
     add_exclude (ex, ws.ws_wordv[i], options);

@@ -1141,7 +1141,7 @@ get_date_or_file (struct tar_args *args, const char *option,
       || *str == '.')
     {
       struct stat st;
-      if (stat (str, &st) != 0)
+      if (stat (str, &st) < 0)
 	{
 	  stat_error (str);
 	  paxusage (_("Date sample file not found"));
@@ -2331,7 +2331,7 @@ parse_default_options (struct tar_args *args)
     return;
 
   ws.ws_offs = 1;
-  if (wordsplit (opts, &ws, WRDSF_DEFFLAGS|WRDSF_DOOFFS))
+  if (wordsplit (opts, &ws, WRDSF_DEFFLAGS | WRDSF_DOOFFS) != WRDSE_OK)
     paxfatal (0, _("cannot split TAR_OPTIONS: %s"), wordsplit_strerror (&ws));
   if (ws.ws_wordc)
     {
@@ -2754,7 +2754,7 @@ decode_options (int argc, char **argv)
       for (archive_name_cursor = archive_name_array;
 	   archive_name_cursor < archive_name_array + archive_names;
 	   archive_name_cursor++)
-	if (!strcmp (*archive_name_cursor, "-"))
+	if (strcmp (*archive_name_cursor, "-") == 0)
 	  request_stdin ("-f");
       break;
 
@@ -2764,7 +2764,7 @@ decode_options (int argc, char **argv)
       for (archive_name_cursor = archive_name_array;
 	   archive_name_cursor < archive_name_array + archive_names;
 	   archive_name_cursor++)
-	if (!strcmp (*archive_name_cursor, "-"))
+	if (strcmp (*archive_name_cursor, "-") == 0)
 	  paxusage (_("Options '-Aru' are incompatible with '-f -'"));
 
     default:
@@ -2846,10 +2846,11 @@ main (int argc, char **argv)
   set_quoting_style (0, DEFAULT_QUOTING_STYLE);
 
   close_stdout_set_file_name (_("stdout"));
-  /* Make sure we have first three descriptors available */
-  if (stdopen ())
-    paxfatal (0, _("failed to assert availability"
-		   " of the standard file descriptors"));
+
+  int err = stdopen ();
+  if (err != 0)
+    paxfatal (err, _("failed to assert availability"
+		     " of the standard file descriptors"));
 
   /* System V fork+wait does not work if SIGCHLD is ignored.  */
   signal (SIGCHLD, SIG_DFL);
@@ -2927,7 +2928,7 @@ main (int argc, char **argv)
 
   if (stdlis == stdout)
     close_stdout ();
-  else if (ferror (stderr) || fclose (stderr) != 0)
+  else if (ferror (stderr) || fclose (stderr) < 0)
     set_exit_status (TAREXIT_FAILURE);
 
   return exit_status;

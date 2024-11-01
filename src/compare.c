@@ -105,7 +105,7 @@ process_rawdata (idx_t bytes, char *buffer)
       return false;
     }
 
-  if (memcmp (buffer, diff_buffer, bytes))
+  if (memcmp (buffer, diff_buffer, bytes) != 0)
     {
       report_difference (&current_stat_info, _("Contents differ"));
       return false;
@@ -233,7 +233,7 @@ diff_file (void)
 		{
 		  struct timespec atime = get_stat_atime (&stat_data);
 		  if (set_file_atime (diff_handle, chdir_fd, file_name, atime)
-		      != 0)
+		      < 0)
 		    utime_error (file_name);
 		}
 
@@ -370,7 +370,7 @@ diff_dumpdir (struct tar_stat_info *dir)
       int fd = subfile_open (dir->parent, dir->orig_file_name, open_read_flags);
       if (fd < 0)
 	diag = open_diag;
-      else if (fstat (fd, &dir->stat))
+      else if (fstat (fd, &dir->stat) < 0)
         {
 	  diag = stat_diag;
           close (fd);
@@ -387,7 +387,7 @@ diff_dumpdir (struct tar_stat_info *dir)
 
   if (dumpdir_buffer)
     {
-      if (dumpdir_cmp (dir->dumpdir, dumpdir_buffer))
+      if (dumpdir_cmp (dir->dumpdir, dumpdir_buffer) != 0)
 	report_difference (dir, _("Contents differ"));
     }
   else

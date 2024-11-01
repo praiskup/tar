@@ -376,7 +376,7 @@ delete_archive_members (void)
 
       if (! acting_as_filter && ! _isrmt (archive))
 	{
-	  if (sys_truncate (archive))
+	  if (sys_truncate (archive) < 0)
 	    truncate_warn (archive_name_array[0]);
 	}
     }

@@ -106,7 +106,7 @@ flush_deferred_unlinks (bool force)
 	      else
 		fname = p->file_name;
 
-	      if (unlinkat (chdir_fd, fname, AT_REMOVEDIR) != 0)
+	      if (unlinkat (chdir_fd, fname, AT_REMOVEDIR) < 0)
 		{
 		  switch (errno)
 		    {
@@ -132,7 +132,7 @@ flush_deferred_unlinks (bool force)
 	    }
 	  else
 	    {
-	      if (unlinkat (chdir_fd, p->file_name, 0) != 0 && errno != ENOENT)
+	      if (unlinkat (chdir_fd, p->file_name, 0) < 0 && errno != ENOENT)
 		unlink_error (p->file_name);
 	    }
 	  dunlink_reclaim (p);
@@ -166,7 +166,7 @@ flush_deferred_unlinks (bool force)
 	  else
 	    fname = p->file_name;
 
-	  if (unlinkat (chdir_fd, fname, AT_REMOVEDIR) != 0)
+	  if (unlinkat (chdir_fd, fname, AT_REMOVEDIR) < 0)
 	    {
 	      if (errno != ENOENT)
 		rmdir_error (fname);

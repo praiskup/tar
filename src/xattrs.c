@@ -293,7 +293,7 @@ xattrs__acls_set (struct tar_stat_info const *st,
       /* No "default" IEEE 1003.1e ACL set for directory.  At this moment,
          FILE_NAME may already have inherited default acls from parent
          directory;  clean them up. */
-      if (acl_delete_def_file_at (chdir_fd, file_name))
+      if (acl_delete_def_file_at (chdir_fd, file_name) < 0)
 	warnopt (WARN_XATTR_WRITE, errno,
                  _("acl_delete_def_file_at: Cannot drop default POSIX ACLs "
                    "for file '%s'"),
@@ -737,7 +737,7 @@ xattrs_xattrs_set (struct tar_stat_info const *st,
              the first run except 'security.capability' which is restored in
              'later_run == 1'.  */
           if (typeflag == REGTYPE
-              && later_run == !!strcmp (keyword, "security.capability"))
+              && later_run == (strcmp (keyword, "security.capability") != 0))
             continue;
 
           if (xattrs_masked_out (keyword, false /* extracting */ ))

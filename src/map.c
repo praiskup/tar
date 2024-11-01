@@ -97,7 +97,7 @@ map_read (Hash_table **ptab, char const *file,
       char *colon;
 
       ++line;
-      if (wordsplit (buf, &ws, wsopt))
+      if (wordsplit (buf, &ws, wsopt) != WRDSE_OK)
 	paxfatal (0, _("%s:%jd: cannot split line: %s"),
 		  file, line, wordsplit_strerror (&ws));
       wsopt |= WRDSF_REUSE;

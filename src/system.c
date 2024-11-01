@@ -517,7 +517,7 @@ run_decompress_program (void)
 	  warnopt (WARN_DECOMPRESS_PROGRAM, errno, _("cannot run %s"), prog);
 	  warnopt (WARN_DECOMPRESS_PROGRAM, 0, _("trying %s"), p);
 	}
-      if (wordsplit (p, &ws, wsflags))
+      if (wordsplit (p, &ws, wsflags) != WRDSE_OK)
 	paxfatal (0, _("cannot split string '%s': %s"),
 		  p, wordsplit_strerror (&ws));
       wsflags |= WRDSF_REUSE;
@@ -650,7 +650,7 @@ static void
 dec_to_env (char const *envar, uintmax_t num)
 {
   char numstr[UINTMAX_STRSIZE_BOUND];
-  if (setenv (envar, umaxtostr (num, numstr), 1) != 0)
+  if (setenv (envar, umaxtostr (num, numstr), 1) < 0)
     xalloc_die ();
 }
 
@@ -658,7 +658,7 @@ static void
 time_to_env (char const *envar, struct timespec t)
 {
   char buf[TIMESPEC_STRSIZE_BOUND];
-  if (setenv (envar, code_timespec (t, buf), 1) != 0)
+  if (setenv (envar, code_timespec (t, buf), 1) < 0)
     xalloc_die ();
 }
 
@@ -670,7 +670,7 @@ oct_to_env (char const *envar, mode_t m)
   if (EXPR_SIGNED (m) && sizeof m < sizeof um)
     um &= ~ (UINTMAX_MAX << TYPE_WIDTH (m));
   sprintf (buf, "%#"PRIoMAX, um);
-  if (setenv (envar, buf, 1) != 0)
+  if (setenv (envar, buf, 1) < 0)
     xalloc_die ();
 }
 
@@ -679,7 +679,7 @@ str_to_env (char const *envar, char const *str)
 {
   if (str)
     {
-      if (setenv (envar, str, 1) != 0)
+      if (setenv (envar, str, 1) < 0)
 	xalloc_die ();
     }
   else
@@ -692,7 +692,7 @@ chr_to_env (char const *envar, char c)
   char buf[2];
   buf[0] = c;
   buf[1] = 0;
-  if (setenv (envar, buf, 1) != 0)
+  if (setenv (envar, buf, 1) < 0)
     xalloc_die ();
 }
 
@@ -932,7 +932,7 @@ sys_exec_setmtime_script (const char *script_name,
   char *cp;
   int rc = 0;
 
-  if (pipe (p))
+  if (pipe (p) < 0)
     paxfatal (errno, _("pipe failed"));
 
   if ((pid = xfork ()) == 0)
@@ -943,11 +943,8 @@ sys_exec_setmtime_script (const char *script_name,
       strcat (command, " ");
       strcat (command, file_name);
 
-      if (dirfd != AT_FDCWD)
-	{
-	  if (fchdir (dirfd))
-	    paxfatal (errno, _("chdir failed"));
-	}
+      if (dirfd != AT_FDCWD && fchdir (dirfd) < 0)
+	paxfatal (errno, _("chdir failed"));
 
       close (p[0]);
       if (dup2 (p[1], STDOUT_FILENO) < 0)

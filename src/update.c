@@ -68,7 +68,7 @@ append_file (char *file_name)
       set_next_block_after (start + (status - 1) / BLOCKSIZE);
     }
 
-  if (close (handle) != 0)
+  if (close (handle) < 0)
     close_error (file_name);
 }
 

@@ -282,7 +282,8 @@ format_checkpoint_string (FILE *fp, intmax_t len,
 		    ws.ws_delim = ",";
 		    if (wordsplit (arg, &ws,
 				   (WRDSF_NOVAR | WRDSF_NOCMD
-				    | WRDSF_QUOTE | WRDSF_DELIM)))
+				    | WRDSF_QUOTE | WRDSF_DELIM))
+			!= WRDSE_OK)
 		      paxerror (0, _("cannot split string '%s': %s"),
 				arg, wordsplit_strerror (&ws));
 		    else if (3 < ws.ws_wordc)

@@ -654,7 +654,7 @@ available_space_after (union block *pointer)
 void
 xclose (int fd)
 {
-  if (close (fd) != 0)
+  if (close (fd) < 0)
     close_error (_("(pipe)"));
 }
 
@@ -949,7 +949,7 @@ archive_is_dev (void)
 {
   struct stat st;
 
-  if (fstat (archive, &st))
+  if (fstat (archive, &st) < 0)
     {
       stat_diag (*archive_name_cursor);
       return false;
@@ -1143,7 +1143,7 @@ close_archive (void)
   if (verify_option)
     verify_volume ();
 
-  if (rmtclose (archive) != 0)
+  if (rmtclose (archive) < 0)
     close_error (*archive_name_cursor);
 
   sys_wait_for_child (child_pid, hit_eof);
@@ -1158,7 +1158,7 @@ static void
 write_fatal_details (char const *name, ssize_t status, idx_t size)
 {
   write_error_details (name, status, size);
-  if (rmtclose (archive) != 0)
+  if (rmtclose (archive) < 0)
     close_error (*archive_name_cursor);
   sys_wait_for_child (child_pid, false);
   fatal_exit ();
@@ -1178,7 +1178,7 @@ init_volume_number (void)
 		  quotearg_colon (volno_file_option));
       if (ferror (file))
         read_error (volno_file_option);
-      if (fclose (file) != 0)
+      if (fclose (file) < 0)
         close_error (volno_file_option);
     }
   else if (errno != ENOENT)
@@ -1196,7 +1196,7 @@ closeout_volume_number (void)
       fprintf (file, "%jd\n", global_volno);
       if (ferror (file))
         write_error (volno_file_option);
-      if (fclose (file) != 0)
+      if (fclose (file) < 0)
         close_error (volno_file_option);
     }
   else
@@ -1338,7 +1338,7 @@ new_volume (enum access_mode mode)
   continued_file_size = continued_file_offset = 0;
   current_block = record_start;
 
-  if (rmtclose (archive) != 0)
+  if (rmtclose (archive) < 0)
     close_error (*archive_name_cursor);
 
   archive_name_cursor++;
@@ -1358,7 +1358,7 @@ new_volume (enum access_mode mode)
         {
           if (volno_file_option)
             closeout_volume_number ();
-	  if (sys_exec_info_script (archive_name_cursor, global_volno + 1))
+	  if (sys_exec_info_script (archive_name_cursor, global_volno + 1) != 0)
 	    paxfatal (0, _("%s command failed"), quote (info_script_option));
         }
       else
@@ -1538,7 +1538,7 @@ try_new_volume (void)
 	  return false;
 	}
 
-      if (strcmp (continued_file_name, bufmap_head->file_name))
+      if (strcmp (continued_file_name, bufmap_head->file_name) != 0)
         {
           if ((archive_format == GNU_FORMAT || archive_format == OLDGNU_FORMAT)
               && strlen (bufmap_head->file_name) >= NAME_FIELD_SIZE

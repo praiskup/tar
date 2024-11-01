@@ -765,7 +765,7 @@ maybe_backup_file (const char *file_name, bool this_is_the_archive)
   if (this_is_the_archive && _remdev (file_name))
     return true;
 
-  if (deref_stat (file_name, &file_stat) != 0)
+  if (deref_stat (file_name, &file_stat) < 0)
     {
       if (errno == ENOENT)
 	return true;
@@ -814,7 +814,7 @@ undo_last_backup (void)
   if (after_backup_name)
     {
       if (renameat (chdir_fd, after_backup_name, chdir_fd, before_backup_name)
-	  != 0)
+	  < 0)
 	{
 	  int e = errno;
 	  paxerror (e, _("%s: Cannot rename to %s"),
@@ -1023,7 +1023,7 @@ chdir_do (idx_t i)
 	  else
 	    {
 	      struct wd *stale = &wd[wdcache[CHDIR_CACHE_SIZE - 1]];
-	      if (close (stale->fd) != 0)
+	      if (close (stale->fd) < 0)
 		close_diag (stale->name);
 	      stale->fd = 0;
 	      wdcache[CHDIR_CACHE_SIZE - 1] = i;
@@ -1315,7 +1315,7 @@ tar_savedir (const char *name, int must_exist)
 	      && (ret = streamsavedir (dir, savedir_sort_order))))
     savedir_error (name);
 
-  if (dir ? closedir (dir) != 0 : 0 <= fd && close (fd) != 0)
+  if (dir ? closedir (dir) < 0 : 0 <= fd && close (fd) < 0)
     savedir_error (name);
 
   return ret;

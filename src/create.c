@@ -1346,7 +1346,7 @@ create_archive (void)
 			      break;
 			    }
 			  st.fd = fd;
-			  if (fstat (fd, &st.stat) != 0)
+			  if (fstat (fd, &st.stat) < 0)
 			    {
 			      file_removed_diag (p->name, !p->parent,
 						 stat_diag);
@@ -1555,9 +1555,9 @@ restore_parent_fd (struct tar_stat_info const *st)
 
       if (parentfd < 0)
 	parentfd = - errno;
-      else if (! (fstat (parentfd, &parentstat) == 0
-		  && parent->stat.st_ino == parentstat.st_ino
-		  && parent->stat.st_dev == parentstat.st_dev))
+      else if (fstat (parentfd, &parentstat) < 0
+	       || parent->stat.st_ino != parentstat.st_ino
+	       || parent->stat.st_dev != parentstat.st_dev)
 	{
 	  close (parentfd);
 	  parentfd = IMPOSTOR_ERRNO;
@@ -1569,12 +1569,12 @@ restore_parent_fd (struct tar_stat_info const *st)
 			       open_searchdir_flags);
 	  if (0 <= origfd)
 	    {
-	      if (fstat (parentfd, &parentstat) == 0
-		  && parent->stat.st_ino == parentstat.st_ino
-		  && parent->stat.st_dev == parentstat.st_dev)
-		parentfd = origfd;
-	      else
+	      if (fstat (parentfd, &parentstat) < 0
+		  || parent->stat.st_ino != parentstat.st_ino
+		  || parent->stat.st_dev != parentstat.st_dev)
 		close (origfd);
+	      else
+		parentfd = origfd;
 	    }
 	}
 
@@ -1619,7 +1619,7 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
       errno = - parentfd;
       diag = open_diag;
     }
-  else if (fstatat (parentfd, name, &st->stat, fstatat_flags) != 0)
+  else if (fstatat (parentfd, name, &st->stat, fstatat_flags) < 0)
     diag = stat_diag;
   else if (file_dumpable_p (&st->stat))
     {
@@ -1629,7 +1629,7 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
       else
 	{
 	  st->fd = fd;
-	  if (fstat (fd, &st->stat) != 0)
+	  if (fstat (fd, &st->stat) < 0)
 	    diag = stat_diag;
 	}
     }
@@ -1804,7 +1804,7 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
 	    }
 	  else if (atime_preserve_option == replace_atime_preserve
 		   && timespec_cmp (st->atime, get_stat_atime (&st2)) != 0
-		   && set_file_atime (fd, parentfd, name, st->atime) != 0)
+		   && set_file_atime (fd, parentfd, name, st->atime) < 0)
 	    utime_error (p);
 	}
 

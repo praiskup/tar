@@ -134,7 +134,7 @@ add_backref_segment (struct transform *tf, idx_t ref)
   segm->v.ref = ref;
 }
 
-static int
+static bool
 parse_xform_flags (int *pflags, int c)
 {
   switch (c)
@@ -164,9 +164,9 @@ parse_xform_flags (int *pflags, int c)
       break;
 
     default:
-      return 1;
+      return false;
     }
-  return 0;
+  return true;
 }
 
 static void
@@ -199,7 +199,7 @@ parse_transform_expr (const char *expr)
 		  expr++;
 		  break;
 		}
-	      if (parse_xform_flags (&transform_flags, *expr))
+	      if (!parse_xform_flags (&transform_flags, *expr))
 		paxusage (_("Unknown transform flag: %c"), *expr);
 	    }
 	  return expr;
@@ -255,7 +255,7 @@ parse_transform_expr (const char *expr)
 	break;
 
       default:
-	if (parse_xform_flags (&tf->flags, *p))
+	if (!parse_xform_flags (&tf->flags, *p))
 	  paxusage (_("Unknown flag in transform expression: %c"), *p);
       }
 

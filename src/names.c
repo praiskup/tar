@@ -391,7 +391,7 @@ handle_file_selection_option (int key, const char *arg)
     case 'X':
       if (add_exclude_file (add_exclude, excluded, arg,
 			    exclude_options (), '\n')
-	  != 0)
+	  < 0)
 	paxfatal (errno, "%s", quotearg_colon (arg));
       break;
 
@@ -902,14 +902,14 @@ file_list_name (void)
   return _("command line");
 }
 
-static int
+static bool
 add_file_id (const char *filename)
 {
   struct file_id_list *p;
   struct stat st;
   const char *reading_from;
 
-  if (stat (filename, &st))
+  if (stat (filename, &st) < 0)
     stat_fatal (filename);
   reading_from = file_list_name ();
   for (p = file_id_list; p; p = p->next)
@@ -920,7 +920,7 @@ add_file_id (const char *filename)
 		  quotearg_n (0, filename),
 		  reading_from, p->from_file);
 	set_char_quoting (NULL, ':', oldc);
-	return 1;
+	return false;
       }
   p = xmalloc (sizeof *p);
   p->next = file_id_list;
@@ -928,7 +928,7 @@ add_file_id (const char *filename)
   p->dev = st.st_dev;
   p->from_file = reading_from;
   file_id_list = p;
-  return 0;
+  return true;
 }
 
 /* Chop trailing slashes.  */
@@ -994,7 +994,7 @@ handle_option (const char *str, struct name_elt const *ent)
     return 1;
 
   ws.ws_offs = 1;
-  if (wordsplit (str, &ws, WRDSF_DEFFLAGS|WRDSF_DOOFFS))
+  if (wordsplit (str, &ws, WRDSF_DEFFLAGS | WRDSF_DOOFFS) != WRDSE_OK)
     paxfatal (0, _("cannot split string '%s': %s"),
 	      str, wordsplit_strerror (&ws));
   int argc;
@@ -1010,22 +1010,22 @@ handle_option (const char *str, struct name_elt const *ent)
   return 0;
 }
 
-static int
+static bool
 read_next_name (struct name_elt *ent, struct name_elt *ret)
 {
   if (!ent->v.file.fp)
     {
-      if (!strcmp (ent->v.file.name, "-"))
+      if (strcmp (ent->v.file.name, "-") == 0)
 	{
 	  request_stdin ("-T");
 	  ent->v.file.fp = stdin;
 	}
       else
 	{
-	  if (add_file_id (ent->v.file.name))
+	  if (!add_file_id (ent->v.file.name))
 	    {
 	      name_list_advance ();
-	      return 1;
+	      return false;
 	    }
 	  FILE *fp = fopen (ent->v.file.name, "r");
 	  if (!fp)
@@ -1057,20 +1057,20 @@ read_next_name (struct name_elt *ent, struct name_elt *ret)
 	      if (handle_option (name_buffer, ent) == 0)
 		{
 		  name_list_adjust ();
-		  return 1;
+		  return false;
 		}
 	    }
 	  chopslash (name_buffer);
 	  ret->type = NELT_NAME;
 	  ret->v.name = name_buffer;
-	  return 0;
+	  return true;
 
 	case file_list_end:
 	  if (strcmp (ent->v.file.name, "-"))
 	    fclose (ent->v.file.fp);
 	  ent->v.file.fp = NULL;
 	  name_list_advance ();
-	  return 1;
+	  return false;
 	}
     }
 }
@@ -1110,7 +1110,7 @@ name_next_elt (bool change_dirs)
 	  break;
 
 	case NELT_FILE:
-	  if (read_next_name (ep, &entry) == 0)
+	  if (read_next_name (ep, &entry))
 	    return &entry;
 	  continue;
 
@@ -1392,20 +1392,20 @@ all_names_found (struct tar_stat_info *p)
   return true;
 }
 
-static int
+static bool
 regex_usage_warning (const char *name)
 {
-  static int warned_once = 0;
+  static bool warned_once;
 
   /* Warn about implicit use of the wildcards in command line arguments.
      (Default for tar prior to 1.15.91, but changed afterwards) */
   if (wildcards == default_wildcards
       && fnmatch_pattern_has_wildcards (name, 0))
     {
-      warned_once = 1;
       paxwarn (0, _("Pattern matching characters used in file names"));
       paxwarn (0, _("Use --wildcards to enable pattern matching,"
 		    " or --no-wildcards to suppress this warning"));
+      warned_once = true;
     }
   return warned_once;
 }
@@ -1470,13 +1470,9 @@ label_notfound (void)
   nametail = NULL;
 
   if (same_order_option)
-    {
-      const char *name;
-
-      while ((name = name_next (true))
-	     && regex_usage_warning (name) == 0)
-	;
-    }
+    for (char const *name;
+	 (name = name_next (true)) && !regex_usage_warning (name); )
+      continue;
 }
 
 /* Sorting name lists.  */
@@ -1651,7 +1647,7 @@ add_hierarchy_to_namelist (struct tar_stat_info *st, struct name *name)
 	      else
 		{
 		  subdir.fd = subfd;
-		  if (fstat (subfd, &subdir.stat) != 0)
+		  if (fstat (subfd, &subdir.stat) < 0)
 		    stat_diag (namebuf);
 		  else if (! (O_DIRECTORY || S_ISDIR (subdir.stat.st_mode)))
 		    {
@@ -1775,7 +1771,7 @@ collect_and_sort_names (void)
 
       tar_stat_init (&st);
 
-      if (deref_stat (name->name, &st.stat) != 0)
+      if (deref_stat (name->name, &st.stat) < 0)
 	{
 	  stat_diag (name->name);
 	  continue;
@@ -1789,7 +1785,7 @@ collect_and_sort_names (void)
 	  else
 	    {
 	      st.fd = dir_fd;
-	      if (fstat (dir_fd, &st.stat) != 0)
+	      if (fstat (dir_fd, &st.stat) < 0)
 		stat_diag (name->name);
 	      else if (O_DIRECTORY || S_ISDIR (st.stat.st_mode))
 		{

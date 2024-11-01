@@ -472,7 +472,7 @@ update_parent_directory (struct tar_stat_info *parent)
   if (directory)
     {
       struct stat st;
-      if (fstat (parent->fd, &st) != 0)
+      if (fstat (parent->fd, &st) < 0)
 	stat_diag (directory->name);
       else
 	directory->mtime = get_stat_mtime (&st);
@@ -831,7 +831,8 @@ scan_directory (struct tar_stat_info *st)
 		      diag = open_diag;
 		    }
 		  else if (fstatat (fd, entry + 1, &stsub.stat,
-				    fstatat_flags) != 0)
+				    fstatat_flags)
+			   < 0)
 		    diag = stat_diag;
 		  else if (S_ISDIR (stsub.stat.st_mode))
 		    {
@@ -842,7 +843,7 @@ scan_directory (struct tar_stat_info *st)
 		      else
 			{
 			  stsub.fd = subfd;
-			  if (fstat (subfd, &stsub.stat) != 0)
+			  if (fstat (subfd, &stsub.stat) < 0)
 			    diag = stat_diag;
 			}
 		    }
@@ -1137,7 +1138,7 @@ read_obstack (FILE *fp, struct obstack *stk, idx_t *pcount)
   int c;
   idx_t i;
 
-  for (i = 0, c = getc (fp); c != EOF && c != 0; c = getc (fp), i++)
+  for (i = 0; 0 < (c = getc (fp)); i++)
     obstack_1grow (stk, c);
   obstack_1grow (stk, 0);
 
@@ -1276,7 +1277,7 @@ read_incr_db_2 (void)
 	break;
       ino = i;
 
-      if (read_obstack (listed_incremental_stream, &stk, &s))
+      if (read_obstack (listed_incremental_stream, &stk, &s) != 0)
 	break;
 
       name = obstack_finish (&stk);
@@ -1478,9 +1479,9 @@ write_directory_file (void)
   if (! fp)
     return;
 
-  if (fseeko (fp, 0, SEEK_SET) != 0)
+  if (fseeko (fp, 0, SEEK_SET) < 0)
     seek_error (listed_incremental_option);
-  if (sys_truncate (fileno (fp)) != 0)
+  if (sys_truncate (fileno (fp)) < 0)
     truncate_error (listed_incremental_option);
 
   int nsec = start_time.tv_nsec;
@@ -1495,7 +1496,7 @@ write_directory_file (void)
 
   if (ferror (fp))
     write_error (listed_incremental_option);
-  if (fclose (fp) != 0)
+  if (fclose (fp) < 0)
     close_error (listed_incremental_option);
 }
 
@@ -1724,7 +1725,7 @@ try_purge_directory (char const *directory_name)
       free (p);
       p = make_file_name (directory_name, cur);
 
-      if (deref_stat (p, &st) != 0)
+      if (deref_stat (p, &st) < 0)
 	{
 	  if (errno != ENOENT) /* FIXME: Maybe keep a list of renamed
 				  dirs and check it here? */

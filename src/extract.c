@@ -344,7 +344,7 @@ set_mode (char const *file_name,
       if (MODE_ALL & ~ mode_mask & ~ current_mode_mask)
 	{
 	  struct stat st;
-	  if (fd_stat (fd, file_name, &st, atflag) != 0)
+	  if (fd_stat (fd, file_name, &st, atflag) < 0)
 	    {
 	      stat_error (file_name);
 	      return;
@@ -357,7 +357,7 @@ set_mode (char const *file_name,
 
       if (current_mode != mode)
 	{
-	  if (fd_chmod (fd, file_name, mode, atflag, typeflag))
+	  if (fd_chmod (fd, file_name, mode, atflag, typeflag) < 0)
 	    chmod_error_details (file_name, mode);
 	}
     }
@@ -492,7 +492,7 @@ mark_after_links (struct delayed_set_stat *head)
       struct stat st;
       h->after_links = 1;
 
-      if (deref_stat (h->file_name, &st) != 0)
+      if (deref_stat (h->file_name, &st) < 0)
 	stat_error (h->file_name);
       else
 	{
@@ -544,7 +544,8 @@ delay_set_stat (char const *file_name, struct tar_stat_info const *st,
 	{
 	  struct stat real_st;
 	  if (fstatat (chdir_fd, data->file_name,
-		       &real_st, data->atflag) != 0)
+		       &real_st, data->atflag)
+	      < 0)
 	    {
 	      stat_error (data->file_name);
 	    }
@@ -627,7 +628,7 @@ repair_delayed_set_stat (char const *dir,
   for (data = delayed_set_stat_head; data; data = data->next)
     {
       struct stat st;
-      if (fstatat (chdir_fd, data->file_name, &st, data->atflag) != 0)
+      if (fstatat (chdir_fd, data->file_name, &st, data->atflag) < 0)
 	{
 	  stat_error (data->file_name);
 	  return;
@@ -786,9 +787,9 @@ make_directories (char *file_name, bool *interdir_made)
   *parent_end = '\0';
   struct stat st;
   int stat_status = fstatat (chdir_fd, file_name, &st, 0);
-  if (!stat_status && !S_ISDIR (st.st_mode))
+  if (! (stat_status < 0 || S_ISDIR (st.st_mode)))
     stat_status = -1;
-  if (stat_status)
+  if (stat_status < 0)
     {
       errno = parent_errno;
       mkdir_error (file_name);
@@ -812,7 +813,7 @@ file_newer_p (const char *file_name, struct stat const *stp,
 
   if (!stp)
     {
-      if (deref_stat (file_name, &st) != 0)
+      if (deref_stat (file_name, &st) < 0)
 	{
 	  if (errno != ENOENT)
 	    {
@@ -873,7 +874,7 @@ maybe_recoverable (char *file_name, bool regular, bool *interdir_made)
 	break;
       if (strchr (file_name, '/'))
 	{
-	  if (deref_stat (file_name, &st) != 0)
+	  if (deref_stat (file_name, &st) < 0)
 	    break;
 	  stp = &st;
 	}
@@ -983,7 +984,7 @@ apply_nonancestor_delayed_set_stat (char const *file_name, bool after_links)
 
       if (check_for_renamed_directories)
 	{
-	  if (fstatat (chdir_fd, data->file_name, &st, data->atflag) != 0)
+	  if (fstatat (chdir_fd, data->file_name, &st, data->atflag) < 0)
 	    {
 	      stat_error (data->file_name);
 	      skip_this_one = 1;
@@ -1075,7 +1076,7 @@ extract_dir (char *file_name, int typeflag)
     {
       struct stat st;
 
-      if (fstatat (chdir_fd, ".", &st, 0) != 0)
+      if (fstatat (chdir_fd, ".", &st, 0) < 0)
 	stat_diag (".");
       else
 	root_device = st.st_dev;
@@ -1248,7 +1249,7 @@ open_output_file (char const *file_name, int typeflag, mode_t mode,
       else
 	{
 	  struct stat st;
-	  if (fstat (fd, &st) != 0)
+	  if (fstat (fd, &st) < 0)
 	    {
 	      int e = errno;
 	      close (fd);
@@ -1402,7 +1403,7 @@ find_delayed_link_source (char const *name)
   if (!delayed_link_table)
     return false;
 
-  if (fstatat (chdir_fd, name, &st, AT_SYMLINK_NOFOLLOW))
+  if (fstatat (chdir_fd, name, &st, AT_SYMLINK_NOFOLLOW) < 0)
     {
       if (errno != ENOENT)
 	stat_error (name);
@@ -1453,12 +1454,12 @@ create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made)
 	}
       }
 
-  if (fstat (fd, &st) != 0)
+  if (fstat (fd, &st) < 0)
     {
       stat_error (file_name);
       close (fd);
     }
-  else if (close (fd) != 0)
+  else if (close (fd) < 0)
     close_error (file_name);
   else
     {
@@ -1590,7 +1591,7 @@ extract_symlink (char *file_name, MAYBE_UNUSED int typeflag)
 	  || contains_dot_dot (current_stat_info.link_name)))
     return create_placeholder_file (file_name, true, &interdir_made);
 
-  while (symlinkat (current_stat_info.link_name, chdir_fd, file_name) != 0)
+  while (symlinkat (current_stat_info.link_name, chdir_fd, file_name) < 0)
     switch (maybe_recoverable (file_name, false, &interdir_made))
       {
       case RECOVER_OK:
@@ -1630,7 +1631,7 @@ extract_node (char *file_name, int typeflag)
 		 & ~ (0 < same_owner_option ? S_IRWXG | S_IRWXO : 0));
 
   while (mknodat (chdir_fd, file_name, mode, current_stat_info.stat.st_rdev)
-	 != 0)
+	 < 0)
     switch (maybe_recoverable (file_name, false, &interdir_made))
       {
       case RECOVER_OK:
@@ -1659,7 +1660,7 @@ extract_fifo (char *file_name, int typeflag)
   mode_t mode = (current_stat_info.stat.st_mode & MODE_RWX
 		 & ~ (0 < same_owner_option ? S_IRWXG | S_IRWXO : 0));
 
-  while (mkfifoat (chdir_fd, file_name, mode) != 0)
+  while (mkfifoat (chdir_fd, file_name, mode) < 0)
     switch (maybe_recoverable (file_name, false, &interdir_made))
       {
       case RECOVER_OK:
@@ -1897,7 +1898,7 @@ apply_delayed_link (struct delayed_link *ds)
 	{
 	  /* Unlink the placeholder, then create a hard link if possible,
 	     a symbolic link otherwise.  */
-	  if (unlinkat (chdir_fd, source, 0) != 0)
+	  if (unlinkat (chdir_fd, source, 0) < 0)
 	    unlink_error (source);
 	  else if (valid_source
 		   && (linkat (chdir_fd, valid_source, chdir_fd, source, 0)
@@ -1905,10 +1906,10 @@ apply_delayed_link (struct delayed_link *ds)
 	    ;
 	  else if (!ds->is_symlink)
 	    {
-	      if (linkat (chdir_fd, ds->target, chdir_fd, source, 0) != 0)
+	      if (linkat (chdir_fd, ds->target, chdir_fd, source, 0) < 0)
 		link_error (ds->target, source);
 	    }
-	  else if (symlinkat (ds->target, chdir_fd, source) != 0)
+	  else if (symlinkat (ds->target, chdir_fd, source) < 0)
 	    symlink_error (ds->target, source);
 	  else
 	    {
