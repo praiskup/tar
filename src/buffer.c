@@ -872,10 +872,10 @@ _open_archive (enum access_mode wanted_access)
 }
 
 /* Perform a write to flush the buffer.  */
-static ssize_t
+static idx_t
 _flush_write (void)
 {
-  ssize_t status;
+  idx_t status;
 
   checkpoint_run (true);
   if (tape_length_option && tape_length_option <= bytes_written)
@@ -1826,9 +1826,7 @@ simple_flush_read (void)
 static void
 simple_flush_write (MAYBE_UNUSED idx_t level)
 {
-  ssize_t status;
-
-  status = _flush_write ();
+  idx_t status = _flush_write ();
   if (status != record_size)
     archive_write_error (status);
   else
@@ -1895,22 +1893,15 @@ gnu_flush_read (void)
 static void
 _gnu_flush_write (idx_t buffer_level)
 {
-  ssize_t status;
   union block *header;
   char *copy_ptr;
   idx_t copy_size;
   idx_t bufsize;
   struct bufmap *map;
 
-  status = _flush_write ();
-  if (status != record_size && !multi_volume_option)
-    archive_write_error (status);
-  else
-    {
-      if (status)
-        records_written++;
-      bytes_written += status;
-    }
+  idx_t status = _flush_write ();
+  records_written += !!status;
+  bytes_written += status;
 
   if (status == record_size)
     {
@@ -1921,14 +1912,18 @@ _gnu_flush_write (idx_t buffer_level)
 
   if (status % BLOCKSIZE)
     {
+      int e = errno;
       paxerror (0, _("write did not end on a block boundary"));
+      errno = e;
       archive_write_error (status);
     }
 
-  /* In multi-volume mode. */
   /* ENXIO is for the UNIX PC.  */
-  if (status < 0 && errno != ENOSPC && errno != EIO && errno != ENXIO)
+  if (! (multi_volume_option
+	 && (errno == ENOSPC || errno == EIO || errno == ENXIO)))
     archive_write_error (status);
+
+  /* In multi-volume mode.  */
 
   if (!new_volume (ACCESS_WRITE))
     return;

@@ -137,7 +137,7 @@ sys_truncate (int fd)
   return write (fd, "", 0);
 }
 
-size_t
+idx_t
 sys_write_archive_buffer (void)
 {
   return full_write (archive, record_start->buffer, record_size);
@@ -306,7 +306,7 @@ is_regular_file (const char *name)
     return errno == ENOENT;
 }
 
-size_t
+idx_t
 sys_write_archive_buffer (void)
 {
   return rmtwrite (archive, record_start->buffer, record_size);
@@ -462,7 +462,7 @@ sys_child_open_for_compress (void)
 	   length < record_size;
 	   length += status, cursor += status)
 	{
-	  size_t size = record_size - length;
+	  idx_t size = record_size - length;
 
 	  status = safe_read (STDIN_FILENO, cursor, size);
 	  if (status < 0)
@@ -935,8 +935,8 @@ sys_exec_setmtime_script (const char *script_name,
   struct pollfd pfd;
 
   char *buffer = NULL;
-  size_t buflen = 0;
-  size_t bufsize = 0;
+  idx_t buflen = 0;
+  idx_t bufsize = 0;
   char *cp;
   int rc = 0;
 
@@ -968,6 +968,8 @@ sys_exec_setmtime_script (const char *script_name,
 	open_error (dev_null);
 
       priv_set_restore_linkdir ();
+      /* FIXME: This mishandles shell metacharacters in the file name.
+	 Come to think of it, isn't every use of xexec suspect?  */
       xexec (command);
     }
   close (p[1]);
@@ -992,11 +994,7 @@ sys_exec_setmtime_script (const char *script_name,
       if (pfd.revents & POLLIN)
 	{
 	  if (buflen == bufsize)
-	    {
-	      if (bufsize == 0)
-		bufsize = BUFSIZ;
-	      buffer = x2nrealloc (buffer, &bufsize, 1);
-	    }
+	    buffer = xpalloc (buffer, &bufsize, 1, -1, 1);
 	  ssize_t nread = read (pfd.fd, buffer + buflen, bufsize - buflen);
 	  if (nread < 0)
 	    {
@@ -1036,7 +1034,7 @@ sys_exec_setmtime_script (const char *script_name,
   else
     {
       if (buflen == bufsize)
-	buffer = x2nrealloc (buffer, &bufsize, 1);
+	buffer = xirealloc (buffer, ++bufsize);
       buffer[buflen] = 0;
     }
 
