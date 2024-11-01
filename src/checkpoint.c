@@ -19,10 +19,14 @@
 
 #include <system.h>
 #include "common.h"
-#include "wordsplit.h"
+
+#include <wordsplit.h>
+
+#include <flexmember.h>
+#include <fprintftime.h>
+
 #include <sys/ioctl.h>
 #include <termios.h>
-#include "fprintftime.h"
 #include <signal.h>
 
 enum checkpoint_opcode
@@ -47,13 +51,15 @@ struct checkpoint_action
     char *command;
     int signal;
   } v;
+  char commandbuf[FLEXIBLE_ARRAY_MEMBER];
 };
 
 /* Checkpointing counter */
 static intmax_t checkpoint;
 
 /* List of checkpoint actions */
-static struct checkpoint_action *checkpoint_action, *checkpoint_action_tail;
+static struct checkpoint_action *checkpoint_action,
+  **checkpoint_action_tail = &checkpoint_action;
 
 /* State of the checkpoint system */
 enum {
@@ -66,37 +72,26 @@ static int checkpoint_state;
 static sigset_t sigs;
 
 static struct checkpoint_action *
-alloc_action (enum checkpoint_opcode opcode)
+alloc_action (enum checkpoint_opcode opcode, char const *quoted_string)
 {
-  struct checkpoint_action *p = xzalloc (sizeof *p);
-  if (checkpoint_action_tail)
-    checkpoint_action_tail->next = p;
-  else
-    checkpoint_action = p;
-  checkpoint_action_tail = p;
+  idx_t quoted_size = quoted_string ? strlen (quoted_string) + 1 : 0;
+  struct checkpoint_action *p = xmalloc (FLEXSIZEOF (struct checkpoint_action,
+						     commandbuf, quoted_size));
+  *checkpoint_action_tail = p;
+  checkpoint_action_tail = &p->next;
+  p->next = NULL;
   p->opcode = opcode;
-  return p;
-}
-
-static char *
-copy_string_unquote (const char *str)
-{
-  idx_t len = strlen (str);
-  if ((*str == '"' || *str == '\'') && 1 < len && *str == str[len - 1])
+  if (quoted_string)
     {
-      str++;
-      len -= 2;
+      p->v.command = memcpy (p->commandbuf, quoted_string, quoted_size);
+      unquote_string (p->v.command);
     }
-  char *output = ximemdup0 (str, len);
-  unquote_string (output);
-  return output;
+  return p;
 }
 
 void
 checkpoint_compile_action (const char *str)
 {
-  struct checkpoint_action *act;
-
   if (checkpoint_state == CHKP_INIT)
     {
       sigemptyset (&sigs);
@@ -104,42 +99,33 @@ checkpoint_compile_action (const char *str)
     }
 
   if (strcmp (str, ".") == 0 || strcmp (str, "dot") == 0)
-    alloc_action (cop_dot);
+    alloc_action (cop_dot, NULL);
   else if (strcmp (str, "bell") == 0)
-    alloc_action (cop_bell);
+    alloc_action (cop_bell, NULL);
   else if (strcmp (str, "echo") == 0)
-    alloc_action (cop_echo);
+    alloc_action (cop_echo, NULL)->v.command = NULL;
   else if (strncmp (str, "echo=", 5) == 0)
-    {
-      act = alloc_action (cop_echo);
-      act->v.command = copy_string_unquote (str + 5);
-    }
+    alloc_action (cop_echo, str + 5);
   else if (strncmp (str, "exec=", 5) == 0)
-    {
-      act = alloc_action (cop_exec);
-      act->v.command = copy_string_unquote (str + 5);
-    }
+    alloc_action (cop_exec, str + 5);
   else if (strncmp (str, "ttyout=", 7) == 0)
-    {
-      act = alloc_action (cop_ttyout);
-      act->v.command = copy_string_unquote (str + 7);
-    }
+    alloc_action (cop_ttyout, str + 7);
   else if (strncmp (str, "sleep=", 6) == 0)
     {
       char const *arg = str + 6;
       char *p;
-      act = alloc_action (cop_sleep);
-      act->v.time = stoint (arg, &p, NULL, 0, TYPE_MAXIMUM (time_t));
+      alloc_action (cop_sleep, NULL)->v.time
+	= stoint (arg, &p, NULL, 0, TYPE_MAXIMUM (time_t));
       if ((p == arg) | *p)
 	paxfatal (0, _("%s: not a valid timeout"), str);
     }
   else if (strcmp (str, "totals") == 0)
-    alloc_action (cop_totals);
+    alloc_action (cop_totals, NULL);
   else if (strncmp (str, "wait=", 5) == 0)
     {
-      act = alloc_action (cop_wait);
-      act->v.signal = decode_signal (str + 5);
-      sigaddset (&sigs, act->v.signal);
+      int sig = decode_signal (str + 5);
+      alloc_action (cop_wait, NULL)->v.signal = sig;
+      sigaddset (&sigs, sig);
     }
   else
     paxfatal (0, _("%s: unknown checkpoint action"), str);
