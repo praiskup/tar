@@ -41,15 +41,8 @@ is_cwd (struct deferred_unlink const *p)
 /* The unlink queue */
 static struct deferred_unlink *dunlink_head, *dunlink_tail;
 
-/* Number of entries in the queue */
-static size_t dunlink_count;
-
 /* List of entries available for allocation */
 static struct deferred_unlink *dunlink_avail;
-
-/* Delay (number of records written) between adding entry to the
-   list and its actual removal. */
-static size_t deferred_unlink_delay = 0;
 
 static struct deferred_unlink *
 dunlink_alloc (void)
@@ -81,7 +74,6 @@ dunlink_insert (struct deferred_unlink *anchor, struct deferred_unlink *p)
     }
   if (!p->next)
     dunlink_tail = p;
-  dunlink_count++;
 }
 
 static void
@@ -103,7 +95,7 @@ flush_deferred_unlinks (bool force)
       struct deferred_unlink *next = p->next;
 
       if (force
-	  || records_written > p->records_written + deferred_unlink_delay)
+	  || p->records_written < records_written)
 	{
 	  chdir_do (p->dir_idx);
 	  if (p->is_dir)
@@ -149,7 +141,6 @@ flush_deferred_unlinks (bool force)
 		unlink_error (p->file_name);
 	    }
 	  dunlink_reclaim (p);
-	  dunlink_count--;
 	  p = next;
 	  if (prev)
 	    prev->next = p;
@@ -186,7 +177,6 @@ flush_deferred_unlinks (bool force)
 		rmdir_error (fname);
 	    }
 	  dunlink_reclaim (p);
-	  dunlink_count--;
 	  p = next;
 	}
       dunlink_head = dunlink_tail = NULL;
@@ -214,7 +204,7 @@ queue_deferred_unlink (const char *name, bool is_dir)
   struct deferred_unlink *p;
 
   if (dunlink_head
-      && records_written > dunlink_head->records_written + deferred_unlink_delay)
+      && records_written > dunlink_head->records_written)
     flush_deferred_unlinks (false);
 
   p = dunlink_alloc ();
