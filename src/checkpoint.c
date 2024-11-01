@@ -432,7 +432,7 @@ checkpoint_flush_actions (void)
 	case cop_ttyout:
 	  if (tty && tty_cleanup)
 	    {
-	      long w = getwidth (tty);
+	      intmax_t w = getwidth (tty);
 	      while (w--)
 		fputc (' ', tty);
 	      fputc ('\r', tty);
