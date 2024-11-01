@@ -1603,10 +1603,8 @@ add_hierarchy_to_namelist (struct tar_stat_info *st, struct name *name)
     {
       struct name *child_head = NULL, *child_tail = NULL;
       idx_t name_length = name->length;
-      idx_t allocated_length = (name_length >= NAME_FIELD_SIZE
-				? name_length + NAME_FIELD_SIZE
-				: NAME_FIELD_SIZE) + 2;
-      char *namebuf = xmalloc (allocated_length);
+      idx_t allocated_length = 0;
+      char *namebuf = xpalloc (NULL, &allocated_length, name_length + 2, -1, 1);
       const char *string;
       idx_t string_length;
       idx_t change_dir = name->change_dir;
