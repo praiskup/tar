@@ -303,8 +303,8 @@ struct xattr_array
 struct xattr_map
 {
   struct xattr_array *xm_map;
-  size_t xm_size;   /* Size of the xattr map */
-  size_t xm_max;    /* Max. number of entries in xattr_map */
+  idx_t xm_size;   /* Size of the xattr map */
+  idx_t xm_max;    /* Max. number of entries in xattr_map */
 };
 
 struct tar_stat_info
@@ -322,10 +322,10 @@ struct tar_stat_info
   char *cntx_name;          /* SELinux context for the current archive entry. */
 
   char *acls_a_ptr;         /* Access ACLs for the current archive entry. */
-  size_t acls_a_len;        /* Access ACLs for the current archive entry. */
+  idx_t acls_a_len;	    /* Access ACLs for the current archive entry. */
 
   char *acls_d_ptr;         /* Default ACLs for the current archive entry. */
-  size_t acls_d_len;        /* Default ACLs for the current archive entry. */
+  idx_t acls_d_len;	    /* Default ACLs for the current archive entry. */
 
   struct stat   stat;       /* regular filesystem stat */
 

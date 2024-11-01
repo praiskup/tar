@@ -54,9 +54,7 @@ xattr_map_init (struct xattr_map *map)
 void
 xattr_map_free (struct xattr_map *xattr_map)
 {
-  size_t i;
-
-  for (i = 0; i < xattr_map->xm_size; i++)
+  for (idx_t i = 0; i < xattr_map->xm_size; i++)
     {
       free (xattr_map->xm_map[i].xkey);
       free (xattr_map->xm_map[i].xval_ptr);
@@ -68,12 +66,10 @@ void
 xattr_map_add (struct xattr_map *map,
 	       const char *key, const char *val, idx_t len)
 {
-  struct xattr_array *p;
-
   if (map->xm_size == map->xm_max)
-    map->xm_map = x2nrealloc (map->xm_map, &map->xm_max,
-			      sizeof (map->xm_map[0]));
-  p = &map->xm_map[map->xm_size];
+    map->xm_map = xpalloc (map->xm_map, &map->xm_max, 1, -1,
+			   sizeof *map->xm_map);
+  struct xattr_array *p = &map->xm_map[map->xm_size];
   p->xkey = xstrdup (key);
   p->xval_ptr = ximemdup (val, len + 1);
   p->xval_len = len;
@@ -82,9 +78,9 @@ xattr_map_add (struct xattr_map *map,
 
 static void
 xheader_xattr_add (struct tar_stat_info *st,
-		   const char *key, const char *val, size_t len)
+		   const char *key, const char *val, idx_t len)
 {
-  size_t klen = strlen (key);
+  idx_t klen = strlen (key);
   char *xkey = xmalloc (XATTRS_PREFIX_LEN + klen + 1);
   char *tmp = xkey;
 
@@ -99,9 +95,7 @@ xheader_xattr_add (struct tar_stat_info *st,
 void
 xattr_map_copy (struct xattr_map *dst, const struct xattr_map *src)
 {
-  size_t i;
-
-  for (i = 0; i < src->xm_size; i++)
+  for (idx_t i = 0; i < src->xm_size; i++)
     xattr_map_add (dst, src->xm_map[i].xkey,
 		   src->xm_map[i].xval_ptr,
 		   src->xm_map[i].xval_len);
@@ -110,8 +104,8 @@ xattr_map_copy (struct xattr_map *dst, const struct xattr_map *src)
 struct xattrs_mask_map
 {
   const char **masks;
-  size_t size;
-  size_t used;
+  idx_t size;
+  idx_t used;
 };
 
 /* list of fnmatch patterns */
@@ -260,7 +254,7 @@ fixup_extra_acl_fields (char *ptr)
   while (*src)
     {
       const char *old = src;
-      size_t len = 0;
+      idx_t len = 0;
 
       src = skip_to_ext_fields (src);
       len = src - old;
@@ -327,7 +321,7 @@ xattrs__acls_set (struct tar_stat_info const *st,
 /* Cleanup textual representation of the ACL in VAL by eliminating tab
    characters and comments */
 static void
-xattrs_acls_cleanup (char *val, size_t *plen)
+xattrs_acls_cleanup (char *val, idx_t *plen)
 {
   char *p, *q;
 
@@ -350,7 +344,7 @@ xattrs_acls_cleanup (char *val, size_t *plen)
 
 static void
 acls_get_text (int parentfd, const char *file_name, acl_type_t type,
-	       char **ret_ptr, size_t *ret_len)
+	       char **ret_ptr, idx_t *ret_len)
 {
   char *val = NULL;
   acl_t acl;
@@ -394,7 +388,7 @@ acls_get_text (int parentfd, const char *file_name, acl_type_t type,
 
 static void
 xattrs__acls_get_a (int parentfd, const char *file_name,
-                    char **ret_ptr, size_t *ret_len)
+                    char **ret_ptr, idx_t *ret_len)
 {
   acls_get_text (parentfd, file_name, ACL_TYPE_ACCESS, ret_ptr, ret_len);
 }
@@ -402,7 +396,7 @@ xattrs__acls_get_a (int parentfd, const char *file_name,
 /* "system.posix_acl_default" */
 static void
 xattrs__acls_get_d (int parentfd, char const *file_name,
-                    char **ret_ptr, size_t *ret_len)
+                    char **ret_ptr, idx_t *ret_len)
 {
   acls_get_text (parentfd, file_name, ACL_TYPE_DEFAULT, ret_ptr, ret_len);
 }
@@ -410,13 +404,13 @@ xattrs__acls_get_d (int parentfd, char const *file_name,
 
 static void
 acls_one_line (const char *prefix, char delim,
-               const char *aclstring, size_t len)
+               const char *aclstring, idx_t len)
 {
   /* support both long and short text representation of posix acls */
   struct obstack stk;
-  int pref_len = strlen (prefix);
+  idx_t pref_len = strlen (prefix);
   const char *oldstring = aclstring;
-  int pos = 0;
+  idx_t pos = 0;
 
   if (!aclstring || !len)
     return;
@@ -424,7 +418,7 @@ acls_one_line (const char *prefix, char delim,
   obstack_init (&stk);
   while (pos <= len)
     {
-      int move = strcspn (aclstring, ",\n");
+      idx_t move = strcspn (aclstring, ",\n");
       if (!move)
         break;
 
@@ -501,11 +495,7 @@ static void
 mask_map_realloc (struct xattrs_mask_map *map)
 {
   if (map->used == map->size)
-    {
-      if (map->size == 0)
-	map->size = 4;
-      map->masks = x2nrealloc (map->masks, &map->size, sizeof (map->masks[0]));
-    }
+    map->masks = xpalloc (map->masks, &map->size, 1, -1, sizeof *map->masks);
 }
 
 void
@@ -538,20 +528,18 @@ xattrs_xattrs_get (int parentfd, char const *file_name,
 	paxwarn (0, _("XATTR support is not available"));
       done = 1;
 #else
-      static size_t xsz = 1024;
+      static idx_t xsz = 1024 / 2 * 3;
       static char *xatrs = NULL;
-      ssize_t xret = -1;
+      ssize_t xret;
 
-      if (!xatrs)
-	xatrs = x2nrealloc (xatrs, &xsz, 1);
-
-      while (((xret = (fd == 0
-		       ? listxattrat (parentfd, file_name, xatrs, xsz)
-		       : flistxattr (fd, xatrs, xsz)))
-	      < 0)
-             && errno == ERANGE)
+      while (!xatrs
+	     || (((xret = (fd == 0
+			   ? listxattrat (parentfd, file_name, xatrs, xsz)
+			   : flistxattr (fd, xatrs, xsz)))
+		  < 0)
+		 && errno == ERANGE))
         {
-	  xatrs = x2nrealloc (xatrs, &xsz, 1);
+	  xatrs = xpalloc (xatrs, &xsz, 1, -1, sizeof *xatrs);
         }
 
       if (xret < 0)
@@ -559,25 +547,23 @@ xattrs_xattrs_get (int parentfd, char const *file_name,
       else
         {
           const char *attr = xatrs;
-          static size_t asz = 1024;
+          static idx_t asz = 1024 / 2 * 3;
           static char *val = NULL;
-
-          if (!val)
-            val = x2nrealloc (val, &asz, 1);
 
           while (xret > 0)
             {
-              size_t len = strlen (attr);
+              idx_t len = strlen (attr);
               ssize_t aret = 0;
 
-	      while (((aret = (fd == 0
-			       ? lgetxattrat (parentfd, file_name, attr,
-					      val, asz)
-			       : fgetxattr (fd, attr, val, asz)))
-		      < 0)
-                     && errno == ERANGE)
+	      while (!val
+		     || (((aret = (fd == 0
+				   ? lgetxattrat (parentfd, file_name, attr,
+						  val, asz)
+				   : fgetxattr (fd, attr, val, asz)))
+			  < 0)
+			 && errno == ERANGE))
                 {
-		  val = x2nrealloc (val, &asz, 1);
+		  val = xpalloc (val, &asz, 1, -1, sizeof *val);
                 }
 
               if (0 <= aret)
@@ -600,7 +586,7 @@ xattrs_xattrs_get (int parentfd, char const *file_name,
 #ifdef HAVE_XATTRS
 static void
 xattrs__fd_set (char const *file_name, char typeflag,
-                const char *attr, const char *ptr, size_t len)
+                const char *attr, const char *ptr, idx_t len)
 {
   if (ptr)
     {
@@ -687,12 +673,10 @@ xattrs_selinux_set (MAYBE_UNUSED struct tar_stat_info const *st,
 static bool
 xattrs_matches_mask (const char *kw, struct xattrs_mask_map *mm)
 {
-  int i;
-
   if (!mm->size)
     return false;
 
-  for (i = 0; i < mm->used; i++)
+  for (idx_t i = 0; i < mm->used; i++)
     if (fnmatch (mm->masks[i], kw, 0) == 0)
       return true;
 
@@ -739,12 +723,10 @@ xattrs_xattrs_set (struct tar_stat_info const *st,
 	paxwarn (0, _("XATTR support is not available"));
       done = 1;
 #else
-      size_t i;
-
       if (!st->xattr_map.xm_size)
         return;
 
-      for (i = 0; i < st->xattr_map.xm_size; i++)
+      for (idx_t i = 0; i < st->xattr_map.xm_size; i++)
         {
           char *keyword = st->xattr_map.xm_map[i].xkey + XATTRS_PREFIX_LEN;
 
@@ -773,8 +755,6 @@ xattrs_xattrs_set (struct tar_stat_info const *st,
 void
 xattrs_print_char (struct tar_stat_info const *st, char *output)
 {
-  int i;
-
   if (verbose_option < 2)
     {
       *output = 0;
@@ -789,7 +769,7 @@ xattrs_print_char (struct tar_stat_info const *st, char *output)
     }
 
   if (xattrs_option > 0 && st->xattr_map.xm_size)
-    for (i = 0; i < st->xattr_map.xm_size; ++i)
+    for (idx_t i = 0; i < st->xattr_map.xm_size; i++)
       {
         char *keyword = st->xattr_map.xm_map[i].xkey + XATTRS_PREFIX_LEN;
         if (!xattrs_masked_out (keyword, false /* like extracting */ ))
@@ -830,9 +810,7 @@ xattrs_print (struct tar_stat_info const *st)
   /* xattrs */
   if (xattrs_option > 0 && st->xattr_map.xm_size)
     {
-      int i;
-
-      for (i = 0; i < st->xattr_map.xm_size; ++i)
+      for (idx_t i = 0; i < st->xattr_map.xm_size; i++)
         {
           char *keyword = st->xattr_map.xm_map[i].xkey + XATTRS_PREFIX_LEN;
           if (!xattrs_masked_out (keyword, false /* like extracting */ ))
