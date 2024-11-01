@@ -287,7 +287,7 @@ struct sp_array
 struct xheader
 {
   struct obstack *stk;
-  size_t size;
+  idx_t size;
   char *buffer;
   uintmax_t string_length;
 };
@@ -343,10 +343,10 @@ struct tar_stat_info
   /* For sparse files: */
   intmax_t sparse_major;
   intmax_t sparse_minor;
-  size_t sparse_map_avail;  /* Index to the first unused element in
+  idx_t sparse_map_avail;   /* Index to the first unused element in
 			       sparse_map array. Zero if the file is
 			       not sparse */
-  size_t sparse_map_size;   /* Size of the sparse map */
+  idx_t sparse_map_size;   /* Size of the sparse map */
   struct sp_array *sparse_map;
 
   off_t real_size;          /* The real size of sparse file */
