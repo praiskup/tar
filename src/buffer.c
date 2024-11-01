@@ -46,7 +46,7 @@ enum { READ_ERROR_MAX = 10 };
 static tarlong prev_written;    /* bytes written on previous volumes */
 static tarlong bytes_written;   /* bytes written on this volume */
 static void *record_buffer[2];  /* allocated memory */
-static int record_index;
+static bool record_index;
 
 /* FIXME: The following variables should ideally be static to this
    module.  However, this cannot be done yet.  The cleanup continues!  */
@@ -101,10 +101,10 @@ off_t continued_file_size;
 off_t continued_file_offset;
 
 
-static int volno = 1;           /* which volume of a multi-volume tape we're
+static intmax_t volno = 1;	/* which volume of a multi-volume tape we're
                                    on */
-static int global_volno = 1;    /* volume number to print in external
-                                   messages */
+static intmax_t global_volno = 1; /* volume number to print in external
+                                     messages */
 
 bool write_archive_to_stdout;
 
@@ -142,7 +142,7 @@ static struct bufmap *bufmap_head, *bufmap_tail;
 
 /* This variable, when set, inhibits updating the bufmap chain after
    a write.  This is necessary when writing extended POSIX headers. */
-static int inhibit_map;
+static bool inhibit_map;
 
 void
 mv_begin_write (const char *file_name, off_t totsize, off_t sizeleft)
@@ -391,9 +391,8 @@ next_decompress_program (int *pstate)
 static const char *
 compress_option (enum compress_type type)
 {
-  struct zip_program const *zp;
   int i = 0;
-  zp = find_zip_program (type, &i);
+  struct zip_program const *zp = find_zip_program (type, &i);
   return zp ? zp->option : NULL;
 }
 
@@ -491,30 +490,31 @@ open_compressed_archive (void)
   return archive;
 }
 
-static int
+static intmax_t
 print_stats (FILE *fp, const char *text, tarlong numbytes)
 {
   char abbr[LONGEST_HUMAN_READABLE + 1];
   int human_opts = human_autoscale | human_base_1024 | human_SI | human_B;
   double ulim = UINTMAX_MAX + 1.0;
 
-  int n = fprintf (fp, "%s: "TARLONG_FORMAT" (", gettext (text), numbytes);
+  intmax_t n = fprintf (fp, "%s: "TARLONG_FORMAT" (", gettext (text), numbytes);
 
   if (numbytes < ulim)
-    n += fprintf (fp, "%s", human_readable (numbytes, abbr, human_opts, 1, 1));
+    n = add_printf (n, fprintf (fp, "%s", human_readable (numbytes, abbr,
+							  human_opts, 1, 1)));
   else
-    n += fprintf (fp, "%g", numbytes);
+    n = add_printf (n, fprintf (fp, "%g", numbytes));
 
   if (!duration_ns)
-    n += fprintf (fp, ")");
+    n = add_printf (n, ! (fputc (')', fp) < 0));
   else
     {
       double rate = 1e9 * numbytes / duration_ns;
-      if (rate < ulim)
-	n += fprintf (fp, ", %s/s)",
-		      human_readable (rate, abbr, human_opts, 1, 1));
-      else
-	n += fprintf (fp, ", %g/s)", rate);
+      n = add_printf (n, (rate < ulim
+			  ? fprintf (fp, ", %s/s)",
+				     human_readable (rate, abbr, human_opts,
+						     1, 1))
+			  : fprintf (fp, ", %g/s)", rate)));
     }
 
   return n;
@@ -525,10 +525,10 @@ print_stats (FILE *fp, const char *text, tarlong numbytes)
    EOR is a delimiter to output after each item (used only if deleting
    from the archive), EOL is a delimiter to add at the end of the output
    line. */
-int
-format_total_stats (FILE *fp, char const *const *formats, int eor, int eol)
+intmax_t
+format_total_stats (FILE *fp, char const *const *formats, char eor, char eol)
 {
-  int n;
+  intmax_t n;
 
   switch (subcommand_option)
     {
@@ -545,16 +545,15 @@ format_total_stats (FILE *fp, char const *const *formats, int eor, int eol)
         n = print_stats (fp, formats[TF_READ],
 			 records_read * record_size);
 
-	fputc (eor, fp);
-	n++;
+	n = add_printf (n, ! (fputc (eor, fp) < 0));
 
-        n += print_stats (fp, formats[TF_WRITE],
-			  prev_written + bytes_written);
+	n = add_printf (n, print_stats (fp, formats[TF_WRITE],
+					prev_written + bytes_written));
 
 	intmax_t deleted = ((records_read - records_skipped) * record_size
 			    - (prev_written + bytes_written));
-	n += fprintf (fp, "%c%s: %jd", eor, gettext (formats[TF_DELETED]),
-		      deleted);
+	n = add_printf (n, fprintf (fp, "%c%s: %jd", eor,
+				    gettext (formats[TF_DELETED]), deleted));
       }
       break;
 
@@ -569,10 +568,7 @@ format_total_stats (FILE *fp, char const *const *formats, int eor, int eol)
       abort ();
     }
   if (eol)
-    {
-      fputc (eol, fp);
-      n++;
-    }
+    n = add_printf (n, ! (fputc (eol, fp) < 0));
   return n;
 }
 
@@ -745,7 +741,7 @@ _open_archive (enum access_mode wanted_access)
 
   tar_stat_destroy (&current_stat_info);
 
-  record_index = 0;
+  record_index = false;
   init_buffer ();
 
   /* When updating the archive, we start with reading.  */
@@ -1176,7 +1172,7 @@ init_volume_number (void)
 
   if (file)
     {
-      if (fscanf (file, "%d", &global_volno) != 1
+      if (fscanf (file, "%jd", &global_volno) != 1
           || global_volno < 0)
 	paxfatal (0, _("%s: contains invalid volume number"),
 		  quotearg_colon (volno_file_option));
@@ -1197,7 +1193,7 @@ closeout_volume_number (void)
 
   if (file)
     {
-      fprintf (file, "%d\n", global_volno);
+      fprintf (file, "%jd\n", global_volno);
       if (ferror (file))
         write_error (volno_file_option);
       if (fclose (file) != 0)
@@ -1212,8 +1208,6 @@ static void
 increase_volume_number (void)
 {
   global_volno++;
-  if (global_volno < 0)
-    paxfatal (0, _("Volume number overflow"));
   volno++;
 }
 
@@ -1228,7 +1222,7 @@ change_tape_menu (FILE *read_file)
     {
       fputc ('\007', stderr);
       fprintf (stderr,
-               _("Prepare volume #%d for %s and hit return: "),
+               _("Prepare volume #%jd for %s and hit return: "),
                global_volno + 1, quote (*archive_name_cursor));
       fflush (stderr);
 
@@ -1318,14 +1312,17 @@ change_tape_menu (FILE *read_file)
 }
 
 /* We've hit the end of the old volume.  Close it and open the next one.
-   Return nonzero on success.
+   Return true on success.
 */
 static bool
 new_volume (enum access_mode mode)
 {
   static FILE *read_file;
-  static int looped;
-  int prompt;
+  static bool looped;
+  bool prompt;
+
+  if (global_volno == INTMAX_MAX)
+    paxfatal (0, _("Volume number overflow"));
 
   if (!read_file && !info_script_option)
     /* FIXME: if fopen is used, it will never be closed.  */
@@ -1348,7 +1345,7 @@ new_volume (enum access_mode mode)
   if (archive_name_cursor == archive_name_array + archive_names)
     {
       archive_name_cursor = archive_name_array;
-      looped = 1;
+      looped = true;
     }
   prompt = looped;
 
@@ -1361,7 +1358,7 @@ new_volume (enum access_mode mode)
         {
           if (volno_file_option)
             closeout_volume_number ();
-          if (sys_exec_info_script (archive_name_cursor, global_volno+1))
+	  if (sys_exec_info_script (archive_name_cursor, global_volno + 1))
 	    paxfatal (0, _("%s command failed"), quote (info_script_option));
         }
       else
@@ -1402,7 +1399,7 @@ new_volume (enum access_mode mode)
       open_warn (*archive_name_cursor);
       if (!verify_option && mode == ACCESS_WRITE && backup_option)
         undo_last_backup ();
-      prompt = 1;
+      prompt = true;
       goto tryagain;
     }
 
@@ -1697,8 +1694,8 @@ add_volume_label (void)
 {
   static char const VOL_SUFFIX[] = "Volume";
   char *s = xmalloc (strlen (volume_label_option) + sizeof VOL_SUFFIX
-		     + INT_BUFSIZE_BOUND (int) + 2);
-  sprintf (s, "%s %s %d", volume_label_option, VOL_SUFFIX, volno);
+		     + INT_BUFSIZE_BOUND (intmax_t) + 2);
+  sprintf (s, "%s %s %jd", volume_label_option, VOL_SUFFIX, volno);
   _write_volume_label (s);
   free (s);
 }
@@ -1941,7 +1938,7 @@ _gnu_flush_write (idx_t buffer_level)
   record_index = !record_index;
   init_buffer ();
 
-  inhibit_map = 1;
+  inhibit_map = true;
 
   if (volume_label_option)
     add_volume_label ();
@@ -1957,7 +1954,7 @@ _gnu_flush_write (idx_t buffer_level)
   header = find_next_block ();
   bufmap_reset (map, header - record_start);
   bufsize = available_space_after (header);
-  inhibit_map = 0;
+  inhibit_map = false;
   while (bufsize < copy_size)
     {
       memcpy (header->buffer, copy_ptr, bufsize);

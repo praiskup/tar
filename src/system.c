@@ -807,7 +807,7 @@ sys_wait_command (void)
 }
 
 int
-sys_exec_info_script (const char **archive_name, int volume_number)
+sys_exec_info_script (const char **archive_name, intmax_t volume_number)
 {
   int p[2];
   static void (*saved_handler) (int sig);

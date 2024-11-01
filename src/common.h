@@ -466,7 +466,8 @@ off_t seek_archive (off_t size);
 void set_start_time (void);
 
 enum { TF_READ, TF_WRITE, TF_DELETED };
-int format_total_stats (FILE *fp, char const *const *formats, int eor, int eol);
+intmax_t format_total_stats (FILE *fp, char const *const *formats,
+			     char eor, char eol);
 void print_total_stats (void);
 
 void mv_begin_write (const char *file_name, off_t totsize, off_t sizeleft);
@@ -479,6 +480,15 @@ void buffer_write_global_xheader (void);
 
 const char *first_decompress_program (int *pstate);
 const char *next_decompress_program (int *pstate);
+
+/* Sum values returned by printf to estimate the total bytes output.
+   Estimate -1 if there was a problem, e.g., int overflow or I/O error.  */
+COMMON_INLINE intmax_t
+add_printf (intmax_t a, intmax_t b)
+{
+  intmax_t sum;
+  return (a < 0) | (b < 0) | ckd_add (&sum, a, b) ? -1 : sum;
+}
 
 /* Module create.c.  */
 
@@ -925,7 +935,7 @@ idx_t sys_write_archive_buffer (void);
 bool sys_get_archive_stat (void);
 int sys_exec_command (char *file_name, int typechar, struct tar_stat_info *st);
 void sys_wait_command (void);
-int sys_exec_info_script (const char **archive_name, int volume_number);
+int sys_exec_info_script (const char **archive_name, intmax_t volume_number);
 void sys_exec_checkpoint_script (const char *script_name,
 				 const char *archive_name,
 				 intmax_t checkpoint_number);
