@@ -91,7 +91,7 @@ static bool read_full_records = false;
 
 bool write_archive_to_stdout;
 
-static void (*flush_write_ptr) (size_t);
+static void (*flush_write_ptr) (idx_t);
 static void (*flush_read_ptr) (void);
 
 
@@ -132,11 +132,11 @@ bool write_archive_to_stdout;
 struct bufmap
 {
   struct bufmap *next;          /* Pointer to the next map entry */
-  size_t start;                 /* Offset of the first data block */
+  idx_t start;			/* Offset of the first data block */
   char *file_name;              /* Name of the stored file */
   off_t sizetotal;              /* Size of the stored file */
   off_t sizeleft;               /* Size left to read/write */
-  size_t nblocks;               /* Number of blocks written since reset */
+  idx_t nblocks;		/* Number of blocks written since reset */
 };
 static struct bufmap *bufmap_head, *bufmap_tail;
 
@@ -166,7 +166,7 @@ mv_begin_write (const char *file_name, off_t totsize, off_t sizeleft)
 }
 
 static struct bufmap *
-bufmap_locate (size_t off)
+bufmap_locate (idx_t off)
 {
   struct bufmap *map;
 
@@ -303,7 +303,7 @@ static enum compress_type archive_compression_type = ct_none;
 struct zip_magic
 {
   enum compress_type type;
-  size_t length;
+  char length;
   char const *magic;
 };
 
@@ -648,7 +648,7 @@ set_next_block_after (union block *block)
    through the end of the current buffer of blocks.  This space is
    available for filling with data, or taking data from.  POINTER is
    usually (but not always) the result of previous find_next_block call.  */
-size_t
+idx_t
 available_space_after (union block *pointer)
 {
   return record_end->buffer - pointer->buffer;
@@ -893,8 +893,8 @@ _flush_write (void)
       struct bufmap *map = bufmap_locate (status);
       if (map)
 	{
-	  size_t delta = status - map->start * BLOCKSIZE;
-	  ptrdiff_t diff;
+	  idx_t delta = status - map->start * BLOCKSIZE;
+	  idx_t diff;
 	  map->nblocks += delta / BLOCKSIZE;
 	  if (delta > map->sizeleft)
 	    delta = map->sizeleft;
@@ -962,9 +962,9 @@ archive_is_dev (void)
 }
 
 static void
-short_read (size_t status)
+short_read (idx_t status)
 {
-  size_t left;                  /* bytes left */
+  idx_t left;			/* bytes left */
   char *more;                   /* pointer to next byte to read */
 
   more = record_start->buffer + status;
@@ -1015,7 +1015,7 @@ short_read (size_t status)
 void
 flush_archive (void)
 {
-  size_t buffer_level;
+  idx_t buffer_level;
 
   if (access_mode == ACCESS_READ && time_to_start_writing)
     {
@@ -1426,7 +1426,7 @@ read_header0 (struct tar_stat_info *info)
 static bool
 try_new_volume (void)
 {
-  size_t status;
+  ptrdiff_t status;
   union block *header;
   enum access_mode acc;
 
@@ -1447,7 +1447,7 @@ try_new_volume (void)
     return true;
 
   while ((status = rmtread (archive, record_start->buffer, record_size))
-         == SAFE_READ_ERROR)
+         < 0)
     archive_read_error ();
 
   if (status != record_size)
@@ -1743,7 +1743,7 @@ gnu_add_multi_volume_header (struct bufmap *map)
 {
   int tmp;
   union block *block = find_next_block ();
-  size_t len = strlen (map->file_name);
+  idx_t len = strlen (map->file_name);
 
   if (len > NAME_FIELD_SIZE)
     {
@@ -1793,8 +1793,6 @@ add_multi_volume_header (struct bufmap *map)
 static void
 simple_flush_read (void)
 {
-  size_t status;                /* result from system call */
-
   checkpoint_run (false);
 
   /* Clear the count of errors.  This only applies to a single call to
@@ -1805,33 +1803,24 @@ simple_flush_read (void)
   if (write_archive_to_stdout && record_start_block != 0)
     {
       archive = STDOUT_FILENO;
-      status = sys_write_archive_buffer ();
+      idx_t status = sys_write_archive_buffer ();
       archive = STDIN_FILENO;
       if (status != record_size)
         archive_write_error (status);
     }
 
-  for (;;)
-    {
-      status = rmtread (archive, record_start->buffer, record_size);
-      if (status == record_size)
-        {
-          records_read++;
-          return;
-        }
-      if (status == SAFE_READ_ERROR)
-        {
-          archive_read_error ();
-          continue;             /* try again */
-        }
-      break;
-    }
-  short_read (status);
+  ptrdiff_t nread;
+  while ((nread = rmtread (archive, record_start->buffer, record_size)) < 0)
+    archive_read_error ();
+  if (nread == record_size)
+    records_read++;
+  else
+    short_read (nread);
 }
 
 /* Simple flush write (no multi-volume or label extensions) */
 static void
-simple_flush_write (MAYBE_UNUSED size_t level)
+simple_flush_write (MAYBE_UNUSED idx_t level)
 {
   ssize_t status;
 
@@ -1852,8 +1841,6 @@ simple_flush_write (MAYBE_UNUSED size_t level)
 static void
 _gnu_flush_read (void)
 {
-  size_t status;                /* result from system call */
-
   checkpoint_run (false);
 
   /* Clear the count of errors.  This only applies to a single call to
@@ -1864,45 +1851,33 @@ _gnu_flush_read (void)
   if (write_archive_to_stdout && record_start_block != 0)
     {
       archive = STDOUT_FILENO;
-      status = sys_write_archive_buffer ();
+      idx_t status = sys_write_archive_buffer ();
       archive = STDIN_FILENO;
       if (status != record_size)
         archive_write_error (status);
     }
 
-  for (;;)
+  ptrdiff_t nread;
+  while ((nread = rmtread (archive, record_start->buffer, record_size)) < 0
+	 && ! (errno == ENOSPC && multi_volume_option))
+    archive_read_error ();
+  /* The condition below used to include
+     || (nread > 0 && !read_full_records)
+     This is incorrect since even if new_volume() succeeds, the
+     subsequent call to rmtread will overwrite the chunk of data
+     already read in the buffer, so the processing will fail */
+  if (nread <= 0 && multi_volume_option)
     {
-      status = rmtread (archive, record_start->buffer, record_size);
-      if (status == record_size)
-        {
-          records_read++;
-          return;
-        }
-
-      /* The condition below used to include
-              || (status > 0 && !read_full_records)
-         This is incorrect since even if new_volume() succeeds, the
-         subsequent call to rmtread will overwrite the chunk of data
-         already read in the buffer, so the processing will fail */
-      if ((status == 0
-           || (status == SAFE_READ_ERROR && errno == ENOSPC))
-          && multi_volume_option)
-        {
-          while (!try_new_volume ())
-            ;
-	  if (current_block == record_end)
-	    /* Necessary for blocking_factor == 1 */
-	    flush_archive();
-          return;
-        }
-      else if (status == SAFE_READ_ERROR)
-        {
-          archive_read_error ();
-          continue;
-        }
-      break;
+      while (!try_new_volume ())
+	continue;
+      if (current_block == record_end)
+	/* Necessary for blocking_factor == 1 */
+	flush_archive ();
     }
-  short_read (status);
+  else if (nread == record_size)
+    records_read++;
+  else
+    short_read (nread);
 }
 
 static void
@@ -1914,13 +1889,13 @@ gnu_flush_read (void)
 }
 
 static void
-_gnu_flush_write (size_t buffer_level)
+_gnu_flush_write (idx_t buffer_level)
 {
   ssize_t status;
   union block *header;
   char *copy_ptr;
-  size_t copy_size;
-  size_t bufsize;
+  idx_t copy_size;
+  idx_t bufsize;
   struct bufmap *map;
 
   status = _flush_write ();
@@ -2000,7 +1975,7 @@ _gnu_flush_write (size_t buffer_level)
 }
 
 static void
-gnu_flush_write (size_t buffer_level)
+gnu_flush_write (idx_t buffer_level)
 {
   flush_write_ptr = simple_flush_write; /* Avoid recursion */
   _gnu_flush_write (buffer_level);

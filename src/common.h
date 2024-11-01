@@ -445,7 +445,7 @@ extern off_t records_read;
 char *drop_volume_label_suffix (const char *label)
   _GL_ATTRIBUTE_MALLOC _GL_ATTRIBUTE_DEALLOC_FREE;
 
-size_t available_space_after (union block *pointer);
+idx_t available_space_after (union block *pointer);
 off_t current_block_ordinal (void);
 void close_archive (void);
 void closeout_volume_number (void);
