@@ -353,7 +353,7 @@ struct name
     struct name *prev;          /* Link to the previous element */
 
     char *name;                 /* File name or globbing pattern */
-    size_t length;		/* cached strlen (name) */
+    idx_t length;		/* cached strlen (name) */
     int matching_flags;         /* wildcard flags if name is a pattern */
     bool is_wildcard;           /* true if this is a wildcard pattern */
     bool cmdline;               /* true if this name was given in the
@@ -432,7 +432,6 @@ extern bool seekable_archive;
 extern FILE *stdlis;
 extern bool write_archive_to_stdout;
 extern char *volume_label;
-extern size_t volume_label_count;
 extern char *continued_file_name;
 extern uintmax_t continued_file_size;
 extern uintmax_t continued_file_offset;
