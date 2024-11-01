@@ -81,14 +81,13 @@ alloc_action (enum checkpoint_opcode opcode)
 static char *
 copy_string_unquote (const char *str)
 {
-  char *output = xstrdup (str);
-  size_t len = strlen (output);
-  if ((*output == '"' || *output == '\'')
-      && len > 1 && output[len-1] == *output)
+  idx_t len = strlen (str);
+  if ((*str == '"' || *str == '\'') && 1 < len && *str == str[len - 1])
     {
-      memmove (output, output+1, len-2);
-      output[len-2] = 0;
+      str++;
+      len -= 2;
     }
+  char *output = ximemdup0 (str, len);
   unquote_string (output);
   return output;
 }
@@ -199,24 +198,20 @@ getwidth (FILE *fp)
 }
 
 static char *
-getarg (const char *input, const char ** endp, char **argbuf, size_t *arglen)
+getarg (char const *input, char const **endp, char **argbuf, idx_t *arglen)
 {
   if (input[0] == '{')
     {
       char *p = strchr (input + 1, '}');
       if (p)
 	{
-	  size_t n = p - input;
+	  idx_t n = p - input;
 	  if (n > *arglen)
-	    {
-	      *arglen = n;
-	      *argbuf = xrealloc (*argbuf, *arglen);
-	    }
+	    *argbuf = xpalloc (*argbuf, arglen, n - *arglen, -1, 1);
 	  n--;
-	  memcpy (*argbuf, input + 1, n);
-	  (*argbuf)[n] = 0;
 	  *endp = p + 1;
-	  return *argbuf;
+	  (*argbuf)[n] = 0;
+	  return memcpy (*argbuf, input + 1, n);
 	}
     }
 
@@ -229,8 +224,8 @@ static int tty_cleanup;
 static const char *def_format =
   "%{%Y-%m-%d %H:%M:%S}t: %ds, %{read,wrote}T%*\r";
 
-static int
-format_checkpoint_string (FILE *fp, size_t len,
+static idx_t
+format_checkpoint_string (FILE *fp, idx_t len,
 			  const char *input, bool do_write,
 			  intmax_t cpn)
 {
@@ -238,7 +233,7 @@ format_checkpoint_string (FILE *fp, size_t len,
   const char *ip;
 
   static char *argbuf = NULL;
-  static size_t arglen = 0;
+  static idx_t arglen = 0;
   char *arg = NULL;
 
   if (!input)
