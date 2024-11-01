@@ -937,7 +937,7 @@ set_xattr (char const *file_name, struct tar_stat_info const *st,
            mode_t mode, char typeflag)
 {
 #ifdef HAVE_XATTRS
-  if ((xattrs_option > 0) && st->xattr_map.xm_size)
+  if (xattrs_option && st->xattr_map.xm_size)
     {
       int r = mknodat (chdir_fd, file_name, mode, 0);
       if (r < 0)

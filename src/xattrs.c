@@ -520,7 +520,7 @@ void
 xattrs_xattrs_get (int parentfd, char const *file_name,
                    struct tar_stat_info *st, int fd)
 {
-  if (xattrs_option > 0)
+  if (xattrs_option)
     {
 #ifndef HAVE_XATTRS
       static int done = 0;
@@ -715,7 +715,7 @@ void
 xattrs_xattrs_set (struct tar_stat_info const *st,
                    char const *file_name, char typeflag, int later_run)
 {
-  if (xattrs_option > 0)
+  if (xattrs_option)
     {
 #ifndef HAVE_XATTRS
       static int done = 0;
@@ -761,14 +761,14 @@ xattrs_print_char (struct tar_stat_info const *st, char *output)
       return;
     }
 
-  if (xattrs_option > 0 || selinux_context_option > 0 || acls_option > 0)
+  if (xattrs_option || selinux_context_option > 0 || acls_option > 0)
     {
       /* placeholders */
       *output = ' ';
       output[1] = 0;
     }
 
-  if (xattrs_option > 0 && st->xattr_map.xm_size)
+  if (xattrs_option && st->xattr_map.xm_size)
     for (idx_t i = 0; i < st->xattr_map.xm_size; i++)
       {
         char *keyword = st->xattr_map.xm_map[i].xkey + XATTRS_PREFIX_LEN;
@@ -808,7 +808,7 @@ xattrs_print (struct tar_stat_info const *st)
     }
 
   /* xattrs */
-  if (xattrs_option > 0 && st->xattr_map.xm_size)
+  if (xattrs_option && st->xattr_map.xm_size)
     {
       for (idx_t i = 0; i < st->xattr_map.xm_size; i++)
         {

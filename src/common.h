@@ -109,11 +109,11 @@ extern bool utc_option;
 /* Output file timestamps to the full resolution */
 extern bool full_time_option;
 
-/* This variable tells how to interpret newer_mtime_option, below.  If zero,
+/* This variable tells how to interpret newer_mtime_option, below.  If false,
    files get archived if their mtime is not less than newer_mtime_option.
-   If nonzero, files get archived if *either* their ctime or mtime is not less
+   If true, files get archived if *either* their ctime or mtime is not less
    than newer_mtime_option.  */
-extern int after_date_option;
+extern bool after_date_option;
 
 enum atime_preserve
 {
@@ -274,8 +274,8 @@ extern int selinux_context_option;
 /* If positive, save the ACLs.  */
 extern int acls_option;
 
-/* If positive, save the user and root xattrs.  */
-extern int xattrs_option;
+/* If true, save the user and root xattrs.  */
+extern bool xattrs_option;
 
 /* When set, strip the given number of file name components from the file name
    before extracting */
@@ -816,7 +816,7 @@ wasfound (struct name const *c)
 
 _Noreturn void usage (int);
 
-int confirm (const char *message_action, const char *name);
+bool confirm (const char *message_action, const char *name);
 
 void tar_stat_init (struct tar_stat_info *st);
 bool tar_stat_close (struct tar_stat_info *st);

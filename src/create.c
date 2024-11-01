@@ -936,7 +936,7 @@ start_header (struct tar_stat_info *st)
         }
       if ((selinux_context_option > 0) && st->cntx_name)
         xheader_store ("RHT.security.selinux", st, NULL);
-      if (xattrs_option > 0)
+      if (xattrs_option)
 	for (idx_t i = 0; i < st->xattr_map.xm_size; i++)
 	  xheader_store (st->xattr_map.xm_map[i].xkey, st, &i);
     }
