@@ -289,7 +289,7 @@ struct xheader
   struct obstack *stk;
   idx_t size;
   char *buffer;
-  uintmax_t string_length;
+  idx_t string_length;
 };
 
 /* Information about xattrs for a file.  */

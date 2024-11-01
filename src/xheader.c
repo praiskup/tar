@@ -923,16 +923,16 @@ xheader_string_add (struct xheader *xhdr, char const *s)
   if (xhdr->buffer)
     return;
   xheader_init (xhdr);
-  xhdr->string_length += strlen (s);
-  x_obstack_grow (xhdr, s, strlen (s));
+  idx_t slen = strlen (s);
+  xhdr->string_length += slen;
+  x_obstack_grow (xhdr, s, slen);
 }
 
 bool
 xheader_string_end (struct xheader *xhdr, char const *keyword)
 {
-  uintmax_t len;
-  uintmax_t p;
-  uintmax_t n = 0;
+  idx_t p;
+  idx_t n = 0;
   char nbuf[UINTMAX_STRSIZE_BOUND];
   char const *np;
 
@@ -940,7 +940,7 @@ xheader_string_end (struct xheader *xhdr, char const *keyword)
     return false;
   xheader_init (xhdr);
 
-  len = strlen (keyword) + xhdr->string_length + 3; /* ' ' + '=' + '\n' */
+  idx_t len = strlen (keyword) + xhdr->string_length + (sizeof " =\n" - 1);
 
   do
     {
@@ -951,16 +951,6 @@ xheader_string_end (struct xheader *xhdr, char const *keyword)
   while (n != p);
 
   p = strlen (keyword) + n + 2;
-  idx_t size = p;
-  if (size != p)
-    {
-      paxerror (0,
-		_("Generated keyword/value pair is too long"
-		  " (keyword=%s, length=%s)"),
-		keyword, nbuf);
-      obstack_free (xhdr->stk, obstack_finish (xhdr->stk));
-      return false;
-    }
   x_obstack_blank (xhdr, p);
   x_obstack_1grow (xhdr, '\n');
   char *cp = obstack_next_free (xhdr->stk);
