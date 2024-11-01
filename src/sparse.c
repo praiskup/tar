@@ -226,12 +226,13 @@ sparse_scan_file_raw (struct tar_sparse_file *file)
 
   while (true)
     {
-      ptrdiff_t count = blocking_read (fd, buffer, sizeof buffer);
-      if (count <= 0)
+      idx_t count = blocking_read (fd, buffer, sizeof buffer);
+      if (count < sizeof buffer)
 	{
-	  if (count < 0)
+	  if (errno)
 	    read_diag_details (st->orig_file_name, offset, sizeof buffer);
-	  break;
+	  if (count == 0)
+	    break;
 	}
 
       /* Analyze the block.  */
@@ -256,6 +257,8 @@ sparse_scan_file_raw (struct tar_sparse_file *file)
         }
 
       offset += count;
+      if (count < sizeof buffer)
+	break;
     }
 
   /* save one more sparse segment of length 0 to indicate that
@@ -408,7 +411,6 @@ sparse_select_optab (struct tar_sparse_file *file)
 static bool
 sparse_dump_region (struct tar_sparse_file *file, size_t i)
 {
-  union block *blk;
   off_t bytes_left = file->stat_info->sparse_map[i].numbytes;
 
   if (!lseek_or_error (file, file->stat_info->sparse_map[i].offset))
@@ -416,58 +418,41 @@ sparse_dump_region (struct tar_sparse_file *file, size_t i)
 
   while (bytes_left > 0)
     {
-      size_t bufsize = (bytes_left > BLOCKSIZE) ? BLOCKSIZE : bytes_left;
-      size_t bytes_read;
+      union block *blk = find_next_block ();
+      idx_t bufsize = min (bytes_left, BLOCKSIZE);
+      idx_t bytes_read = full_read (file->fd, blk->buffer, bufsize);
+      if (bytes_read < BLOCKSIZE)
+	memset (blk->buffer + bytes_read, 0, BLOCKSIZE - bytes_read);
+      bytes_left -= bytes_read;
+      file->dumped_size += bytes_read;
 
-      blk = find_next_block ();
-      bytes_read = full_read (file->fd, blk->buffer, bufsize);
-      if (bytes_read == SAFE_READ_ERROR)
+      if (bytes_read < bufsize)
 	{
-          read_diag_details (file->stat_info->orig_file_name,
-	                     (file->stat_info->sparse_map[i].offset
-			      + file->stat_info->sparse_map[i].numbytes
-			      - bytes_left),
-			     bufsize);
-	  return false;
-	}
-      else if (bytes_read == 0)
-	{
-	  if (errno != 0)
-	    {
-	      read_diag_details (file->stat_info->orig_file_name,
-				 (file->stat_info->sparse_map[i].offset
+	  off_t current_offset = (file->stat_info->sparse_map[i].offset
 				  + file->stat_info->sparse_map[i].numbytes
-				  - bytes_left),
-				 bufsize);
-	      return false;
-	    }
+				  - bytes_left);
+	  if (errno != 0)
+	    read_diag_details (file->stat_info->orig_file_name,
+			       current_offset, bufsize - bytes_read);
 	  else
 	    {
+	      off_t cursize = current_offset;
 	      struct stat st;
-	      off_t n;
-	      if (fstat (file->fd, &st) == 0)
-		n = file->stat_info->stat.st_size - st.st_size;
-	      else
-		n = file->stat_info->stat.st_size
-		  - (file->stat_info->sparse_map[i].offset
-		     + file->stat_info->sparse_map[i].numbytes
-		     - bytes_left);
-
+	      if (fstat (file->fd, &st) == 0 && st.st_size < cursize)
+		cursize = st.st_size;
+	      intmax_t n = file->stat_info->stat.st_size - cursize;
 	      warnopt (WARN_FILE_SHRANK, 0,
 		       ngettext ("%s: File shrank by %jd byte; padding with zeros",
 				 "%s: File shrank by %jd bytes; padding with zeros",
 				 n),
 		       quotearg_colon (file->stat_info->orig_file_name),
-		       intmax (n));
-	      if (! ignore_failed_read_option)
-		set_exit_status (TAREXIT_DIFFERS);
-	      return false;
+		       n);
 	    }
+	  if (! ignore_failed_read_option)
+	    set_exit_status (TAREXIT_DIFFERS);
+	  return false;
 	}
 
-      memset (blk->buffer + bytes_read, 0, BLOCKSIZE - bytes_read);
-      bytes_left -= bytes_read;
-      file->dumped_size += bytes_read;
       set_next_block_after (blk);
     }
 
@@ -625,24 +610,14 @@ check_sparse_region (struct tar_sparse_file *file, off_t beg, off_t end)
 
   while (beg < end)
     {
-      size_t bytes_read;
-      size_t rdsize = BLOCKSIZE < end - beg ? BLOCKSIZE : end - beg;
+      idx_t rdsize = min (end - beg, BLOCKSIZE);
       char diff_buffer[BLOCKSIZE];
 
-      bytes_read = full_read (file->fd, diff_buffer, rdsize);
-      if (bytes_read == SAFE_READ_ERROR)
+      idx_t bytes_read = full_read (file->fd, diff_buffer, rdsize);
+      if (bytes_read < rdsize)
 	{
-          read_diag_details (file->stat_info->orig_file_name,
-	                     beg,
-			     rdsize);
-	  return false;
-	}
-      else if (bytes_read == 0)
-	{
-	  if (errno != 0)
-	    read_diag_details (file->stat_info->orig_file_name,
-			       beg,
-			       rdsize);
+	  if (errno)
+	    read_diag_details (file->stat_info->orig_file_name, beg, rdsize);
 	  else
 	    report_difference (file->stat_info, _("Size differs"));
 	  return false;
@@ -675,8 +650,6 @@ check_data_region (struct tar_sparse_file *file, size_t i)
 
   while (size_left > 0)
     {
-      size_t bytes_read;
-      size_t rdsize = (size_left > BLOCKSIZE) ? BLOCKSIZE : size_left;
       char diff_buffer[BLOCKSIZE];
 
       union block *blk = find_next_block ();
@@ -687,33 +660,26 @@ check_data_region (struct tar_sparse_file *file, size_t i)
 	}
       set_next_block_after (blk);
       file->dumped_size += BLOCKSIZE;
-      bytes_read = full_read (file->fd, diff_buffer, rdsize);
-      if (bytes_read == SAFE_READ_ERROR)
+      idx_t rdsize = min (size_left, BLOCKSIZE);
+      idx_t bytes_read = full_read (file->fd, diff_buffer, rdsize);
+      size_left -= bytes_read;
+      mv_size_left (file->stat_info->archive_file_size - file->dumped_size);
+      if (memcmp (blk->buffer, diff_buffer, bytes_read) != 0)
 	{
-          read_diag_details (file->stat_info->orig_file_name,
-			     (file->stat_info->sparse_map[i].offset
-			      + file->stat_info->sparse_map[i].numbytes
-			      - size_left),
-			     rdsize);
+	  report_difference (file->stat_info, _("Contents differ"));
 	  return false;
 	}
-      else if (bytes_read == 0)
+
+      if (bytes_read < rdsize)
 	{
 	  if (errno != 0)
 	    read_diag_details (file->stat_info->orig_file_name,
 			       (file->stat_info->sparse_map[i].offset
 				+ file->stat_info->sparse_map[i].numbytes
 				- size_left),
-			       rdsize);
+			       rdsize - bytes_read);
 	  else
 	    report_difference (&current_stat_info, _("Size differs"));
-	  return false;
-	}
-      size_left -= bytes_read;
-      mv_size_left (file->stat_info->archive_file_size - file->dumped_size);
-      if (memcmp (blk->buffer, diff_buffer, bytes_read))
-	{
-	  report_difference (file->stat_info, _("Contents differ"));
 	  return false;
 	}
     }

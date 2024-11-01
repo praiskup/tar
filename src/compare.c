@@ -85,11 +85,11 @@ process_noop (MAYBE_UNUSED idx_t size, MAYBE_UNUSED char *data)
 static bool
 process_rawdata (idx_t bytes, char *buffer)
 {
-  ptrdiff_t status = blocking_read (diff_handle, diff_buffer, bytes);
+  idx_t status = blocking_read (diff_handle, diff_buffer, bytes);
 
-  if (status != bytes)
+  if (status < bytes)
     {
-      if (status < 0)
+      if (errno)
 	{
 	  read_error (current_stat_info.file_name);
 	  report_difference (&current_stat_info, NULL);

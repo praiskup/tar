@@ -1050,25 +1050,16 @@ dump_regular_file (int fd, struct tar_stat_info *st)
 	    memset (blk->buffer + size_left, 0, BLOCKSIZE - beyond);
 	}
 
-      ptrdiff_t count;
-      if (fd <= 0)
-	count = bufsize;
-      else
-	{
-	  count = blocking_read (fd, blk->buffer, bufsize);
-	  if (count < 0)
-	    {
-	      read_diag_details (st->orig_file_name,
-				 st->stat.st_size - size_left, bufsize);
-	      pad_archive (size_left);
-	      return dump_status_short;
-	    }
-	}
+      idx_t count = (fd <= 0 ? bufsize
+		     : blocking_read (fd, blk->buffer, bufsize));
       size_left -= count;
       set_next_block_after (blk + (bufsize - 1) / BLOCKSIZE);
 
       if (count != bufsize)
 	{
+	  if (errno)
+	    read_diag_details (st->orig_file_name,
+			       st->stat.st_size - size_left, bufsize);
 	  memset (blk->buffer + count, 0, bufsize - count);
 	  warnopt (WARN_FILE_SHRANK, 0,
 		   ngettext (("%s: File shrank by %jd byte;"

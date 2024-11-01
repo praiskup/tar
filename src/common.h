@@ -731,7 +731,7 @@ void undo_last_backup (void);
 
 int deref_stat (char const *name, struct stat *buf);
 
-ptrdiff_t blocking_read (int fd, void *buf, idx_t count);
+idx_t blocking_read (int fd, void *buf, idx_t count);
 idx_t blocking_write (int fd, void const *buf, idx_t count);
 
 extern idx_t chdir_current;

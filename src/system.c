@@ -452,9 +452,9 @@ sys_child_open_for_compress (void)
 
   while (1)
     {
-      size_t status = 0;
+      ptrdiff_t status = 0;
       char *cursor;
-      size_t length;
+      idx_t length;
 
       /* Assemble a record.  */
 
@@ -465,7 +465,7 @@ sys_child_open_for_compress (void)
 	  size_t size = record_size - length;
 
 	  status = safe_read (STDIN_FILENO, cursor, size);
-	  if (status == SAFE_READ_ERROR)
+	  if (status < 0)
 	    read_fatal (use_compress_program_option);
 	  if (status == 0)
 	    break;
@@ -617,34 +617,26 @@ sys_child_open_for_uncompress (void)
 
   /* Let's read the archive and pipe it into stdout.  */
 
-  while (1)
+  while (true)
     {
-      char *cursor;
-      size_t maximum;
-      size_t count;
-      size_t status;
-
       clear_read_error_count ();
 
-    error_loop:
-      status = rmtread (archive, record_start->buffer, record_size);
-      if (status == SAFE_READ_ERROR)
-	{
-	  archive_read_error ();
-	  goto error_loop;
-	}
-      if (status == 0)
+      ptrdiff_t n;
+      while ((n = rmtread (archive, record_start->buffer, record_size)) < 0)
+	archive_read_error ();
+      if (n == 0)
 	break;
-      cursor = record_start->buffer;
-      maximum = status;
-      while (maximum)
+
+      char *cursor = record_start->buffer;
+      do
 	{
-	  count = maximum < BLOCKSIZE ? maximum : BLOCKSIZE;
+	  idx_t count = min (n, BLOCKSIZE);
 	  if (full_write (STDOUT_FILENO, cursor, count) != count)
 	    write_error (use_compress_program_option);
 	  cursor += count;
-	  maximum -= count;
+	  n -= count;
 	}
+      while (n);
     }
 
   xclose (STDOUT_FILENO);

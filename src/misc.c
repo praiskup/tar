@@ -841,25 +841,29 @@ deref_stat (char const *name, struct stat *buf)
 /* Read from FD into the buffer BUF with COUNT bytes.  Attempt to fill
    BUF.  Wait until input is available; this matters because files are
    opened O_NONBLOCK for security reasons, and on some file systems
-   this can cause read to fail with errno == EAGAIN.  Return the
-   actual number of bytes read, zero for EOF, or
-   -1 upon error.  */
-ptrdiff_t
+   this can cause read to fail with errno == EAGAIN.
+   If returning less than COUNT, set errno to indicate the error
+   except set errno = 0 to indicate EOF.  */
+idx_t
 blocking_read (int fd, void *buf, idx_t count)
 {
   idx_t bytes = full_read (fd, buf, count);
 
 #if defined F_SETFL && O_NONBLOCK
-  if (bytes == SAFE_READ_ERROR && errno == EAGAIN)
+  if (bytes < count && errno == EAGAIN)
     {
       int flags = fcntl (fd, F_GETFL);
       if (0 <= flags && flags & O_NONBLOCK
 	  && fcntl (fd, F_SETFL, flags & ~O_NONBLOCK) != -1)
-	bytes = full_read (fd, buf, count);
+	{
+	  char *cbuf = buf;
+	  count -= bytes;
+	  bytes += full_read (fd, cbuf + bytes, count);
+	}
     }
 #endif
 
-  return bytes == SAFE_READ_ERROR || (bytes == 0 && errno != 0) ? -1 : bytes;
+  return bytes;
 }
 
 /* Write to FD from the buffer BUF with COUNT bytes.  Do a full write.

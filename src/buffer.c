@@ -987,8 +987,12 @@ short_read (idx_t status)
          || (left && status && read_full_records))
     {
       if (status)
-        while ((status = rmtread (archive, more, left)) == SAFE_READ_ERROR)
-          archive_read_error ();
+	{
+	  ptrdiff_t nread;
+	  while ((nread = rmtread (archive, more, left)) < 0)
+	    archive_read_error ();
+	  status = nread;
+	}
 
       if (status == 0)
         break;

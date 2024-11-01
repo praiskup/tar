@@ -56,16 +56,12 @@ append_file (char *file_name)
   while (true)
     {
       union block *start = find_next_block ();
-      size_t status = full_read (handle, start->buffer,
-				 available_space_after (start));
-      if (status == 0)
-	{
-	  if (errno == 0)
-	    break;
-	  read_fatal (file_name);
-	}
-      if (status == SAFE_READ_ERROR)
+      idx_t bufsize = available_space_after (start);
+      idx_t status = full_read (handle, start->buffer, bufsize);
+      if (status < bufsize && errno)
 	read_fatal (file_name);
+      if (status == 0)
+	break;
       if (status % BLOCKSIZE)
 	memset (start->buffer + status - status % BLOCKSIZE, 0,
 		BLOCKSIZE - status % BLOCKSIZE);
