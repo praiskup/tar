@@ -520,20 +520,6 @@ xattrs_mask_add (const char *mask, bool incl)
   mask_map->masks[mask_map->used++] = mask;
 }
 
-static void
-clear_mask_map (struct xattrs_mask_map *mask_map)
-{
-  if (mask_map->size)
-    free (mask_map->masks);
-}
-
-void
-xattrs_clear_setup (void)
-{
-  clear_mask_map (&xattrs_setup.incl);
-  clear_mask_map (&xattrs_setup.excl);
-}
-
 static bool xattrs_masked_out (const char *kw, bool archiving);
 
 /* get xattrs from file given by FILE_NAME or FD (when non-zero)

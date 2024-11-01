@@ -26,9 +26,6 @@
    to true/false if you want to add include/exclude pattern */
 extern void xattrs_mask_add (const char *mask, bool incl);
 
-/* clear helping structures when tar finishes */
-extern void xattrs_clear_setup (void);
-
 extern void xattrs_acls_get (int parentfd, char const *file_name,
 			     struct tar_stat_info *st, int xisfile);
 extern void xattrs_selinux_get (int parentfd, char const *file_name,
