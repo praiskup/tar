@@ -867,7 +867,7 @@ name_add_file (const char *name)
 /* Names from external name file.  */
 
 static char *name_buffer;	/* buffer to hold the current file name */
-static size_t name_buffer_length; /* allocated length of name_buffer */
+static idx_t name_buffer_length; /* allocated length of name_buffer */
 
 /* Set up to gather file names for tar.  They can either come from a
    file or were saved from decoding arguments.  */
@@ -963,7 +963,7 @@ static enum read_file_list_state
 read_name_from_file (struct name_elt *ent)
 {
   int c;
-  size_t counter = 0;
+  idx_t counter = 0;
   FILE *fp = ent->v.file.fp;
   int term = ent->v.file.term;
 
@@ -971,7 +971,7 @@ read_name_from_file (struct name_elt *ent)
   for (c = getc (fp); c != EOF && c != term; c = getc (fp))
     {
       if (counter == name_buffer_length)
-	name_buffer = x2realloc (name_buffer, &name_buffer_length);
+	name_buffer = xpalloc (name_buffer, &name_buffer_length, 1, -1, 1);
       name_buffer[counter++] = c;
       if (c == 0)
 	{
@@ -985,7 +985,7 @@ read_name_from_file (struct name_elt *ent)
     return file_list_skip;
 
   if (counter == name_buffer_length)
-    name_buffer = x2realloc (name_buffer, &name_buffer_length);
+    name_buffer = xpalloc (name_buffer, &name_buffer_length, 1, -1, 1);
   name_buffer[counter] = 0;
   return (counter == 0 && c == EOF) ? file_list_end : file_list_success;
 }
@@ -1086,13 +1086,11 @@ read_next_name (struct name_elt *ent, struct name_elt *ret)
 static void
 copy_name (struct name_elt *ep)
 {
-  const char *source;
-  size_t source_len;
-
-  source = ep->v.name;
-  source_len = strlen (source);
-  while (name_buffer_length <= source_len)
-    name_buffer = x2realloc(name_buffer, &name_buffer_length);
+  char const *source = ep->v.name;
+  idx_t source_len = strlen (source);
+  ptrdiff_t incr = source_len + 1 - name_buffer_length;
+  if (0 < incr)
+    name_buffer = xpalloc (name_buffer, &name_buffer_length, incr, -1, 1);
   strcpy (name_buffer, source);
   chopslash (name_buffer);
 }
@@ -1390,13 +1388,10 @@ name_match (const char *file_name)
 bool
 all_names_found (struct tar_stat_info *p)
 {
-  struct name const *cursor;
-  size_t len;
-
   if (!p->file_name || occurrence_option == 0 || p->had_trailing_slash)
     return false;
-  len = strlen (p->file_name);
-  for (cursor = namelist; cursor; cursor = cursor->next)
+  idx_t len = strlen (p->file_name);
+  for (struct name const *cursor = namelist; cursor; cursor = cursor->next)
     {
       if ((cursor->name[0] && !wasfound (cursor))
 	  || (len >= cursor->length && ISSLASH (p->file_name[cursor->length])))
@@ -1613,13 +1608,13 @@ add_hierarchy_to_namelist (struct tar_stat_info *st, struct name *name)
   if (buffer)
     {
       struct name *child_head = NULL, *child_tail = NULL;
-      size_t name_length = name->length;
-      size_t allocated_length = (name_length >= NAME_FIELD_SIZE
-				 ? name_length + NAME_FIELD_SIZE
-				 : NAME_FIELD_SIZE) + 2;
+      idx_t name_length = name->length;
+      idx_t allocated_length = (name_length >= NAME_FIELD_SIZE
+				? name_length + NAME_FIELD_SIZE
+				: NAME_FIELD_SIZE) + 2;
       char *namebuf = xmalloc (allocated_length);
       const char *string;
-      size_t string_length;
+      idx_t string_length;
       idx_t change_dir = name->change_dir;
 
       strcpy (namebuf, name->name);
@@ -1640,8 +1635,9 @@ add_hierarchy_to_namelist (struct tar_stat_info *st, struct name *name)
 
 	      /* need to have at least string_length bytes above the
 		 name_length, this includes the trailing null character */
-	      while (allocated_length < name_length + string_length)
-		namebuf = x2realloc (namebuf, &allocated_length);
+	      ptrdiff_t incr = name_length + string_length - allocated_length;
+	      if (0 < incr)
+		namebuf = xpalloc (namebuf, &allocated_length, incr, -1, 1);
 	      strcpy (namebuf + name_length, string + 1);
 	      np = addname (namebuf, change_dir, false, name);
 	      if (!child_head)
@@ -1713,13 +1709,13 @@ name_compare (void const *entry1, void const *entry2)
 static void
 rebase_child_list (struct name *child, struct name *parent)
 {
-  size_t old_prefix_len = child->parent->length;
-  size_t new_prefix_len = parent->length;
+  idx_t old_prefix_len = child->parent->length;
+  idx_t new_prefix_len = parent->length;
   char *new_prefix = parent->name;
 
   for (; child; child = child->sibling)
     {
-      size_t size = child->length - old_prefix_len + new_prefix_len;
+      idx_t size = child->length - old_prefix_len + new_prefix_len;
       char *newp = xmalloc (size + 1);
       strcpy (newp, new_prefix);
       strcat (newp, child->name + old_prefix_len);
@@ -1948,8 +1944,8 @@ blank_name_list (void)
 char *
 make_file_name (const char *directory_name, const char *name)
 {
-  size_t dirlen = strlen (directory_name);
-  size_t namelen = strlen (name) + 1;
+  idx_t dirlen = strlen (directory_name);
+  idx_t namelen = strlen (name) + 1;
   int slash = dirlen && ! ISSLASH (directory_name[dirlen - 1]);
   char *buffer = xmalloc (dirlen + slash + namelen);
   memcpy (buffer, directory_name, dirlen);
@@ -1966,7 +1962,7 @@ make_file_name (const char *directory_name, const char *name)
    enough components.  */
 
 ptrdiff_t
-stripped_prefix_len (char const *file_name, size_t num)
+stripped_prefix_len (char const *file_name, idx_t num)
 {
   char const *p = file_name + FILE_SYSTEM_PREFIX_LEN (file_name);
   while (ISSLASH (*p))
