@@ -203,8 +203,8 @@ static bool tty_cleanup;
 static const char *def_format =
   "%{%Y-%m-%d %H:%M:%S}t: %ds, %{read,wrote}T%*\r";
 
-static idx_t
-format_checkpoint_string (FILE *fp, idx_t len,
+static intmax_t
+format_checkpoint_string (FILE *fp, intmax_t len,
 			  const char *input, bool do_write,
 			  intmax_t cpn)
 {
@@ -242,28 +242,31 @@ format_checkpoint_string (FILE *fp, idx_t len,
 		{
 		  fputc ('%', fp);
 		  fputc (*ip, fp);
-		  len += 2;
+		  len = add_printf (len, 2);
 		  continue;
 		}
 	    }
 	  switch (*ip)
 	    {
 	    case 'c':
-	      len += format_checkpoint_string (fp, len, def_format, do_write,
-					       cpn);
+	      len = add_printf (len,
+				format_checkpoint_string (fp, len, def_format,
+							  do_write, cpn));
 	      break;
 
 	    case 'u':
-	      len += fprintf (fp, "%jd", cpn);
+	      len = add_printf (len, fprintf (fp, "%jd", cpn));
 	      break;
 
 	    case 's':
 	      fputs (opstr, fp);
-	      len += strlen (opstr);
+	      len = add_printf (len, strlen (opstr));
 	      break;
 
 	    case 'd':
-	      len += fprintf (fp, "%.0f", compute_duration_ns () / BILLION);
+	      len = add_printf (len,
+				fprintf (fp, "%.0f",
+					 compute_duration_ns () / BILLION));
 	      break;
 
 	    case 'T':
@@ -295,7 +298,7 @@ format_checkpoint_string (FILE *fp, idx_t len,
 			fmt = fmtbuf;
 		      }
 		  }
-		len += format_total_stats (fp, fmt, ',', 0);
+		len = add_printf (len, format_total_stats (fp, fmt, ',', 0));
 		if (arg)
 		  wordsplit_free (&ws);
 	      }
@@ -306,32 +309,34 @@ format_checkpoint_string (FILE *fp, idx_t len,
 		struct timespec ts = current_timespec ();
 		const char *fmt = arg ? arg : "%c";
 		struct tm *tm = localtime (&ts.tv_sec);
-		len += (tm ? fprintftime (fp, fmt, tm, 0, ts.tv_nsec)
-			: fprintf (fp, "????""-??""-?? ??:??:??"));
+		len = add_printf (len,
+				  (tm ? fprintftime (fp, fmt, tm, 0, ts.tv_nsec)
+				   : fprintf (fp, "????""-??""-?? ??:??:??")));
 	      }
 	      break;
 
 	    case '*':
-	      {
-		intmax_t w;
-		if (!arg)
-		  w = getwidth (fp);
-		else
-		  {
-		    char *end;
-		    w = stoint (arg, &end, NULL, 0, INTMAX_MAX);
-		    if ((end == arg) | *end)
-		      w = 80;
-		  }
-		for (; w > len; len++)
-		  fputc (' ', fp);
-	      }
+	      if (0 <= len)
+		{
+		  intmax_t w;
+		  if (!arg)
+		    w = getwidth (fp);
+		  else
+		    {
+		      char *end;
+		      w = stoint (arg, &end, NULL, 0, INTMAX_MAX);
+		      if ((end == arg) | *end)
+			w = 80;
+		    }
+		  for (; w > len; len++)
+		    fputc (' ', fp);
+		}
 	      break;
 
 	    default:
 	      fputc ('%', fp);
 	      fputc (*ip, fp);
-	      len += 2;
+	      len = add_printf (len, 2);
 	      break;
 	    }
 	  arg = NULL;
@@ -345,7 +350,7 @@ format_checkpoint_string (FILE *fp, idx_t len,
 	      tty_cleanup = true;
 	    }
 	  else
-	    len++;
+	    len = add_printf (len, 1);
 	}
     }
   fflush (fp);
