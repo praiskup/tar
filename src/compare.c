@@ -319,7 +319,9 @@ diff_special (void)
     report_difference (&current_stat_info, _("Mode differs"));
 }
 
-static int
+/* Return zero if and only if A and B should be considered equal.
+   for the purposes of dump directory comparison.  */
+static char
 dumpdir_cmp (const char *a, const char *b)
 {
   while (*a)
