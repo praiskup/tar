@@ -1530,7 +1530,7 @@ volume_size_decoder (MAYBE_UNUSED struct tar_stat_info *st,
 		     char const *arg, MAYBE_UNUSED idx_t size)
 {
   uintmax_t u;
-  if (decode_num (&u, arg, TYPE_MAXIMUM (uintmax_t), keyword))
+  if (decode_num (&u, arg, TYPE_MAXIMUM (off_t), keyword))
     continued_file_size = u;
 }
 
@@ -1550,7 +1550,7 @@ volume_offset_decoder (MAYBE_UNUSED struct tar_stat_info *st,
 		       char const *arg, MAYBE_UNUSED idx_t size)
 {
   uintmax_t u;
-  if (decode_num (&u, arg, TYPE_MAXIMUM (uintmax_t), keyword))
+  if (decode_num (&u, arg, TYPE_MAXIMUM (off_t), keyword))
     continued_file_offset = u;
 }
 

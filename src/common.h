@@ -433,8 +433,8 @@ extern FILE *stdlis;
 extern bool write_archive_to_stdout;
 extern char *volume_label;
 extern char *continued_file_name;
-extern uintmax_t continued_file_size;
-extern uintmax_t continued_file_offset;
+extern off_t continued_file_size;
+extern off_t continued_file_offset;
 extern off_t records_written;
 extern union block *record_start;
 extern union block *record_end;
@@ -606,10 +606,7 @@ void transform_stat_info (int typeflag, struct tar_stat_info *stat_info);
 char const *tartime (struct timespec t, bool full_time);
 
 #define OFF_FROM_HEADER(where) off_from_header (where, sizeof (where))
-#define UINTMAX_FROM_HEADER(where) uintmax_from_header (where, sizeof (where))
-
 off_t off_from_header (const char *buf, idx_t size);
-uintmax_t uintmax_from_header (const char *buf, idx_t size);
 
 void list_archive (void);
 void test_archive_label (void);

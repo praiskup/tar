@@ -1003,12 +1003,6 @@ uid_from_header (const char *p, idx_t s)
 		      false, false);
 }
 
-uintmax_t
-uintmax_from_header (const char *p, idx_t s)
-{
-  return from_header (p, s, "uintmax_t", 0, UINTMAX_MAX, false, false);
-}
-
 
 /* Return a printable representation of T.  The result points to
    static storage that can be reused in the next call to this
@@ -1294,8 +1288,8 @@ simple_print_header (struct tar_stat_info *st, union block *blk,
 	  break;
 
 	case GNUTYPE_MULTIVOL:
-	  fprintf (stdlis, _("--Continued at byte %ju--\n"),
-		   UINTMAX_FROM_HEADER (blk->oldgnu_header.offset));
+	  fprintf (stdlis, _("--Continued at byte %jd--\n"),
+		   intmax (OFF_FROM_HEADER (blk->oldgnu_header.offset)));
 	  break;
 	}
     }

@@ -97,8 +97,8 @@ static void (*flush_read_ptr) (void);
 
 char *volume_label;
 char *continued_file_name;
-uintmax_t continued_file_size;
-uintmax_t continued_file_offset;
+off_t continued_file_size;
+off_t continued_file_offset;
 
 
 static int volno = 1;           /* which volume of a multi-volume tape we're
@@ -1523,9 +1523,9 @@ try_new_volume (void)
       tar_stat_destroy (&dummy);
       ASSIGN_STRING_N (&continued_file_name, current_header->header.name);
       continued_file_size =
-        UINTMAX_FROM_HEADER (current_header->header.size);
+        OFF_FROM_HEADER (current_header->header.size);
       continued_file_offset =
-        UINTMAX_FROM_HEADER (current_header->oldgnu_header.offset);
+        OFF_FROM_HEADER (current_header->oldgnu_header.offset);
       break;
 
     default:
@@ -1559,25 +1559,25 @@ try_new_volume (void)
             }
         }
 
-      uintmax_t s;
+      off_t s;
       if (ckd_add (&s, continued_file_size, continued_file_offset)
 	  || s != bufmap_head->sizetotal)
         {
-	  paxwarn (0, _("%s is the wrong size (%jd != %ju + %ju)"),
+	  paxwarn (0, _("%s is the wrong size (%jd != %jd + %jd)"),
 		   quote (continued_file_name),
 		   intmax (bufmap_head->sizetotal),
-		   uintmax (continued_file_size),
-		   uintmax (continued_file_offset));
+		   intmax (continued_file_size),
+		   intmax (continued_file_offset));
           return false;
         }
 
       if (bufmap_head->sizetotal - bufmap_head->sizeleft
 	  != continued_file_offset)
         {
-	  paxwarn (0, _("This volume is out of sequence (%jd - %jd != %ju)"),
+	  paxwarn (0, _("This volume is out of sequence (%jd - %jd != %jd)"),
 		   intmax (bufmap_head->sizetotal),
 		   intmax (bufmap_head->sizeleft),
-		   uintmax (continued_file_offset));
+		   intmax (continued_file_offset));
           return false;
         }
     }
