@@ -132,7 +132,7 @@ max_val_with_digits (int digits, int bits_per_digit)
 /* The maximum uintmax_t value that can be represented with octal
    digits and a trailing NUL in a buffer of size BUFSIZE.  */
 static uintmax_t
-max_octal_val (idx_t bufsize)
+max_octal_val (int bufsize)
 {
   return max_val_with_digits (bufsize - 1, LG_8);
 }
@@ -142,10 +142,10 @@ max_octal_val (idx_t bufsize)
    The result is undefined if SIZE is 0 or if VALUE is too large to fit.  */
 
 static void
-to_octal (uintmax_t value, char *where, idx_t size)
+to_octal (uintmax_t value, char *where, int size)
 {
   uintmax_t v = value;
-  idx_t i = size;
+  int i = size;
 
   do
     {
@@ -159,9 +159,9 @@ to_octal (uintmax_t value, char *where, idx_t size)
    NUL unless SRC is LEN or more bytes long.  */
 
 static void
-tar_copy_str (char *dst, const char *src, idx_t len)
+tar_copy_str (char *dst, const char *src, int len)
 {
-  for (idx_t i = 0; i < len; i++)
+  for (int i = 0; i < len; i++)
     if (! (dst[i] = src[i]))
       break;
 }
@@ -170,11 +170,11 @@ tar_copy_str (char *dst, const char *src, idx_t len)
    is OLDGNU format */
 
 static void
-tar_name_copy_str (char *dst, const char *src, idx_t len)
+tar_name_copy_str (char *dst, const char *src, int len)
 {
   tar_copy_str (dst, src, len);
   if (archive_format == OLDGNU_FORMAT)
-    dst[len-1] = 0;
+    dst[len - 1] = 0;
 }
 
 /* Convert NEGATIVE VALUE to a base-256 representation suitable for
@@ -184,12 +184,12 @@ tar_name_copy_str (char *dst, const char *src, idx_t len)
    fit.  */
 
 static void
-to_base256 (bool negative, uintmax_t value, char *where, idx_t size)
+to_base256 (bool negative, uintmax_t value, char *where, int size)
 {
   uintmax_t v = value;
   uintmax_t sign_bits = - negative;
   uintmax_t propagated_sign_bits = sign_bits << (UINTMAX_WIDTH - LG_256);
-  idx_t i = size;
+  int i = size;
 
   do
     {
@@ -209,14 +209,14 @@ to_base256 (bool negative, uintmax_t value, char *where, idx_t size)
 #define GNAME_TO_CHARS(name, buf) string_to_chars (name, buf, sizeof (buf))
 
 static bool
-to_chars (bool negative, uintmax_t value, idx_t valsize,
+to_chars (bool negative, uintmax_t value, int valsize,
 	  uintmax_t (*substitute) (bool *),
-	  char *where, idx_t size, const char *type);
+	  char *where, int size, const char *type);
 
 static bool
-to_chars_subst (bool negative, bool gnu_format, uintmax_t value, idx_t valsize,
+to_chars_subst (bool negative, bool gnu_format, uintmax_t value, int valsize,
 		uintmax_t (*substitute) (bool *),
-		char *where, idx_t size, const char *type)
+		char *where, int size, const char *type)
 {
   uintmax_t maxval = (gnu_format
 		      ? max_val_with_digits (size - 1, LG_256)
@@ -267,9 +267,9 @@ to_chars_subst (bool negative, bool gnu_format, uintmax_t value, idx_t valsize,
    substitute value is negative.  */
 
 static bool
-to_chars (bool negative, uintmax_t value, idx_t valsize,
+to_chars (bool negative, uintmax_t value, int valsize,
 	  uintmax_t (*substitute) (bool *),
-	  char *where, idx_t size, const char *type)
+	  char *where, int size, const char *type)
 {
   bool gnu_format = (archive_format == GNU_FORMAT
 		     || archive_format == OLDGNU_FORMAT);
@@ -340,25 +340,25 @@ gid_substitute (bool *negative)
 }
 
 static bool
-gid_to_chars (gid_t v, char *p, idx_t s)
+gid_to_chars (gid_t v, char *p, int s)
 {
   return to_chars (v < 0, v, sizeof v, gid_substitute, p, s, "gid_t");
 }
 
 static bool
-major_to_chars (major_t v, char *p, idx_t s)
+major_to_chars (major_t v, char *p, int s)
 {
   return to_chars (v < 0, v, sizeof v, 0, p, s, "major_t");
 }
 
 static bool
-minor_to_chars (minor_t v, char *p, idx_t s)
+minor_to_chars (minor_t v, char *p, int s)
 {
   return to_chars (v < 0, v, sizeof v, 0, p, s, "minor_t");
 }
 
 static bool
-mode_to_chars (mode_t v, char *p, idx_t s)
+mode_to_chars (mode_t v, char *p, int s)
 {
   /* In the common case where the internal and external mode bits are the same,
      and we are not using POSIX or GNU format,
@@ -398,13 +398,13 @@ mode_to_chars (mode_t v, char *p, idx_t s)
 }
 
 bool
-off_to_chars (off_t v, char *p, idx_t s)
+off_to_chars (off_t v, char *p, int s)
 {
   return to_chars (v < 0, v, sizeof v, 0, p, s, "off_t");
 }
 
 bool
-time_to_chars (time_t v, char *p, idx_t s)
+time_to_chars (time_t v, char *p, int s)
 {
   return to_chars (v < 0, v, sizeof v, 0, p, s, "time_t");
 }
@@ -426,13 +426,13 @@ uid_substitute (bool *negative)
 }
 
 static bool
-uid_to_chars (uid_t v, char *p, idx_t s)
+uid_to_chars (uid_t v, char *p, int s)
 {
   return to_chars (v < 0, v, sizeof v, uid_substitute, p, s, "uid_t");
 }
 
 static void
-string_to_chars (char const *str, char *p, idx_t s)
+string_to_chars (char const *str, char *p, int s)
 {
   tar_copy_str (p, str, s);
   p[s - 1] = '\0';
@@ -552,10 +552,10 @@ write_gnu_long_link (struct tar_stat_info *st, const char *p, char type)
   set_next_block_after (header + (size - 1) / BLOCKSIZE);
 }
 
-static idx_t
+static int
 split_long_name (const char *name, idx_t length)
 {
-  idx_t i;
+  int i;
 
   if (length > PREFIX_FIELD_SIZE + 1)
     length = PREFIX_FIELD_SIZE + 1;
@@ -580,8 +580,9 @@ write_ustar_long_name (const char *name)
       return NULL;
     }
 
-  idx_t i = split_long_name (name, length), nlen;
-  if (i == 0 || (nlen = length - i - 1) > NAME_FIELD_SIZE || nlen == 0)
+  int i = split_long_name (name, length);
+  idx_t nlen = length - i - 1;
+  if (i == 0 || ! (0 < nlen && nlen <= NAME_FIELD_SIZE))
     {
       paxerror (0, _("%s: file name is too long (cannot be split); not dumped"),
 		quotearg_colon (name));
@@ -952,7 +953,7 @@ simple_finish_header (union block *header)
 
   int sum = 0;
   char *p = header->buffer;
-  for (idx_t i = sizeof *header; i-- != 0; )
+  for (int i = sizeof *header; i-- != 0; )
     /* We can't use unsigned char here because of old compilers, e.g. V7.  */
     sum += 0xFF & *p++;
 

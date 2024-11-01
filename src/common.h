@@ -529,8 +529,8 @@ enum exclusion_tag_type check_exclusion_tags (struct tar_stat_info const *st,
 #define OFF_TO_CHARS(val, where) off_to_chars (val, where, sizeof (where))
 #define TIME_TO_CHARS(val, where) time_to_chars (val, where, sizeof (where))
 
-bool off_to_chars (off_t off, char *buf, idx_t size);
-bool time_to_chars (time_t t, char *buf, idx_t size);
+bool off_to_chars (off_t off, char *buf, int size);
+bool time_to_chars (time_t t, char *buf, int size);
 
 /* Module diffarch.c.  */
 
@@ -616,7 +616,7 @@ void transform_stat_info (int typeflag, struct tar_stat_info *stat_info);
 char const *tartime (struct timespec t, bool full_time);
 
 #define OFF_FROM_HEADER(where) off_from_header (where, sizeof (where))
-off_t off_from_header (const char *buf, idx_t size);
+off_t off_from_header (const char *buf, int size);
 
 void list_archive (void);
 void test_archive_label (void);

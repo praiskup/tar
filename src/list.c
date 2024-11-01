@@ -42,13 +42,13 @@ static union block *recent_global_header; /* Recent global header block */
 #define TIME_FROM_HEADER(where) time_from_header (where, sizeof (where))
 #define UID_FROM_HEADER(where) uid_from_header (where, sizeof (where))
 
-static gid_t gid_from_header (const char *buf, idx_t size);
-static major_t major_from_header (const char *buf, idx_t size);
-static minor_t minor_from_header (const char *buf, idx_t size);
-static mode_t mode_from_header (const char *buf, idx_t size, bool *hbits);
-static time_t time_from_header (const char *buf, idx_t size);
-static uid_t uid_from_header (const char *buf, idx_t size);
-static intmax_t from_header (const char *, idx_t, const char *,
+static gid_t gid_from_header (const char *buf, int size);
+static major_t major_from_header (const char *buf, int size);
+static minor_t minor_from_header (const char *buf, int size);
+static mode_t mode_from_header (const char *buf, int size, bool *hbits);
+static time_t time_from_header (const char *buf, int size);
+static uid_t uid_from_header (const char *buf, int size);
+static intmax_t from_header (const char *, int, const char *,
 			     intmax_t, uintmax_t, bool, bool);
 
 /* Table of base-64 digit values + 1, indexed by unsigned chars.
@@ -722,7 +722,7 @@ decode_header (union block *header, struct tar_stat_info *stat_info,
    numbers instead of the other GNU extensions.  Return -1 on error,
    diagnosing the error if TYPE is nonnull and if !SILENT.  */
 static intmax_t
-from_header (char const *where0, idx_t digs, char const *type,
+from_header (char const *where0, int digs, char const *type,
 	     intmax_t minval, uintmax_t maxval,
 	     bool octal_only, bool silent)
 {
@@ -943,7 +943,7 @@ from_header (char const *where0, idx_t digs, char const *type,
 }
 
 static gid_t
-gid_from_header (const char *p, idx_t s)
+gid_from_header (const char *p, int s)
 {
   return from_header (p, s, "gid_t",
 		      TYPE_MINIMUM (gid_t), TYPE_MAXIMUM (gid_t),
@@ -951,7 +951,7 @@ gid_from_header (const char *p, idx_t s)
 }
 
 static major_t
-major_from_header (const char *p, idx_t s)
+major_from_header (const char *p, int s)
 {
   return from_header (p, s, "major_t",
 		      TYPE_MINIMUM (major_t), TYPE_MAXIMUM (major_t),
@@ -959,7 +959,7 @@ major_from_header (const char *p, idx_t s)
 }
 
 static minor_t
-minor_from_header (const char *p, idx_t s)
+minor_from_header (const char *p, int s)
 {
   return from_header (p, s, "minor_t",
 		      TYPE_MINIMUM (minor_t), TYPE_MAXIMUM (minor_t),
@@ -969,7 +969,7 @@ minor_from_header (const char *p, idx_t s)
 /* Convert P to the file mode, as understood by tar.
    Set *HBITS if there are any unrecognized bits.  */
 static mode_t
-mode_from_header (const char *p, idx_t s, bool *hbits)
+mode_from_header (const char *p, int s, bool *hbits)
 {
   intmax_t u = from_header (p, s, "mode_t",
 			    INTMAX_MIN, UINTMAX_MAX,
@@ -991,7 +991,7 @@ mode_from_header (const char *p, idx_t s, bool *hbits)
 }
 
 off_t
-off_from_header (const char *p, idx_t s)
+off_from_header (const char *p, int s)
 {
   /* Negative offsets are not allowed in tar files, so invoke
      from_header with minimum value 0, not TYPE_MINIMUM (off_t).  */
@@ -1001,7 +1001,7 @@ off_from_header (const char *p, idx_t s)
 }
 
 static time_t
-time_from_header (const char *p, idx_t s)
+time_from_header (const char *p, int s)
 {
   return from_header (p, s, "time_t",
 		      TYPE_MINIMUM (time_t), TYPE_MAXIMUM (time_t),
@@ -1009,7 +1009,7 @@ time_from_header (const char *p, idx_t s)
 }
 
 static uid_t
-uid_from_header (const char *p, idx_t s)
+uid_from_header (const char *p, int s)
 {
   return from_header (p, s, "uid_t",
 		      TYPE_MINIMUM (uid_t), TYPE_MAXIMUM (uid_t),
