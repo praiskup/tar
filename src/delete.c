@@ -70,7 +70,7 @@ move_archive (off_t count)
 /* Write out the record which has been filled.  If MOVE_BACK_FLAG,
    backspace to where we started.  */
 static void
-write_record (int move_back_flag)
+write_record (bool move_back_flag)
 {
   union block *save_record = record_start;
   record_start = new_record;
@@ -107,7 +107,7 @@ write_recent_blocks (union block *h, idx_t blocks)
     {
       new_record[new_blocks++] = h[i];
       if (new_blocks == blocking_factor)
-	write_record (1);
+	write_record (true);
     }
 }
 
@@ -123,7 +123,7 @@ write_recent_bytes (char *data, idx_t bytes)
     memset (new_record[new_blocks].buffer + rest, 0, BLOCKSIZE - rest);
   new_blocks++;
   if (new_blocks == blocking_factor)
-    write_record (1);
+    write_record (true);
 }
 
 static void
@@ -296,7 +296,7 @@ delete_archive_members (void)
 		= (current_stat_info.stat.st_size + BLOCKSIZE - 1) / BLOCKSIZE;
 	      set_next_block_after (current_header);
 	      if (new_blocks == blocking_factor)
-		write_record (1);
+		write_record (true);
 
 	      /* Copy data.  */
 
@@ -331,7 +331,7 @@ delete_archive_members (void)
 		  kept_blocks_in_record -= count;
 
 		  if (new_blocks == blocking_factor)
-		    write_record (1);
+		    write_record (true);
 		}
 	      break;
 
