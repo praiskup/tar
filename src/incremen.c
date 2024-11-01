@@ -62,8 +62,8 @@ enum
 struct dumpdir                 /* Dump directory listing */
 {
   char *contents;              /* Actual contents */
-  size_t total;                /* Total number of elements */
-  size_t elc;                  /* Number of D/N/Y elements. */
+  idx_t total;		       /* Total number of elements */
+  idx_t elc;		       /* Number of D/N/Y elements. */
   char **elv;                  /* Array of D/N/Y elements */
 };
 
@@ -130,7 +130,7 @@ static struct dumpdir *
 dumpdir_create0 (const char *contents, const char *cmask)
 {
   struct dumpdir *dump;
-  size_t i, total, ctsize, len;
+  idx_t i, total, ctsize, len;
   char *p;
   const char *q;
 
@@ -196,13 +196,13 @@ struct dumpdir_iter
 {
   struct dumpdir *dump; /* Dumpdir being iterated */
   int all;              /* Iterate over all entries, not only D/N/Y */
-  size_t next;          /* Index of the next element */
+  idx_t next;		/* Index of the next element */
 };
 
 static char *
 dumpdir_next (struct dumpdir_iter *itr)
 {
-  size_t cur = itr->next;
+  idx_t cur = itr->next;
   char *ret = NULL;
 
   if (itr->all)
@@ -233,14 +233,14 @@ dumpdir_first (struct dumpdir *dump, int all, struct dumpdir_iter **pitr)
 }
 
 /* Return size in bytes of the dumpdir array P */
-size_t
+idx_t
 dumpdir_size (const char *p)
 {
-  size_t totsize = 0;
+  idx_t totsize = 0;
 
   while (*p)
     {
-      size_t size = strlen (p) + 1;
+      idx_t size = strlen (p) + 1;
       totsize += size;
       p += size;
     }
@@ -303,7 +303,7 @@ compare_directory_meta (void const *entry1, void const *entry2)
 static struct directory *
 make_directory (const char *name, char *caname)
 {
-  size_t namelen = strlen (name);
+  idx_t namelen = strlen (name);
   struct directory *directory = xizalloc (sizeof *directory);
   if (namelen > 1 && ISSLASH (name[namelen - 1]))
     namelen--;
@@ -339,10 +339,9 @@ attach_directory (const char *name)
 static void
 dirlist_replace_prefix (const char *pref, const char *repl)
 {
-  struct directory *dp;
-  size_t pref_len = strlen (pref);
-  size_t repl_len = strlen (repl);
-  for (dp = dirhead; dp; dp = dp->next)
+  idx_t pref_len = strlen (pref);
+  idx_t repl_len = strlen (repl);
+  for (struct directory *dp = dirhead; dp; dp = dp->next)
     replace_prefix (&dp->name, pref, pref_len, repl, repl_len);
 }
 
@@ -440,8 +439,8 @@ remove_directory (const char *caname)
    replace them with NEW_PREFIX. */
 void
 rebase_directory (struct directory *dir,
-		  const char *old_prefix, size_t old_prefix_len,
-		  const char *new_prefix, size_t new_prefix_len)
+		  const char *old_prefix, idx_t old_prefix_len,
+		  const char *new_prefix, idx_t new_prefix_len)
 {
   replace_prefix (&dir->name, old_prefix, old_prefix_len,
 		  new_prefix, new_prefix_len);
@@ -693,9 +692,9 @@ procdir (const char *name_buffer, struct tar_stat_info *st,
 static void
 makedumpdir (struct directory *directory, const char *dir)
 {
-  size_t i,
-         dirsize,  /* Number of elements in DIR */
-         len;      /* Length of DIR, including terminating nul */
+  idx_t i,
+	dirsize,  /* Number of elements in DIR */
+	len;      /* Length of DIR, including terminating nul */
   const char *p;
   char const **array;
   char *new_dump, *new_dump_ptr;
@@ -760,7 +759,7 @@ makedumpdir (struct directory *directory, const char *dir)
 static void
 maketagdumpdir (struct directory *directory)
 {
-  size_t len = strlen (directory->tagfile) + 1;
+  idx_t len = strlen (directory->tagfile) + 1;
   char *new_dump = xmalloc (len + 2);
   new_dump[0] = 'Y';
   memcpy (new_dump + 1, directory->tagfile, len);
@@ -973,7 +972,7 @@ void
 append_incremental_renames (struct directory *dir)
 {
   struct obstack stk;
-  size_t size;
+  idx_t size;
   struct directory *dp;
   const char *dump;
 
@@ -1133,10 +1132,10 @@ read_incr_db_01 (int version, const char *initbuf)
 
    Return the last character read or EOF on end of file. */
 static int
-read_obstack (FILE *fp, struct obstack *stk, size_t *pcount)
+read_obstack (FILE *fp, struct obstack *stk, idx_t *pcount)
 {
   int c;
-  size_t i;
+  idx_t i;
 
   for (i = 0, c = getc (fp); c != EOF && c != 0; c = getc (fp), i++)
     obstack_1grow (stk, c);
@@ -1258,7 +1257,7 @@ read_incr_db_2 (void)
       bool nfs;
       char *name;
       char *content;
-      size_t s;
+      idx_t s;
 
       if (! read_num (listed_incremental_stream, "nfs", 0, 1, &i))
 	return; /* Normal return */
@@ -1506,8 +1505,8 @@ write_directory_file (void)
 static void
 get_gnu_dumpdir (struct tar_stat_info *stat_info)
 {
-  size_t size;
-  size_t copied;
+  idx_t size;
+  idx_t copied;
   union block *data_block;
   char *to;
   char *archive_dir;
@@ -1662,7 +1661,7 @@ try_purge_directory (char const *directory_name)
       if (*arc == 'X')
 	{
 	  static char const TEMP_DIR_TEMPLATE[] = "tar.XXXXXX";
-	  size_t len = strlen (arc + 1);
+	  idx_t len = strlen (arc + 1);
 	  temp_stub = xrealloc (temp_stub, len + 1 + sizeof TEMP_DIR_TEMPLATE);
 	  memcpy (temp_stub, arc + 1, len);
 	  temp_stub[len] = '/';
@@ -1773,7 +1772,7 @@ purge_directory (char const *directory_name)
 }
 
 void
-list_dumpdir (char *buffer, size_t size)
+list_dumpdir (char *buffer, idx_t size)
 {
   int state = 0;
   while (size)

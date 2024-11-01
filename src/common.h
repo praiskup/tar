@@ -556,18 +556,18 @@ const char *directory_contents (struct directory *dir);
 const char *safe_directory_contents (struct directory *dir);
 
 void rebase_directory (struct directory *dir,
-		       const char *samp, size_t slen,
-		       const char *repl, size_t rlen);
+		       const char *samp, idx_t slen,
+		       const char *repl, idx_t rlen);
 
 void append_incremental_renames (struct directory *dir);
 void show_snapshot_field_ranges (void);
 void read_directory_file (void);
 void write_directory_file (void);
 void purge_directory (char const *directory_name);
-void list_dumpdir (char *buffer, size_t size);
+void list_dumpdir (char *buffer, idx_t size);
 void update_parent_directory (struct tar_stat_info *st);
 
-size_t dumpdir_size (const char *p);
+idx_t dumpdir_size (const char *p);
 bool is_dumpdir (struct tar_stat_info *stat_info);
 void clear_directory_table (void);
 
