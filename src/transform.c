@@ -50,9 +50,9 @@ struct replace_segm
     struct
     {
       char *ptr;
-      size_t size;
+      idx_t size;
     } literal;                /* type == segm_literal */
-    size_t ref;               /* type == segm_backref */
+    idx_t ref;		      /* type == segm_backref */
     enum case_ctl_type ctl;   /* type == segm_case_ctl */
   } v;
 };
@@ -66,7 +66,7 @@ struct transform
   regex_t regex;
   /* Compiled replacement expression */
   struct replace_segm *repl_head, *repl_tail;
-  size_t segm_count; /* Number of elements in the above list */
+  idx_t segm_count; /* Number of elements in the above list */
 };
 
 
@@ -103,7 +103,7 @@ add_segment (struct transform *tf)
 static void
 add_literal_segment (struct transform *tf, const char *str, const char *end)
 {
-  size_t len = end - str;
+  idx_t len = end - str;
   if (len)
     {
       struct replace_segm *segm = add_segment (tf);
@@ -127,7 +127,7 @@ add_char_segment (struct transform *tf, int chr)
 }
 
 static void
-add_backref_segment (struct transform *tf, size_t ref)
+add_backref_segment (struct transform *tf, idx_t ref)
 {
   struct replace_segm *segm = add_segment (tf);
   segm->type = segm_backref;
@@ -426,7 +426,7 @@ static bool stk_init;
 /* Run case conversion specified by CASE_CTL on array PTR of SIZE
    characters.  Append the result to STK.  */
 static void
-run_case_conv (enum case_ctl_type case_ctl, char *ptr, size_t size)
+run_case_conv (enum case_ctl_type case_ctl, char *ptr, idx_t size)
 {
   char const *p = ptr, *plim = ptr + size;
   mbstate_t mbs; mbszero (&mbs);
@@ -446,7 +446,7 @@ run_case_conv (enum case_ctl_type case_ctl, char *ptr, size_t size)
 	{
 	  obstack_make_room (&stk, MB_LEN_MAX);
 	  mbstate_t ombs; mbszero (&ombs);
-	  size_t outbytes = c32rtomb (obstack_next_free (&stk), ch, &ombs);
+	  idx_t outbytes = c32rtomb (obstack_next_free (&stk), ch, &ombs);
 	  obstack_blank_fast (&stk, outbytes);
 	}
       p += g.len;
@@ -461,14 +461,14 @@ static void
 _single_transform_name_to_obstack (struct transform *tf, char *input)
 {
   int rc;
-  size_t nmatches = 0;
+  idx_t nmatches = 0;
   enum case_ctl_type case_ctl = ctl_stop,  /* Current case conversion op */
                      save_ctl = ctl_stop;  /* Saved case_ctl for \u and \l */
   regmatch_t *rmp = xinmalloc (tf->regex.re_nsub + 1, sizeof *rmp);
 
   while (*input)
     {
-      size_t disp;
+      idx_t disp;
 
       rc = regexec (&tf->regex, input, tf->regex.re_nsub + 1, rmp, 0);
 
@@ -511,8 +511,8 @@ _single_transform_name_to_obstack (struct transform *tf, char *input)
 		  if (0 <= rmp[segm->v.ref].rm_so
 		      && 0 <= rmp[segm->v.ref].rm_eo)
 		    {
-		      size_t size = rmp[segm->v.ref].rm_eo
-			              - rmp[segm->v.ref].rm_so;
+		      idx_t size = (rmp[segm->v.ref].rm_eo
+				    - rmp[segm->v.ref].rm_so);
 		      run_case_conv (case_ctl,
 				     input + rmp[segm->v.ref].rm_so, size);
 		      goto case_ctl_reset;
