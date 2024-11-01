@@ -101,10 +101,9 @@ write_record (int move_back_flag)
 }
 
 static void
-write_recent_blocks (union block *h, size_t blocks)
+write_recent_blocks (union block *h, idx_t blocks)
 {
-  size_t i;
-  for (i = 0; i < blocks; i++)
+  for (idx_t i = 0; i < blocks; i++)
     {
       new_record[new_blocks++] = h[i];
       if (new_blocks == blocking_factor)
@@ -113,10 +112,10 @@ write_recent_blocks (union block *h, size_t blocks)
 }
 
 static void
-write_recent_bytes (char *data, size_t bytes)
+write_recent_bytes (char *data, idx_t bytes)
 {
-  size_t blocks = bytes / BLOCKSIZE;
-  size_t rest = bytes % BLOCKSIZE;
+  idx_t blocks = bytes / BLOCKSIZE;
+  idx_t rest = bytes % BLOCKSIZE;
 
   write_recent_blocks ((union block *)data, blocks);
   memcpy (new_record[new_blocks].buffer, data + blocks * BLOCKSIZE, rest);
