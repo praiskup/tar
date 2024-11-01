@@ -68,12 +68,12 @@ assign_null (char **string)
 }
 
 void
-assign_string_n (char **string, const char *value, size_t n)
+assign_string_n (char **string, const char *value, idx_t n)
 {
   free (*string);
   if (value)
     {
-      size_t l = strnlen (value, n);
+      idx_t l = strnlen (value, n);
       char *p = xmalloc (l + 1);
       memcpy (p, value, l);
       p[l] = 0;
@@ -115,7 +115,7 @@ quote_copy_string (const char *string)
 	case '\n': case '\\':
 	  if (!copying)
 	    {
-	      size_t length = (source - string) - 1;
+	      idx_t length = (source - string) - 1;
 
 	      copying = 1;
 	      buffer = xmalloc (length + 2 + 2 * strlen (source) + 1);
@@ -331,7 +331,7 @@ normalize_filename (idx_t cdidx, const char *name)
          should use dev+ino pairs instead of names?  (See listed03.at for
          a related test case.) */
       const char *cdpath = tar_getcdpath (cdidx);
-      size_t copylen;
+      idx_t copylen;
       bool need_separator;
 
       copylen = strlen (cdpath);
@@ -351,11 +351,11 @@ normalize_filename (idx_t cdidx, const char *name)
 
 
 void
-replace_prefix (char **pname, const char *samp, size_t slen,
-		const char *repl, size_t rlen)
+replace_prefix (char **pname, const char *samp, idx_t slen,
+		const char *repl, idx_t rlen)
 {
   char *name = *pname;
-  size_t nlen = strlen (name);
+  idx_t nlen = strlen (name);
   if (nlen > slen && memcmp (name, samp, slen) == 0 && ISSLASH (name[slen]))
     {
       if (rlen > slen)
@@ -709,7 +709,7 @@ remove_any_file (const char *file_name, enum remove_option option)
 	  {
 	    char *directory = tar_savedir (file_name, 0);
 	    char const *entry;
-	    size_t entrylen;
+	    idx_t entrylen;
 
 	    if (! directory)
 	      return 0;
@@ -847,7 +847,7 @@ deref_stat (char const *name, struct stat *buf)
 ptrdiff_t
 blocking_read (int fd, void *buf, idx_t count)
 {
-  size_t bytes = full_read (fd, buf, count);
+  idx_t bytes = full_read (fd, buf, count);
 
 #if defined F_SETFL && O_NONBLOCK
   if (bytes == SAFE_READ_ERROR && errno == EAGAIN)
@@ -923,7 +923,7 @@ static struct wd *wd;
 static idx_t wd_count;
 
 /* The allocated size of the vector.  */
-static size_t wd_alloc;
+static idx_t wd_alloc;
 
 /* The maximum number of chdir targets with open directories.
    Don't make it too large, as many operating systems have a small
@@ -936,7 +936,7 @@ enum { CHDIR_CACHE_SIZE = 16 };
 static int wdcache[CHDIR_CACHE_SIZE];
 
 /* Number of nonzero entries in WDCACHE.  */
-static size_t wdcache_count;
+static idx_t wdcache_count;
 
 idx_t
 chdir_count (void)
@@ -951,9 +951,7 @@ chdir_arg (char const *dir)
 {
   if (wd_count == wd_alloc)
     {
-      if (wd_alloc == 0)
-	wd_alloc = 2;
-      wd = x2nrealloc (wd, &wd_alloc, sizeof *wd);
+      wd = xpalloc (wd, &wd_alloc, wd_alloc ? 1 : 2, -1, sizeof *wd);
 
       if (! wd_count)
 	{
@@ -1032,7 +1030,7 @@ chdir_do (idx_t i)
 	{
 	  /* Move the i value to the front of the cache.  This is
 	     O(CHDIR_CACHE_SIZE), but the cache is small.  */
-	  size_t ci;
+	  idx_t ci;
 	  int prev = wdcache[0];
 	  for (ci = 1; prev != i; ci++)
 	    {
@@ -1136,7 +1134,7 @@ open_diag (char const *name)
 }
 
 void
-read_diag_details (char const *name, off_t offset, size_t size)
+read_diag_details (char const *name, off_t offset, idx_t size)
 {
   if (ignore_failed_read_option)
     {
@@ -1232,8 +1230,8 @@ xpipe (int fd[2])
 struct namebuf
 {
   char *buffer;		/* directory, '/', and directory member */
-  size_t buffer_size;	/* allocated size of name_buffer */
-  size_t dir_length;	/* length of directory part in buffer */
+  idx_t buffer_size;	/* allocated size of name_buffer */
+  idx_t dir_length;	/* length of directory part in buffer */
 };
 
 namebuf_t
@@ -1259,9 +1257,10 @@ namebuf_free (namebuf_t buf)
 char *
 namebuf_name (namebuf_t buf, const char *name)
 {
-  size_t len = strlen (name);
-  while (buf->dir_length + len + 1 >= buf->buffer_size)
-    buf->buffer = x2realloc (buf->buffer, &buf->buffer_size);
+  idx_t len = strlen (name);
+  ptrdiff_t incr_min = buf->dir_length + len + 2 - buf->buffer_size;
+  if (0 < incr_min)
+    buf->buffer = xpalloc (buf->buffer, &buf->buffer_size, incr_min, -1, 1);
   strcpy (buf->buffer + buf->dir_length, name);
   return buf->buffer;
 }

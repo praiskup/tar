@@ -636,14 +636,14 @@ void assign_string_or_null (char **dest, const char *src)
   ATTRIBUTE_NONNULL ((1));
 void assign_string (char **dest, const char *src) ATTRIBUTE_NONNULL ((1, 2));
 void assign_null (char **dest) ATTRIBUTE_NONNULL ((1));
-void assign_string_n (char **string, const char *value, size_t n);
+void assign_string_n (char **string, const char *value, idx_t n);
 #define ASSIGN_STRING_N(s,v) assign_string_n (s, v, sizeof (v))
 int unquote_string (char *str);
 char *zap_slashes (char *name);
 char *normalize_filename (idx_t, char const *);
 void normalize_filename_x (char *name);
-void replace_prefix (char **pname, const char *samp, size_t slen,
-		     const char *repl, size_t rlen);
+void replace_prefix (char **pname, const char *samp, idx_t slen,
+		     const char *repl, idx_t rlen);
 char *tar_savedir (const char *name, int must_exist);
 
 typedef struct namebuf *namebuf_t;
@@ -742,7 +742,7 @@ idx_t chdir_count (void);
 
 void close_diag (char const *name);
 void open_diag (char const *name);
-void read_diag_details (char const *name, off_t offset, size_t size);
+void read_diag_details (char const *name, off_t offset, idx_t size);
 void readlink_diag (char const *name);
 void savedir_diag (char const *name);
 void seek_diag_details (char const *name, off_t offset);
