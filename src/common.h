@@ -1060,9 +1060,9 @@ void exclude_vcs_ignores (void);
 
 /* Module map.c */
 void owner_map_read (char const *name);
-int owner_map_translate (uid_t uid, uid_t *new_uid, char const **new_name);
+void owner_map_translate (uid_t uid, uid_t *new_uid, char const **new_name);
 void group_map_read (char const *file);
-int group_map_translate (gid_t gid, gid_t *new_gid, char const **new_name);
+void group_map_translate (gid_t gid, gid_t *new_gid, char const **new_name);
 
 
 _GL_INLINE_HEADER_END
