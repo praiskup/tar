@@ -1216,9 +1216,8 @@ change_tape_menu (FILE *read_file)
 {
   char *input_buffer = NULL;
   size_t size = 0;
-  bool stop = false;
 
-  while (!stop)
+  while (true)
     {
       fputc ('\007', stderr);
       fprintf (stderr,
@@ -1283,17 +1282,18 @@ change_tape_menu (FILE *read_file)
 
             for (cursor = name; *cursor && *cursor != '\n'; cursor++)
               ;
-            *cursor = '\0';
 
-            if (name[0])
+            if (cursor != name)
               {
-                /* FIXME: the following allocation is never reclaimed.  */
-                *archive_name_cursor = xstrdup (name);
-                stop = true;
+		memmove (input_buffer, name, cursor - name);
+		input_buffer[cursor - name] = '\0';
+		*archive_name_cursor = input_buffer;
+		/* FIXME: *archive_name_cursor is never freed.  */
+		return;
               }
-            else
-              fprintf (stderr, "%s",
-                       _("File name not specified. Try again.\n"));
+
+	    fprintf (stderr, "%s",
+		     _("File name not specified. Try again.\n"));
           }
           break;
 
