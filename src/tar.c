@@ -39,7 +39,7 @@ idx_t record_size;
 bool absolute_names_option;
 bool utc_option;
 bool full_time_option;
-int after_date_option;
+bool after_date_option;
 enum atime_preserve atime_preserve_option;
 bool backup_option;
 enum backup_type backup_type;
@@ -56,7 +56,7 @@ bool ignore_zeros_option;
 bool incremental_option;
 const char *info_script_option;
 bool interactive_option;
-uintmax_t occurrence_option;
+intmax_t occurrence_option;
 enum old_files old_files_option;
 bool keep_directory_symlink_option;
 const char *listed_incremental_option;
@@ -86,8 +86,8 @@ int same_owner_option;
 int same_permissions_option;
 int selinux_context_option;
 int acls_option;
-int xattrs_option;
-size_t strip_name_components;
+bool xattrs_option;
+idx_t strip_name_components;
 bool show_omitted_dirs_option;
 bool sparse_option;
 intmax_t tar_sparse_major;
@@ -107,7 +107,7 @@ const char *volno_file_option;
 const char *volume_label_option;
 bool posixly_correct;
 const char **archive_name_array;
-size_t archive_names;
+idx_t archive_names;
 const char **archive_name_cursor;
 char const *index_file_name;
 int open_read_flags;
@@ -151,10 +151,10 @@ bool delay_directory_restore_option;
 #endif
 
 /* Print a message if not all links are dumped */
-static int check_links_option;
+static bool check_links_option;
 
 /* Number of allocated tape drive names.  */
-static size_t allocated_archive_names;
+static idx_t allocated_archive_names;
 
 
 /* Miscellaneous.  */
@@ -174,11 +174,11 @@ request_stdin (const char *option)
 }
 
 /* Returns true if and only if the user typed an affirmative response.  */
-int
+bool
 confirm (const char *message_action, const char *message_name)
 {
   static FILE *confirm_file;
-  static int confirm_file_EOF;
+  static bool confirm_file_EOF;
   bool status = false;
 
   if (!confirm_file)
@@ -204,7 +204,7 @@ confirm (const char *message_action, const char *message_name)
       char *response = NULL;
       size_t response_size = 0;
       if (getline (&response, &response_size, confirm_file) < 0)
-	confirm_file_EOF = 1;
+	confirm_file_EOF = true;
       else
 	status = rpmatch (response) > 0;
       free (response);
@@ -249,9 +249,9 @@ set_archive_format (char const *name)
 }
 
 static void
-set_xattr_option (int value)
+set_xattr_option (bool value)
 {
-  if (value == 1)
+  if (value)
     set_archive_format ("posix");
   xattrs_option = value;
 }
@@ -321,10 +321,9 @@ subcommand_string (enum subcommand c)
 static void
 tar_list_quoting_styles (struct obstack *stk, char const *prefix)
 {
-  int i;
-  size_t prefixlen = strlen (prefix);
+  idx_t prefixlen = strlen (prefix);
 
-  for (i = 0; quoting_style_args[i]; i++)
+  for (idx_t i = 0; quoting_style_args[i]; i++)
     {
       obstack_grow (stk, prefix, prefixlen);
       obstack_grow (stk, quoting_style_args[i],
@@ -336,9 +335,7 @@ tar_list_quoting_styles (struct obstack *stk, char const *prefix)
 static void
 tar_set_quoting_style (char *arg)
 {
-  int i;
-
-  for (i = 0; quoting_style_args[i]; i++)
+  for (idx_t i = 0; quoting_style_args[i]; i++)
     if (strcmp (arg, quoting_style_args[i]) == 0)
       {
 	set_quoting_style (NULL, i);
@@ -1019,30 +1016,28 @@ optloc_save (enum option_class id, struct option_locus *loc)
 
 /* Return location of a recent option of class ID */
 static struct option_locus *
-optloc_lookup (int id)
+optloc_lookup (enum option_class id)
 {
   return option_class[id];
 }
 
 /* Return true if the latest occurrence of option ID was in the command line */
-static int
-option_set_in_cl (int id)
+static bool
+option_set_in_cl (enum option_class id)
 {
   struct option_locus *loc = optloc_lookup (id);
-  if (!loc)
-    return 0;
-  return loc->source == OPTS_COMMAND_LINE;
+  return loc && loc->source == OPTS_COMMAND_LINE;
 }
 
 /* Compare two option locations */
-static int
+static bool
 optloc_eq (struct option_locus *a, struct option_locus *b)
 {
   assume (a);  /* Pacify GCC bug 106436.  */
   if (a->source != b->source)
-    return 0;
+    return false;
   if (a->source == OPTS_COMMAND_LINE)
-    return 1;
+    return true;
   assume (a->name);
   return strcmp (a->name, b->name) == 0;
 }
@@ -1102,7 +1097,7 @@ decode_signal (const char *name)
 {
   static struct sigtab
   {
-    char const *name;
+    char name[sizeof "USR1"];
     int signo;
   } const sigtab[] = {
     { "USR1", SIGUSR1 },
@@ -1111,12 +1106,12 @@ decode_signal (const char *name)
     { "INT", SIGINT },
     { "QUIT", SIGQUIT }
   };
-  struct sigtab const *p;
+  enum { nsigtab = sizeof sigtab / sizeof *sigtab };
   char const *s = name;
 
   if (strncmp (s, "SIG", 3) == 0)
     s += 3;
-  for (p = sigtab; p < sigtab + sizeof (sigtab) / sizeof (sigtab[0]); p++)
+  for (struct sigtab const *p = sigtab; p < sigtab + nsigtab; p++)
     if (strcmp (p->name, s) == 0)
       return p->signo;
   paxfatal (0, _("Unknown signal name: %s"), name);
@@ -1137,7 +1132,7 @@ struct textual_date
   char *date;
 };
 
-static int
+static bool
 get_date_or_file (struct tar_args *args, const char *option,
 		  const char *str, struct timespec *ts)
 {
@@ -1146,7 +1141,7 @@ get_date_or_file (struct tar_args *args, const char *option,
       || *str == '.')
     {
       struct stat st;
-      if (stat (str, &st) != 0)
+      if (stat (str, &st) < 0)
 	{
 	  stat_error (str);
 	  paxusage (_("Date sample file not found"));
@@ -1160,7 +1155,7 @@ get_date_or_file (struct tar_args *args, const char *option,
 	  paxwarn (0, _("Substituting %s for unknown date format %s"),
 		   tartime (*ts, false), quote (str));
 	  ts->tv_nsec = 0;
-	  return 1;
+	  return false;
 	}
       else
 	{
@@ -1172,7 +1167,7 @@ get_date_or_file (struct tar_args *args, const char *option,
 	  args->textual_date = p;
 	}
     }
-  return 0;
+  return true;
 }
 
 static void
@@ -1222,7 +1217,7 @@ tar_help_filter (int key, const char *text, MAYBE_UNUSED void *input)
   switch (key)
     {
     default:
-      s = (char*) text;
+      s = (char *) text;
       break;
 
     case 'j':
@@ -1288,11 +1283,11 @@ expand_pax_option (struct tar_args *targs, const char *arg)
   obstack_init (&stk);
   while (*arg)
     {
-      size_t seglen = strcspn (arg, ",");
+      idx_t seglen = strcspn (arg, ",");
       char *p = memchr (arg, '=', seglen);
       if (p)
 	{
-	  size_t len = p - arg + 1;
+	  idx_t len = p - arg + 1;
 	  obstack_grow (&stk, arg, len);
 	  len = seglen - len;
 	  for (++p; *p && c_isspace (*p); p++)
@@ -1303,7 +1298,7 @@ expand_pax_option (struct tar_args *targs, const char *arg)
 	      char *tmp = xmalloc (len);
 	      memcpy (tmp, p + 1, len-2);
 	      tmp[len-2] = 0;
-	      if (get_date_or_file (targs, "--pax-option", tmp, &ts) == 0)
+	      if (get_date_or_file (targs, "--pax-option", tmp, &ts))
 		{
 		  char buf[TIMESPEC_STRSIZE_BOUND];
 		  char const *s = code_timespec (ts, buf);
@@ -1369,7 +1364,7 @@ static char const *const sort_mode_arg[] = {
   NULL
 };
 
-static int sort_mode_flag[] = {
+static enum savedir_option const sort_mode_flag[] = {
     SAVEDIR_SORT_NONE,
     SAVEDIR_SORT_NAME,
 #if D_INO_IN_DIRENT
@@ -1384,7 +1379,7 @@ static char const *const hole_detection_args[] =
   "raw", "seek", NULL
 };
 
-static int const hole_detection_types[] =
+static enum hole_detection_method const hole_detection_types[] =
 {
   HOLE_DETECTION_RAW, HOLE_DETECTION_SEEK
 };
@@ -1393,7 +1388,7 @@ ARGMATCH_VERIFY (hole_detection_args, hole_detection_types);
 
 
 static void
-set_old_files_option (int code, struct option_locus *loc)
+set_old_files_option (enum old_files code, struct option_locus *loc)
 {
   struct option_locus *prev;
   /* Option compatibility map. 0 means two options are incompatible. */
@@ -1436,12 +1431,8 @@ parse_opt (int key, char *arg, struct argp_state *state)
     {
     case ARGP_KEY_INIT:
       if (state->root_argp->children)
-	{
-	  int i;
-
-	  for (i = 0; state->root_argp->children[i].argp; i++)
-	    state->child_inputs[i] = state->input;
-	}
+	for (idx_t i = 0; state->root_argp->children[i].argp; i++)
+	  state->child_inputs[i] = state->input;
       break;
 
     case ARGP_KEY_ARG:
@@ -1508,10 +1499,9 @@ parse_opt (int key, char *arg, struct argp_state *state)
 
     case 'f':
       if (archive_names == allocated_archive_names)
-	archive_name_array = x2nrealloc (archive_name_array,
-					 &allocated_archive_names,
-					 sizeof (archive_name_array[0]));
-
+	archive_name_array = xpalloc (archive_name_array,
+				      &allocated_archive_names,
+				      1, -1, sizeof *archive_name_array);
       archive_name_array[archive_names++] = arg;
       break;
 
@@ -1527,15 +1517,13 @@ parse_opt (int key, char *arg, struct argp_state *state)
 #ifdef DEVICE_PREFIX
       {
 	int device = key - '0';
-	int density;
-	static char buf[sizeof DEVICE_PREFIX + 10];
-	char *cursor;
+	static char buf[sizeof DEVICE_PREFIX + INT_STRLEN_BOUND (int)]
+	  = DEVICE_PREFIX;
 
 	if (arg[1])
 	  argp_error (state, _("Malformed density argument: %s"), quote (arg));
 
-	strcpy (buf, DEVICE_PREFIX);
-	cursor = buf + strlen (buf);
+	char *cursor = buf + sizeof DEVICE_PREFIX - 1;
 
 #ifdef DENSITY_LETTER
 
@@ -1565,9 +1553,9 @@ parse_opt (int key, char *arg, struct argp_state *state)
 #endif /* not DENSITY_LETTER */
 
 	if (archive_names == allocated_archive_names)
-	  archive_name_array = x2nrealloc (archive_name_array,
-					   &allocated_archive_names,
-					   sizeof (archive_name_array[0]));
+	  archive_name_array = xpalloc (archive_name_array,
+					&allocated_archive_names,
+					1, -1, sizeof *archive_name_array);
 	archive_name_array[archive_names++] = xstrdup (buf);
       }
       break;
@@ -1646,7 +1634,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
       break;
 
     case 'l':
-      check_links_option = 1;
+      check_links_option = true;
       break;
 
     case 'L':
@@ -1809,7 +1797,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
 
     case 't':
       set_subcommand_option (LIST_SUBCOMMAND);
-      verbose_option++;
+      verbose_option += verbose_option <= 2;
       break;
 
     case TEST_LABEL_OPTION:
@@ -1837,7 +1825,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
       break;
 
     case 'v':
-      verbose_option++;
+      verbose_option += verbose_option <= 2;
       warning_option |= WARN_VERBOSE_WARNINGS;
       break;
 
@@ -2008,7 +1996,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
       else
 	{
 	  char *end;
-	  occurrence_option = stoint (arg, &end, NULL, 0, UINTMAX_MAX);
+	  occurrence_option = stoint (arg, &end, NULL, 0, INTMAX_MAX);
 	  if (*end)
 	    paxfatal (0, "%s: %s", quotearg_colon (arg), _("Invalid number"));
 	}
@@ -2118,7 +2106,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
     case STRIP_COMPONENTS_OPTION:
       {
 	char *end;
-	strip_name_components = stoint (arg, &end, NULL, 0, SIZE_MAX);
+	strip_name_components = stoint (arg, &end, NULL, 0, IDX_MAX);
 	if (*end)
 	  paxusage ("%s: %s", quotearg_colon (arg),
 		    _("Invalid number of elements"));
@@ -2191,16 +2179,16 @@ parse_opt (int key, char *arg, struct argp_state *state)
       break;
 
     case XATTR_OPTION:
-      set_xattr_option (1);
+      set_xattr_option (true);
       break;
 
     case NO_XATTR_OPTION:
-      set_xattr_option (-1);
+      set_xattr_option (false);
       break;
 
     case XATTR_INCLUDE:
     case XATTR_EXCLUDE:
-      set_xattr_option (1);
+      set_xattr_option (true);
       xattrs_mask_add (arg, (key == XATTR_INCLUDE));
       break;
 
@@ -2240,7 +2228,7 @@ static struct argp argp = {
 void
 usage (int status)
 {
-  argp_help (&argp, stderr, ARGP_HELP_SEE, (char*) program_name);
+  argp_help (&argp, stderr, ARGP_HELP_SEE, (char *) program_name);
   close_stdout ();
   exit (status);
 }
@@ -2248,7 +2236,7 @@ usage (int status)
 /* Parse the options for tar.  */
 
 static struct argp_option const *
-find_argp_option_key (struct argp_option const *o, int key)
+find_argp_option_key (struct argp_option const *o, char key)
 {
   for (;
        !(o->name == NULL
@@ -2262,7 +2250,7 @@ find_argp_option_key (struct argp_option const *o, int key)
 }
 
 static struct argp_option const *
-find_argp_option (struct argp *ap, int key)
+find_argp_option (struct argp *ap, char key)
 {
   struct argp_option const *p = NULL;
   struct argp_child const *child;
@@ -2287,7 +2275,7 @@ static const char *tar_authors[] = {
 };
 
 /* Subcommand classes */
-enum
+enum subcommand_class
   {
     SUBCL_READ   = 1 << 0, /* Reads from the archive.  */
     SUBCL_WRITE  = 1 << 1, /* Writes to the archive.  */
@@ -2296,7 +2284,7 @@ enum
     SUBCL_OCCUR  = 1 << 4, /* Allows the use of the occurrence option.  */
   };
 
-static int const subcommand_class[] = {
+static char const subcommand_class[] = {
   [UNKNOWN_SUBCOMMAND	] = 0,
   [APPEND_SUBCOMMAND	] = SUBCL_WRITE | SUBCL_UPDATE,
   [CAT_SUBCOMMAND	] = SUBCL_WRITE,
@@ -2311,7 +2299,7 @@ static int const subcommand_class[] = {
 
 /* Is subcommand_option in class(es) f?  */
 static bool
-is_subcommand_class (int f)
+is_subcommand_class (enum subcommand_class f)
 {
   return subcommand_class[subcommand_option] & f;
 }
@@ -2343,12 +2331,12 @@ parse_default_options (struct tar_args *args)
     return;
 
   ws.ws_offs = 1;
-  if (wordsplit (opts, &ws, WRDSF_DEFFLAGS|WRDSF_DOOFFS))
+  if (wordsplit (opts, &ws, WRDSF_DEFFLAGS | WRDSF_DOOFFS) != WRDSE_OK)
     paxfatal (0, _("cannot split TAR_OPTIONS: %s"), wordsplit_strerror (&ws));
   if (ws.ws_wordc)
     {
       int idx;
-      ws.ws_wordv[0] = (char*) program_name;
+      ws.ws_wordv[0] = (char *) program_name;
       save_loc_ptr = args->loc;
       args->loc = &loc;
       int argc;
@@ -2416,7 +2404,6 @@ decode_options (int argc, char **argv)
       char **new_argv;		/* argv value for rearranged arguments */
       char *const *in;		/* cursor into original argv */
       char **out;		/* cursor into rearranged argv */
-      const char *letter;	/* cursor into old option letters */
       char buffer[3];		/* constructed option buffer */
 
       /* Initialize a constructed option.  */
@@ -2426,8 +2413,11 @@ decode_options (int argc, char **argv)
 
       /* Allocate a new argument array, and copy program name in it.  */
 
-      new_argc = argc - 1 + strlen (argv[1]);
-      new_argv = xmalloc ((new_argc + 1) * sizeof (char *));
+      idx_t new_arg_slots;
+      if (ckd_add (&new_arg_slots, argc, strlen (argv[1]))
+	  || ckd_sub (&new_argc, new_arg_slots, 1))
+	xalloc_die ();
+      new_argv = xinmalloc (new_arg_slots, sizeof *new_argv);
       in = argv;
       out = new_argv;
       *out++ = *in++;
@@ -2435,7 +2425,7 @@ decode_options (int argc, char **argv)
       /* Copy each old letter option as a separate option, and have the
 	 corresponding argument moved next to it.  */
 
-      for (letter = *in++; *letter; letter++)
+      for (char const *letter = *in++; *letter; letter++)
 	{
 	  struct argp_option const *opt;
 
@@ -2532,10 +2522,12 @@ decode_options (int argc, char **argv)
       /* If no archive file name given, try TAPE from the environment, or
 	 else, DEFAULT_ARCHIVE from the configuration process.  */
 
+      static char const *default_archive = DEFAULT_ARCHIVE;
+      char const *tape = getenv ("TAPE");
+      if (tape)
+	default_archive = tape;
+      archive_name_array = &default_archive;
       archive_names = 1;
-      archive_name_array[0] = getenv ("TAPE");
-      if (! archive_name_array[0])
-	archive_name_array[0] = DEFAULT_ARCHIVE;
     }
 
   /* Allow multiple archives only with '-M'.  */
@@ -2640,7 +2632,7 @@ decode_options (int argc, char **argv)
       && !is_subcommand_class (SUBCL_READ))
     paxusage (_("--selinux can be used only on POSIX archives"));
 
-  if ((xattrs_option > 0)
+  if (xattrs_option
       && archive_format != POSIX_FORMAT
       && !is_subcommand_class (SUBCL_READ))
     paxusage (_("--xattrs can be used only on POSIX archives"));
@@ -2718,7 +2710,7 @@ decode_options (int argc, char **argv)
       /* --test-label is silent if the user has specified the label name to
 	 compare against. */
       if (!name_more_files ())
-	verbose_option++;
+	verbose_option += verbose_option <= 2;
     }
   else if (utc_option)
     verbose_option = 2;
@@ -2762,7 +2754,7 @@ decode_options (int argc, char **argv)
       for (archive_name_cursor = archive_name_array;
 	   archive_name_cursor < archive_name_array + archive_names;
 	   archive_name_cursor++)
-	if (!strcmp (*archive_name_cursor, "-"))
+	if (strcmp (*archive_name_cursor, "-") == 0)
 	  request_stdin ("-f");
       break;
 
@@ -2772,7 +2764,7 @@ decode_options (int argc, char **argv)
       for (archive_name_cursor = archive_name_array;
 	   archive_name_cursor < archive_name_array + archive_names;
 	   archive_name_cursor++)
-	if (!strcmp (*archive_name_cursor, "-"))
+	if (strcmp (*archive_name_cursor, "-") == 0)
 	  paxusage (_("Options '-Aru' are incompatible with '-f -'"));
 
     default:
@@ -2854,17 +2846,11 @@ main (int argc, char **argv)
   set_quoting_style (0, DEFAULT_QUOTING_STYLE);
 
   close_stdout_set_file_name (_("stdout"));
-  /* Make sure we have first three descriptors available */
-  if (stdopen ())
-    paxfatal (0, _("failed to assert availability"
-		   " of the standard file descriptors"));
 
-  /* Pre-allocate a few structures.  */
-
-  allocated_archive_names = 10;
-  archive_name_array =
-    xmalloc (sizeof (const char *) * allocated_archive_names);
-  archive_names = 0;
+  int err = stdopen ();
+  if (err != 0)
+    paxfatal (err, _("failed to assert availability"
+		     " of the standard file descriptors"));
 
   /* System V fork+wait does not work if SIGCHLD is ignored.  */
   signal (SIGCHLD, SIG_DFL);
@@ -2937,21 +2923,12 @@ main (int argc, char **argv)
   if (volno_file_option)
     closeout_volume_number ();
 
-  /* There is little point to freeing, as we are about to exit,
-     and freeing is more likely to cause than cure trouble.  */
-  if (false)
-    {
-      free (archive_name_array);
-      xattrs_clear_setup ();
-      name_term ();
-    }
-
   if (exit_status == TAREXIT_FAILURE)
     error (0, 0, _("Exiting with failure status due to previous errors"));
 
   if (stdlis == stdout)
     close_stdout ();
-  else if (ferror (stderr) || fclose (stderr) != 0)
+  else if (ferror (stderr) || fclose (stderr) < 0)
     set_exit_status (TAREXIT_FAILURE);
 
   return exit_status;

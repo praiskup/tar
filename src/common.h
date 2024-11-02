@@ -109,11 +109,11 @@ extern bool utc_option;
 /* Output file timestamps to the full resolution */
 extern bool full_time_option;
 
-/* This variable tells how to interpret newer_mtime_option, below.  If zero,
+/* This variable tells how to interpret newer_mtime_option, below.  If false,
    files get archived if their mtime is not less than newer_mtime_option.
-   If nonzero, files get archived if *either* their ctime or mtime is not less
+   If true, files get archived if *either* their ctime or mtime is not less
    than newer_mtime_option.  */
-extern int after_date_option;
+extern bool after_date_option;
 
 enum atime_preserve
 {
@@ -172,7 +172,7 @@ extern const char *info_script_option;
 extern bool interactive_option;
 
 /* If nonzero, extract only Nth occurrence of each named file */
-extern uintmax_t occurrence_option;
+extern intmax_t occurrence_option;
 
 enum old_files
 {
@@ -274,12 +274,12 @@ extern int selinux_context_option;
 /* If positive, save the ACLs.  */
 extern int acls_option;
 
-/* If positive, save the user and root xattrs.  */
-extern int xattrs_option;
+/* If true, save the user and root xattrs.  */
+extern bool xattrs_option;
 
 /* When set, strip the given number of file name components from the file name
    before extracting */
-extern size_t strip_name_components;
+extern idx_t strip_name_components;
 
 extern bool show_omitted_dirs_option;
 
@@ -337,7 +337,7 @@ extern bool posixly_correct;
 /* List of tape drive names, number of such tape drives,
    and current cursor in list.  */
 extern const char **archive_name_array;
-extern size_t archive_names;
+extern idx_t archive_names;
 extern const char **archive_name_cursor;
 
 /* Output index file name.  */
@@ -353,7 +353,7 @@ struct name
     struct name *prev;          /* Link to the previous element */
 
     char *name;                 /* File name or globbing pattern */
-    size_t length;		/* cached strlen (name) */
+    idx_t length;		/* cached strlen (name) */
     int matching_flags;         /* wildcard flags if name is a pattern */
     bool is_wildcard;           /* true if this is a wildcard pattern */
     bool cmdline;               /* true if this name was given in the
@@ -361,7 +361,7 @@ struct name
 
     idx_t change_dir;		/* Number of the directory to change to.
 				   Set with the -C option. */
-    uintmax_t found_count;	/* number of times a matching file has
+    intmax_t found_count;	/* number of times a matching file has
 				   been found */
 
     /* The following members are used for incremental dumps only,
@@ -432,10 +432,9 @@ extern bool seekable_archive;
 extern FILE *stdlis;
 extern bool write_archive_to_stdout;
 extern char *volume_label;
-extern size_t volume_label_count;
 extern char *continued_file_name;
-extern uintmax_t continued_file_size;
-extern uintmax_t continued_file_offset;
+extern off_t continued_file_size;
+extern off_t continued_file_offset;
 extern off_t records_written;
 extern union block *record_start;
 extern union block *record_end;
@@ -445,7 +444,7 @@ extern off_t records_read;
 char *drop_volume_label_suffix (const char *label)
   _GL_ATTRIBUTE_MALLOC _GL_ATTRIBUTE_DEALLOC_FREE;
 
-size_t available_space_after (union block *pointer);
+idx_t available_space_after (union block *pointer);
 off_t current_block_ordinal (void);
 void close_archive (void);
 void closeout_volume_number (void);
@@ -467,7 +466,8 @@ off_t seek_archive (off_t size);
 void set_start_time (void);
 
 enum { TF_READ, TF_WRITE, TF_DELETED };
-int format_total_stats (FILE *fp, char const *const *formats, int eor, int eol);
+intmax_t format_total_stats (FILE *fp, char const *const *formats,
+			     char eor, char eol);
 void print_total_stats (void);
 
 void mv_begin_write (const char *file_name, off_t totsize, off_t sizeleft);
@@ -480,6 +480,15 @@ void buffer_write_global_xheader (void);
 
 const char *first_decompress_program (int *pstate);
 const char *next_decompress_program (int *pstate);
+
+/* Sum values returned by printf to estimate the total bytes output.
+   Estimate -1 if there was a problem, e.g., int overflow or I/O error.  */
+COMMON_INLINE intmax_t
+add_printf (intmax_t a, intmax_t b)
+{
+  intmax_t sum;
+  return (a < 0) | (b < 0) | ckd_add (&sum, a, b) ? -1 : sum;
+}
 
 /* Module create.c.  */
 
@@ -507,7 +516,7 @@ void finish_header (struct tar_stat_info *st, union block *header,
 void simple_finish_header (union block *header);
 union block *write_extended (bool global, struct tar_stat_info *st,
 			     union block *old_header);
-union block *start_private_header (const char *name, size_t size, time_t t);
+union block *start_private_header (const char *name, idx_t size, time_t t);
 void write_eot (void);
 void check_links (void);
 int subfile_open (struct tar_stat_info const *dir, char const *file, int flags);
@@ -520,8 +529,8 @@ enum exclusion_tag_type check_exclusion_tags (struct tar_stat_info const *st,
 #define OFF_TO_CHARS(val, where) off_to_chars (val, where, sizeof (where))
 #define TIME_TO_CHARS(val, where) time_to_chars (val, where, sizeof (where))
 
-bool off_to_chars (off_t off, char *buf, size_t size);
-bool time_to_chars (time_t t, char *buf, size_t size);
+bool off_to_chars (off_t off, char *buf, int size);
+bool time_to_chars (time_t t, char *buf, int size);
 
 /* Module diffarch.c.  */
 
@@ -556,18 +565,18 @@ const char *directory_contents (struct directory *dir);
 const char *safe_directory_contents (struct directory *dir);
 
 void rebase_directory (struct directory *dir,
-		       const char *samp, size_t slen,
-		       const char *repl, size_t rlen);
+		       const char *samp, idx_t slen,
+		       const char *repl, idx_t rlen);
 
 void append_incremental_renames (struct directory *dir);
 void show_snapshot_field_ranges (void);
 void read_directory_file (void);
 void write_directory_file (void);
 void purge_directory (char const *directory_name);
-void list_dumpdir (char *buffer, size_t size);
+void list_dumpdir (char *buffer, idx_t size);
 void update_parent_directory (struct tar_stat_info *st);
 
-size_t dumpdir_size (const char *p);
+idx_t dumpdir_size (const char *p);
 bool is_dumpdir (struct tar_stat_info *stat_info);
 void clear_directory_table (void);
 
@@ -598,19 +607,16 @@ extern union block *current_header;
 extern enum archive_format current_format;
 extern union block *recent_long_name;
 extern union block *recent_long_link;
-extern size_t recent_long_name_blocks;
-extern size_t recent_long_link_blocks;
+extern idx_t recent_long_name_blocks;
+extern idx_t recent_long_link_blocks;
 
 void decode_header (union block *header, struct tar_stat_info *stat_info,
-		    enum archive_format *format_pointer, int do_user_group);
-void transform_stat_info (int typeflag, struct tar_stat_info *stat_info);
+		    enum archive_format *format_pointer, bool do_user_group);
+void transform_stat_info (char typeflag, struct tar_stat_info *stat_info);
 char const *tartime (struct timespec t, bool full_time);
 
 #define OFF_FROM_HEADER(where) off_from_header (where, sizeof (where))
-#define UINTMAX_FROM_HEADER(where) uintmax_from_header (where, sizeof (where))
-
-off_t off_from_header (const char *buf, size_t size);
-uintmax_t uintmax_from_header (const char *buf, size_t size);
+off_t off_from_header (const char *buf, int size);
 
 void list_archive (void);
 void test_archive_label (void);
@@ -636,15 +642,15 @@ void assign_string_or_null (char **dest, const char *src)
   ATTRIBUTE_NONNULL ((1));
 void assign_string (char **dest, const char *src) ATTRIBUTE_NONNULL ((1, 2));
 void assign_null (char **dest) ATTRIBUTE_NONNULL ((1));
-void assign_string_n (char **string, const char *value, size_t n);
+void assign_string_n (char **string, const char *value, idx_t n);
 #define ASSIGN_STRING_N(s,v) assign_string_n (s, v, sizeof (v))
-int unquote_string (char *str);
+void unquote_string (char *str);
 char *zap_slashes (char *name);
 char *normalize_filename (idx_t, char const *);
 void normalize_filename_x (char *name);
-void replace_prefix (char **pname, const char *samp, size_t slen,
-		     const char *repl, size_t rlen);
-char *tar_savedir (const char *name, int must_exist);
+void replace_prefix (char **pname, const char *samp, idx_t slen,
+		     const char *repl, idx_t rlen);
+char *tar_savedir (const char *name, bool must_exist);
 
 typedef struct namebuf *namebuf_t;
 namebuf_t namebuf_create (const char *dir);
@@ -654,21 +660,15 @@ char *namebuf_name (namebuf_t buf, const char *name);
 const char *tar_dirname (void);
 
 /* intmax (N) is like ((intmax_t) (N)) except without a cast so
-   that it is an error if N is a pointer.  Similarly for uintmax.  */
+   that it is an error if N is a pointer.  */
 COMMON_INLINE intmax_t
 intmax (intmax_t n)
 {
   return n;
 }
-COMMON_INLINE uintmax_t
-uintmax (uintmax_t n)
-{
-  return n;
-}
-/* intmax should be used only with signed types, and uintmax for unsigned.
+/* intmax should be used only with signed types.
    To bypass this check parenthesize the function, e.g., (intmax) (n).  */
 #define intmax(n) verify_expr (EXPR_SIGNED (n), (intmax) (n))
-#define uintmax(n) verify_expr (!EXPR_SIGNED (n), (uintmax) (n))
 
 /* Represent N using a signed integer I such that (uintmax_t) I == N.
    With a good optimizing compiler, this is equivalent to (intmax_t) i
@@ -688,9 +688,12 @@ represent_uintmax (uintmax_t n)
     }
 }
 
-enum { UINTMAX_STRSIZE_BOUND = INT_BUFSIZE_BOUND (uintmax_t) };
-enum { SYSINT_BUFSIZE =
-	 max (UINTMAX_STRSIZE_BOUND, INT_BUFSIZE_BOUND (intmax_t)) };
+enum
+  {
+    INTMAX_STRSIZE_BOUND = INT_BUFSIZE_BOUND (intmax_t),
+    UINTMAX_STRSIZE_BOUND = INT_BUFSIZE_BOUND (uintmax_t),
+    SYSINT_BUFSIZE = max (INTMAX_STRSIZE_BOUND, UINTMAX_STRSIZE_BOUND)
+  };
 char *sysinttostr (uintmax_t, intmax_t, uintmax_t, char buf[SYSINT_BUFSIZE]);
 intmax_t stoint (char const *, char **, bool *, intmax_t, uintmax_t);
 char *timetostr (time_t, char buf[SYSINT_BUFSIZE]);
@@ -731,7 +734,7 @@ void undo_last_backup (void);
 
 int deref_stat (char const *name, struct stat *buf);
 
-ptrdiff_t blocking_read (int fd, void *buf, idx_t count);
+idx_t blocking_read (int fd, void *buf, idx_t count);
 idx_t blocking_write (int fd, void const *buf, idx_t count);
 
 extern idx_t chdir_current;
@@ -742,7 +745,7 @@ idx_t chdir_count (void);
 
 void close_diag (char const *name);
 void open_diag (char const *name);
-void read_diag_details (char const *name, off_t offset, size_t size);
+void read_diag_details (char const *name, off_t offset, idx_t size);
 void readlink_diag (char const *name);
 void savedir_diag (char const *name);
 void seek_diag_details (char const *name, off_t offset);
@@ -776,13 +779,12 @@ extern struct argp names_argp;
 extern struct name *gnu_list_name;
 
 void gid_to_gname (gid_t gid, char **gname);
-int gname_to_gid (char const *gname, gid_t *pgid);
+bool gname_to_gid (char const *gname, gid_t *pgid);
 void uid_to_uname (uid_t uid, char **uname);
-int uname_to_uid (char const *uname, uid_t *puid);
+bool uname_to_uid (char const *uname, uid_t *puid);
 
 void name_init (void);
 void name_add_name (const char *name);
-void name_term (void);
 char const *name_next (bool);
 void name_gather (void);
 struct name *addname (char const *, idx_t, bool, struct name *);
@@ -796,7 +798,7 @@ struct name *name_scan (const char *name, bool exact);
 struct name const *name_from_list (void);
 void blank_name_list (void);
 char *make_file_name (const char *dir_name, const char *name);
-ptrdiff_t stripped_prefix_len (char const *file_name, size_t num);
+ptrdiff_t stripped_prefix_len (char const *file_name, idx_t num);
 bool all_names_found (struct tar_stat_info *st);
 
 void add_avoided_name (char const *name);
@@ -824,7 +826,7 @@ wasfound (struct name const *c)
 
 _Noreturn void usage (int);
 
-int confirm (const char *message_action, const char *name);
+bool confirm (const char *message_action, const char *name);
 
 void tar_stat_init (struct tar_stat_info *st);
 bool tar_stat_close (struct tar_stat_info *st);
@@ -904,7 +906,7 @@ void xheader_string_add (struct xheader *xhdr, char const *s);
 bool xheader_string_end (struct xheader *xhdr, char const *keyword);
 bool xheader_keyword_deleted_p (const char *kw);
 char *xheader_format_name (struct tar_stat_info *st, const char *fmt,
-			   size_t n);
+			   intmax_t n);
 void xheader_xattr_init (struct tar_stat_info *st);
 
 void xattr_map_init (struct xattr_map *map);
@@ -929,20 +931,18 @@ bool sys_compare_links (struct stat *link_data, struct stat *stat_data);
 int sys_truncate (int fd);
 pid_t sys_child_open_for_compress (void);
 pid_t sys_child_open_for_uncompress (void);
-size_t sys_write_archive_buffer (void);
+idx_t sys_write_archive_buffer (void);
 bool sys_get_archive_stat (void);
-int sys_exec_command (char *file_name, int typechar, struct tar_stat_info *st);
+int sys_exec_command (char *file_name, char typechar, struct tar_stat_info *st);
 void sys_wait_command (void);
-int sys_exec_info_script (const char **archive_name, int volume_number);
+int sys_exec_info_script (const char **archive_name, intmax_t volume_number);
 void sys_exec_checkpoint_script (const char *script_name,
 				 const char *archive_name,
 				 intmax_t checkpoint_number);
 bool mtioseek (bool count_files, off_t count);
-int sys_exec_setmtime_script (const char *script_name,
-			      int dirfd,
-			      const char *file_name,
-			      const char *fmt,
-			      struct timespec *ts);
+bool sys_exec_setmtime_script (const char *script_name, int dirfd,
+			       const char *file_name, const char *fmt,
+			       struct timespec *ts);
 
 /* Module compare.c */
 void report_difference (struct tar_stat_info *st, const char *message, ...)
@@ -973,7 +973,7 @@ enum
 void set_transform_expr (const char *expr);
 bool transform_name (char **pinput, int type);
 bool transform_name_fp (char **pinput, int type,
-			char *(*fun)(char *, void *), void *);
+			char *(*fun) (char *, int), int dat);
 bool transform_program_p (void);
 
 /* Module suffix.c */
@@ -1058,9 +1058,9 @@ void exclude_vcs_ignores (void);
 
 /* Module map.c */
 void owner_map_read (char const *name);
-int owner_map_translate (uid_t uid, uid_t *new_uid, char const **new_name);
+void owner_map_translate (uid_t uid, uid_t *new_uid, char const **new_name);
 void group_map_read (char const *file);
-int group_map_translate (gid_t gid, gid_t *new_gid, char const **new_name);
+void group_map_translate (gid_t gid, gid_t *new_gid, char const **new_name);
 
 
 _GL_INLINE_HEADER_END

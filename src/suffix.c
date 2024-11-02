@@ -21,15 +21,17 @@
 
 struct compression_suffix
 {
-  const char *suffix;
-  size_t length;
-  const char *program;
+  char suffix[sizeof "tbz2"];  /* "tbz2" is tied for longest.  */
+  char program[max (max (max (sizeof GZIP_PROGRAM, sizeof COMPRESS_PROGRAM),
+			 max (sizeof BZIP2_PROGRAM, sizeof LZIP_PROGRAM)),
+		    max (max (sizeof LZMA_PROGRAM, sizeof LZOP_PROGRAM),
+			 max (sizeof XZ_PROGRAM, sizeof ZSTD_PROGRAM)))];
 };
 
-static struct compression_suffix compression_suffixes[] = {
+static struct compression_suffix const compression_suffixes[] = {
 #define __CAT2__(a,b) a ## b
-#define S(s,p) #s, sizeof (#s) - 1, __CAT2__(p,_PROGRAM)
-  { "tar", 3, NULL },
+#define S(s, p) #s, __CAT2__(p,_PROGRAM)
+  { "tar", "" },
   { S(gz,   GZIP) },
   { S(z,    GZIP) },
   { S(tgz,  GZIP) },
@@ -49,7 +51,6 @@ static struct compression_suffix compression_suffixes[] = {
   { S(txz,  XZ) }, /* Slackware */
   { S(zst,  ZSTD) },
   { S(tzst, ZSTD) },
-  { NULL }
 #undef S
 #undef __CAT2__
 };
@@ -60,27 +61,22 @@ static struct compression_suffix compression_suffixes[] = {
    there the length of NAME with that suffix stripped, or 0 if NAME has
    no suffix. */
 static struct compression_suffix const *
-find_compression_suffix (const char *name, size_t *ret_len)
+find_compression_suffix (char const *name, idx_t *ret_len)
 {
-  char *suf = strrchr (name, '.');
+  char const *suf = strrchr (name, '.');
 
   if (suf && suf[1] != 0 && suf[1] != '/')
     {
-      size_t len;
-      struct compression_suffix *p;
-
-      suf++;
-      len = strlen (suf);
       if (ret_len)
-	*ret_len = strlen (name) - len - 1;
+	*ret_len = suf - name;
+      suf++;
 
-      for (p = compression_suffixes; p->suffix; p++)
-	{
-	  if (p->length == len && memcmp (p->suffix, suf, len) == 0)
-	    {
-	      return p;
-	    }
-	}
+      for (struct compression_suffix const *p = compression_suffixes;
+	   p < (compression_suffixes
+		+ sizeof compression_suffixes / sizeof *compression_suffixes);
+	   p++)
+	if (strcmp (p->suffix, suf) == 0)
+	  return p;
     }
   else if (ret_len)
     *ret_len = 0;
@@ -95,10 +91,10 @@ void
 set_compression_program_by_suffix (const char *name, const char *defprog,
 				   bool verbose)
 {
-  size_t len;
+  idx_t len;
   struct compression_suffix const *p = find_compression_suffix (name, &len);
   if (p)
-    use_compress_program_option = p->program;
+    use_compress_program_option = p->program[0] ? p->program : NULL;
   else
     {
       use_compress_program_option = defprog;
@@ -115,7 +111,7 @@ char *
 strip_compression_suffix (const char *name)
 {
   char *s = NULL;
-  size_t len;
+  idx_t len;
   struct compression_suffix const *p = find_compression_suffix (name, &len);
 
   if (p)

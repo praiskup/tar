@@ -90,7 +90,7 @@ int warning_option = WARN_ALL & ~(WARN_VERBOSE_WARNINGS|WARN_MISSING_ZERO_BLOCKS
 void
 set_warning_option (const char *arg)
 {
-  int negate = 0;
+  bool negate = false;
   int option;
 
   if (strcmp (arg, "none") == 0)
@@ -100,7 +100,7 @@ set_warning_option (const char *arg)
     }
   if (strlen (arg) > 2 && memcmp (arg, "no-", 3) == 0)
     {
-      negate = 1;
+      negate = true;
       arg += 3;
     }
 

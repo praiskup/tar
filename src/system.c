@@ -137,7 +137,7 @@ sys_truncate (int fd)
   return write (fd, "", 0);
 }
 
-size_t
+idx_t
 sys_write_archive_buffer (void)
 {
   return full_write (archive, record_start->buffer, record_size);
@@ -157,7 +157,7 @@ sys_child_open_for_uncompress (void)
   paxfatal (0, _("Cannot use compressed or remote archives"));
 }
 
-int
+bool
 sys_exec_setmtime_script (const char *script_name,
 			  int dirfd,
 			  const char *file_name,
@@ -289,24 +289,24 @@ sys_compare_links (struct stat *link_data, struct stat *stat_data)
 int
 sys_truncate (int fd)
 {
-  off_t pos = lseek (fd, (off_t) 0, SEEK_CUR);
+  off_t pos = lseek (fd, 0, SEEK_CUR);
   return pos < 0 ? -1 : ftruncate (fd, pos);
 }
 
-/* Return nonzero if NAME is the name of a regular file, or if the file
+/* Return true if NAME is the name of a regular file, or if the file
    does not exist (so it would be created as a regular file).  */
-static int
+static bool
 is_regular_file (const char *name)
 {
   struct stat stbuf;
 
   if (stat (name, &stbuf) == 0)
-    return S_ISREG (stbuf.st_mode);
+    return !!S_ISREG (stbuf.st_mode);
   else
     return errno == ENOENT;
 }
 
-size_t
+idx_t
 sys_write_archive_buffer (void)
 {
   return rmtwrite (archive, record_start->buffer, record_size);
@@ -452,9 +452,9 @@ sys_child_open_for_compress (void)
 
   while (1)
     {
-      size_t status = 0;
+      ptrdiff_t status = 0;
       char *cursor;
-      size_t length;
+      idx_t length;
 
       /* Assemble a record.  */
 
@@ -462,10 +462,10 @@ sys_child_open_for_compress (void)
 	   length < record_size;
 	   length += status, cursor += status)
 	{
-	  size_t size = record_size - length;
+	  idx_t size = record_size - length;
 
 	  status = safe_read (STDIN_FILENO, cursor, size);
-	  if (status == SAFE_READ_ERROR)
+	  if (status < 0)
 	    read_fatal (use_compress_program_option);
 	  if (status == 0)
 	    break;
@@ -517,7 +517,7 @@ run_decompress_program (void)
 	  warnopt (WARN_DECOMPRESS_PROGRAM, errno, _("cannot run %s"), prog);
 	  warnopt (WARN_DECOMPRESS_PROGRAM, 0, _("trying %s"), p);
 	}
-      if (wordsplit (p, &ws, wsflags))
+      if (wordsplit (p, &ws, wsflags) != WRDSE_OK)
 	paxfatal (0, _("cannot split string '%s': %s"),
 		  p, wordsplit_strerror (&ws));
       wsflags |= WRDSF_REUSE;
@@ -617,34 +617,26 @@ sys_child_open_for_uncompress (void)
 
   /* Let's read the archive and pipe it into stdout.  */
 
-  while (1)
+  while (true)
     {
-      char *cursor;
-      size_t maximum;
-      size_t count;
-      size_t status;
-
       clear_read_error_count ();
 
-    error_loop:
-      status = rmtread (archive, record_start->buffer, record_size);
-      if (status == SAFE_READ_ERROR)
-	{
-	  archive_read_error ();
-	  goto error_loop;
-	}
-      if (status == 0)
+      ptrdiff_t n;
+      while ((n = rmtread (archive, record_start->buffer, record_size)) < 0)
+	archive_read_error ();
+      if (n == 0)
 	break;
-      cursor = record_start->buffer;
-      maximum = status;
-      while (maximum)
+
+      char *cursor = record_start->buffer;
+      do
 	{
-	  count = maximum < BLOCKSIZE ? maximum : BLOCKSIZE;
+	  idx_t count = min (n, BLOCKSIZE);
 	  if (full_write (STDOUT_FILENO, cursor, count) != count)
 	    write_error (use_compress_program_option);
 	  cursor += count;
-	  maximum -= count;
+	  n -= count;
 	}
+      while (n);
     }
 
   xclose (STDOUT_FILENO);
@@ -658,8 +650,7 @@ static void
 dec_to_env (char const *envar, uintmax_t num)
 {
   char numstr[UINTMAX_STRSIZE_BOUND];
-  sprintf (numstr, "%ju", num);
-  if (setenv (envar, numstr, 1) != 0)
+  if (setenv (envar, umaxtostr (num, numstr), 1) < 0)
     xalloc_die ();
 }
 
@@ -667,7 +658,7 @@ static void
 time_to_env (char const *envar, struct timespec t)
 {
   char buf[TIMESPEC_STRSIZE_BOUND];
-  if (setenv (envar, code_timespec (t, buf), 1) != 0)
+  if (setenv (envar, code_timespec (t, buf), 1) < 0)
     xalloc_die ();
 }
 
@@ -679,7 +670,7 @@ oct_to_env (char const *envar, mode_t m)
   if (EXPR_SIGNED (m) && sizeof m < sizeof um)
     um &= ~ (UINTMAX_MAX << TYPE_WIDTH (m));
   sprintf (buf, "%#"PRIoMAX, um);
-  if (setenv (envar, buf, 1) != 0)
+  if (setenv (envar, buf, 1) < 0)
     xalloc_die ();
 }
 
@@ -688,7 +679,7 @@ str_to_env (char const *envar, char const *str)
 {
   if (str)
     {
-      if (setenv (envar, str, 1) != 0)
+      if (setenv (envar, str, 1) < 0)
 	xalloc_die ();
     }
   else
@@ -701,7 +692,7 @@ chr_to_env (char const *envar, char c)
   char buf[2];
   buf[0] = c;
   buf[1] = 0;
-  if (setenv (envar, buf, 1) != 0)
+  if (setenv (envar, buf, 1) < 0)
     xalloc_die ();
 }
 
@@ -756,7 +747,7 @@ static pid_t global_pid;
 static void (*pipe_handler) (int sig);
 
 int
-sys_exec_command (char *file_name, int typechar, struct tar_stat_info *st)
+sys_exec_command (char *file_name, char typechar, struct tar_stat_info *st)
 {
   int p[2];
 
@@ -816,7 +807,7 @@ sys_wait_command (void)
 }
 
 int
-sys_exec_info_script (const char **archive_name, int volume_number)
+sys_exec_info_script (const char **archive_name, intmax_t volume_number)
 {
   int p[2];
   static void (*saved_handler) (int sig);
@@ -830,25 +821,33 @@ sys_exec_info_script (const char **archive_name, int volume_number)
     {
       /* Master */
 
-      int rc;
       int status;
       char *buf = NULL;
       size_t size = 0;
-      FILE *fp;
 
       xclose (p[PWRITE]);
-      fp = fdopen (p[PREAD], "r");
+      FILE *fp = fdopen (p[PREAD], "r");
       if (!fp)
 	{
 	  signal (SIGPIPE, saved_handler);
 	  call_arg_error ("fdopen", info_script_option);
 	  return -1;
 	}
-      rc = getline (&buf, &size, fp);
-      fclose (fp);
-
-      if (rc > 0 && buf[rc-1] == '\n')
-	buf[--rc] = 0;
+      ssize_t rc = getline (&buf, &size, fp);
+      if (rc < 0)
+	{
+	  signal (SIGPIPE, saved_handler);
+	  read_error (info_script_option);
+	  return -1;
+	}
+      *archive_name = buf;
+      buf[rc - 1] = '\0';
+      if (fclose (fp) < 0)
+	{
+	  signal (SIGPIPE, saved_handler);
+	  close_error (info_script_option);
+	  return -1;
+	}
 
       while (waitpid (pid, &status, 0) < 0)
 	if (errno != EINTR)
@@ -859,34 +858,19 @@ sys_exec_info_script (const char **archive_name, int volume_number)
 	  }
 
       signal (SIGPIPE, saved_handler);
-
-      if (WIFEXITED (status))
-	{
-	  if (WEXITSTATUS (status) == 0 && rc > 0)
-	    *archive_name = buf;
-	  else
-	    free (buf);
-	  return WEXITSTATUS (status);
-	}
-
-      free (buf);
-      return -1;
+      return WIFEXITED (status) ? WEXITSTATUS (status) : -1;
     }
 
   /* Child */
-  setenv ("TAR_VERSION", PACKAGE_VERSION, 1);
-  setenv ("TAR_ARCHIVE", *archive_name, 1);
-  char intbuf[INT_BUFSIZE_BOUND (intmax_t)];
-  sprintf (intbuf, "%d", volume_number);
-  setenv ("TAR_VOLUME", intbuf, 1);
-  sprintf (intbuf, "%jd", blocking_factor);
-  setenv ("TAR_BLOCKING_FACTOR", intbuf, 1);
+  str_to_env ("TAR_VERSION", PACKAGE_VERSION);
+  str_to_env ("TAR_ARCHIVE", *archive_name);
+  dec_to_env ("TAR_VOLUME", volume_number);
+  dec_to_env ("TAR_BLOCKING_FACTOR", blocking_factor);
   setenv ("TAR_SUBCOMMAND", subcommand_string (subcommand_option), 1);
   setenv ("TAR_FORMAT",
 	  archive_format_string (current_format == DEFAULT_FORMAT ?
 				 archive_format : current_format), 1);
-  sprintf (intbuf, "%d", p[PWRITE]);
-  setenv ("TAR_FD", intbuf, 1);
+  dec_to_env ("TAR_FD", p[PWRITE]);
 
   xclose (p[PREAD]);
 
@@ -918,22 +902,19 @@ sys_exec_checkpoint_script (const char *script_name,
     }
 
   /* Child */
-  setenv ("TAR_VERSION", PACKAGE_VERSION, 1);
-  setenv ("TAR_ARCHIVE", archive_name, 1);
-  char intbuf[INT_BUFSIZE_BOUND (intmax_t)];
-  sprintf (intbuf, "%jd", checkpoint_number);
-  setenv ("TAR_CHECKPOINT", intbuf, 1);
-  sprintf (intbuf, "%td", blocking_factor);
-  setenv ("TAR_BLOCKING_FACTOR", intbuf, 1);
-  setenv ("TAR_SUBCOMMAND", subcommand_string (subcommand_option), 1);
-  setenv ("TAR_FORMAT",
-	  archive_format_string (current_format == DEFAULT_FORMAT ?
-				 archive_format : current_format), 1);
+  str_to_env ("TAR_VERSION", PACKAGE_VERSION);
+  str_to_env ("TAR_ARCHIVE", archive_name);
+  dec_to_env ("TAR_CHECKPOINT", checkpoint_number);
+  dec_to_env ("TAR_BLOCKING_FACTOR", blocking_factor);
+  str_to_env ("TAR_SUBCOMMAND", subcommand_string (subcommand_option));
+  str_to_env ("TAR_FORMAT",
+	      archive_format_string (current_format == DEFAULT_FORMAT
+				     ? archive_format : current_format));
   priv_set_restore_linkdir ();
   xexec (script_name);
 }
 
-int
+bool
 sys_exec_setmtime_script (const char *script_name,
 			  int dirfd,
 			  const char *file_name,
@@ -942,16 +923,16 @@ sys_exec_setmtime_script (const char *script_name,
 {
   pid_t pid;
   int p[2];
-  int stop = 0;
+  bool stop = false;
   struct pollfd pfd;
 
   char *buffer = NULL;
-  size_t buflen = 0;
-  size_t bufsize = 0;
+  idx_t buflen = 0;
+  idx_t bufsize = 0;
   char *cp;
-  int rc = 0;
+  bool rc = true;
 
-  if (pipe (p))
+  if (pipe (p) < 0)
     paxfatal (errno, _("pipe failed"));
 
   if ((pid = xfork ()) == 0)
@@ -962,11 +943,8 @@ sys_exec_setmtime_script (const char *script_name,
       strcat (command, " ");
       strcat (command, file_name);
 
-      if (dirfd != AT_FDCWD)
-	{
-	  if (fchdir (dirfd))
-	    paxfatal (errno, _("chdir failed"));
-	}
+      if (dirfd != AT_FDCWD && fchdir (dirfd) < 0)
+	paxfatal (errno, _("chdir failed"));
 
       close (p[0]);
       if (dup2 (p[1], STDOUT_FILENO) < 0)
@@ -979,6 +957,8 @@ sys_exec_setmtime_script (const char *script_name,
 	open_error (dev_null);
 
       priv_set_restore_linkdir ();
+      /* FIXME: This mishandles shell metacharacters in the file name.
+	 Come to think of it, isn't every use of xexec suspect?  */
       xexec (command);
     }
   close (p[1]);
@@ -994,7 +974,7 @@ sys_exec_setmtime_script (const char *script_name,
 	  if (errno != EINTR)
 	    {
 	      paxerror (errno, _("poll failed"));
-	      stop = 1;
+	      stop = true;
 	      break;
 	    }
 	}
@@ -1003,16 +983,12 @@ sys_exec_setmtime_script (const char *script_name,
       if (pfd.revents & POLLIN)
 	{
 	  if (buflen == bufsize)
-	    {
-	      if (bufsize == 0)
-		bufsize = BUFSIZ;
-	      buffer = x2nrealloc (buffer, &bufsize, 1);
-	    }
+	    buffer = xpalloc (buffer, &bufsize, 1, -1, 1);
 	  ssize_t nread = read (pfd.fd, buffer + buflen, bufsize - buflen);
 	  if (nread < 0)
 	    {
 	      paxerror (errno, _("error reading output of %s"), script_name);
-	      stop = 1;
+	      stop = true;
 	      break;
 	    }
 	  if (nread == 0)
@@ -1032,13 +1008,13 @@ sys_exec_setmtime_script (const char *script_name,
   if (stop)
     {
       free (buffer);
-      return -1;
+      return false;
     }
 
   if (buflen == 0)
     {
       paxerror (0, _("empty output from \"%s %s\""), script_name, file_name);
-      return -1;
+      return false;
     }
 
   cp = memchr (buffer, '\n', buflen);
@@ -1047,7 +1023,7 @@ sys_exec_setmtime_script (const char *script_name,
   else
     {
       if (buflen == bufsize)
-	buffer = x2nrealloc (buffer, &bufsize, 1);
+	buffer = xirealloc (buffer, ++bufsize);
       buffer[buflen] = 0;
     }
 
@@ -1061,13 +1037,13 @@ sys_exec_setmtime_script (const char *script_name,
 	  paxerror (0, _("output from \"%s %s\" does not satisfy format string:"
 			 " %s"),
 		    script_name, file_name, buffer);
-	  rc = -1;
+	  rc = false;
 	}
       else if (*cp != 0)
 	{
 	  paxwarn (0, _("unconsumed output from \"%s %s\": %s"),
 		   script_name, file_name, cp);
-	  rc = -1;
+	  rc = false;
 	}
       else
 	{
@@ -1076,7 +1052,7 @@ sys_exec_setmtime_script (const char *script_name,
 	  if (tm.tm_wday < 0)
 	    {
 	      paxerror (errno, _("mktime failed"));
-	      rc = -1;
+	      rc = false;
 	    }
 	  else
 	    {
@@ -1089,7 +1065,7 @@ sys_exec_setmtime_script (const char *script_name,
     {
       paxerror (0, _("unparsable output from \"%s %s\": %s"),
 		script_name, file_name, buffer);
-      rc = -1;
+      rc = false;
     }
 
   free (buffer);

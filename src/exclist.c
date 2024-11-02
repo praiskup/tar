@@ -72,25 +72,21 @@ struct exclist
 void
 info_attach_exclist (struct tar_stat_info *dir)
 {
-  struct excfile *file;
-  struct exclist *head = NULL, *tail = NULL, *ent;
-  struct vcs_ignore_file *vcsfile;
-
+  struct exclist *head = NULL, *tail = NULL;
   if (dir->exclude_list)
     return;
-  for (file = excfile_head; file; file = file->next)
+
+  for (struct excfile *file = excfile_head; file; file = file->next)
     {
       if (faccessat (dir->fd, file->name, F_OK, 0) == 0)
 	{
-	  FILE *fp;
-	  struct exclude *ex = NULL;
 	  int fd = subfile_open (dir, file->name, O_RDONLY);
 	  if (fd < 0)
 	    {
 	      open_error (file->name);
 	      continue;
 	    }
-	  fp = fdopen (fd, "r");
+	  FILE *fp = fdopen (fd, "r");
 	  if (!fp)
 	    {
 	      paxerror (errno, _("%s: fdopen failed"), file->name);
@@ -98,10 +94,9 @@ info_attach_exclist (struct tar_stat_info *dir)
 	      continue;
 	    }
 
-	  if (!ex)
-	    ex = new_exclude ();
+	  struct exclude *ex = new_exclude ();
 
-	  vcsfile = get_vcs_ignore_file (file->name);
+	  struct vcs_ignore_file *vcsfile = get_vcs_ignore_file (file->name);
 
 	  if (vcsfile->initfn)
 	    vcsfile->data = vcsfile->initfn (vcsfile->data);
@@ -113,7 +108,7 @@ info_attach_exclist (struct tar_stat_info *dir)
 	    paxfatal (errno, "%s", quotearg_colon (file->name));
 	  fclose (fp);
 
-	  ent = xmalloc (sizeof (*ent));
+	  struct exclist *ent = xmalloc (sizeof *ent);
 	  ent->excluded = ex;
 	  ent->flags = file->flags;
 	  ent->prev = tail;
@@ -204,7 +199,8 @@ cvs_addfn (struct exclude *ex, char const *pattern, int options,
 
   options |= EXCLUDE_ALLOC;
   if (wordsplit (pattern, &ws,
-		 WRDSF_NOVAR | WRDSF_NOCMD | WRDSF_SQUEEZE_DELIMS))
+		 WRDSF_NOVAR | WRDSF_NOCMD | WRDSF_SQUEEZE_DELIMS)
+      != WRDSE_OK)
     return;
   for (idx_t i = 0; i < ws.ws_wordc; i++)
     add_exclude (ex, ws.ws_wordv[i], options);
@@ -263,7 +259,6 @@ static void
 hg_addfn (struct exclude *ex, char const *pattern, int options, void *data)
 {
   int *hgopt = data;
-  size_t len;
 
   while (c_isspace (*pattern))
     ++pattern;
@@ -282,7 +277,7 @@ hg_addfn (struct exclude *ex, char const *pattern, int options, void *data)
       return;
     }
 
-  len = strlen(pattern);
+  idx_t len = strlen (pattern);
   if (pattern[len-1] == '/')
     {
       char *p;

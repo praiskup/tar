@@ -79,7 +79,7 @@ map_read (Hash_table **ptab, char const *file,
   struct wordsplit ws;
   int wsopt;
   intmax_t line;
-  int err = 0;
+  bool err = false;
 
   fp = fopen (file, "r");
   if (!fp)
@@ -97,7 +97,7 @@ map_read (Hash_table **ptab, char const *file,
       char *colon;
 
       ++line;
-      if (wordsplit (buf, &ws, wsopt))
+      if (wordsplit (buf, &ws, wsopt) != WRDSE_OK)
 	paxfatal (0, _("%s:%jd: cannot split line: %s"),
 		  file, line, wordsplit_strerror (&ws));
       wsopt |= WRDSF_REUSE;
@@ -106,7 +106,7 @@ map_read (Hash_table **ptab, char const *file,
       if (ws.ws_wordc != 2)
 	{
 	  error (0, 0, _("%s:%jd: malformed line"), file, line);
-	  err = 1;
+	  err = true;
 	  continue;
 	}
 
@@ -114,7 +114,7 @@ map_read (Hash_table **ptab, char const *file,
 	{
 	  if (!parse_id (&orig_id, ws.ws_wordv[0]+1, what, maxval, file, line))
 	    {
-	      err = 1;
+	      err = true;
 	      continue;
 	    }
 	}
@@ -125,7 +125,7 @@ map_read (Hash_table **ptab, char const *file,
 	    {
 	      error (0, 0, _("%s:%jd: can't obtain %s of %s"),
 		     file, line, what, ws.ws_wordv[0]);
-	      err = 1;
+	      err = true;
 	      continue;
 	    }
 	}
@@ -138,7 +138,7 @@ map_read (Hash_table **ptab, char const *file,
 	  *colon++ = 0;
 	  if (!parse_id (&new_id, colon, what, maxval, file, line))
 	    {
-	      err = 1;
+	      err = true;
 	      continue;
 	    }
 	}
@@ -146,7 +146,7 @@ map_read (Hash_table **ptab, char const *file,
 	{
 	  if (!parse_id (&new_id, ws.ws_wordv[1], what, maxval, file, line))
 	    {
-	      err = 1;
+	      err = true;
 	      continue;
 	    }
 	}
@@ -158,7 +158,7 @@ map_read (Hash_table **ptab, char const *file,
 	    {
 	      error (0, 0, _("%s:%jd: can't obtain %s of %s"),
 		     file, line, what, ws.ws_wordv[1]);
-	      err = 1;
+	      err = true;
 	      continue;
 	    }
 	}
@@ -197,11 +197,9 @@ owner_map_read (char const *file)
   map_read (&owner_map, file, name_to_uid, "UID", TYPE_MAXIMUM (uid_t));
 }
 
-int
+void
 owner_map_translate (uid_t uid, uid_t *new_uid, char const **new_name)
 {
-  int rc = 1;
-
   if (owner_map)
     {
       struct mapentry ent, *res;
@@ -212,22 +210,15 @@ owner_map_translate (uid_t uid, uid_t *new_uid, char const **new_name)
 	{
 	  *new_uid = res->new_id;
 	  *new_name = res->new_name;
-	  return 0;
+	  return;
 	}
     }
 
-  if (owner_option != (uid_t) -1)
-    {
-      *new_uid = owner_option;
-      rc = 0;
-    }
+  uid_t minus_1 = -1;
+  if (owner_option != minus_1)
+    *new_uid = owner_option;
   if (owner_name_option)
-    {
-      *new_name = owner_name_option;
-      rc = 0;
-    }
-
-  return rc;
+    *new_name = owner_name_option;
 }
 
 /* GID translation */
@@ -247,11 +238,9 @@ group_map_read (char const *file)
   map_read (&group_map, file, name_to_gid, "GID", TYPE_MAXIMUM (gid_t));
 }
 
-int
+void
 group_map_translate (gid_t gid, gid_t *new_gid, char const **new_name)
 {
-  int rc = 1;
-
   if (group_map)
     {
       struct mapentry ent, *res;
@@ -262,20 +251,13 @@ group_map_translate (gid_t gid, gid_t *new_gid, char const **new_name)
 	{
 	  *new_gid = res->new_id;
 	  *new_name = res->new_name;
-	  return 0;
+	  return;
 	}
     }
 
-  if (group_option != (uid_t) -1)
-    {
-      *new_gid = group_option;
-      rc = 0;
-    }
+  gid_t minus_1 = -1;
+  if (group_option != minus_1)
+    *new_gid = group_option;
   if (group_name_option)
-    {
-      *new_name = group_name_option;
-      rc = 0;
-    }
-
-  return rc;
+    *new_name = group_name_option;
 }

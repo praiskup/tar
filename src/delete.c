@@ -70,7 +70,7 @@ move_archive (off_t count)
 /* Write out the record which has been filled.  If MOVE_BACK_FLAG,
    backspace to where we started.  */
 static void
-write_record (int move_back_flag)
+write_record (bool move_back_flag)
 {
   union block *save_record = record_start;
   record_start = new_record;
@@ -101,22 +101,21 @@ write_record (int move_back_flag)
 }
 
 static void
-write_recent_blocks (union block *h, size_t blocks)
+write_recent_blocks (union block *h, idx_t blocks)
 {
-  size_t i;
-  for (i = 0; i < blocks; i++)
+  for (idx_t i = 0; i < blocks; i++)
     {
       new_record[new_blocks++] = h[i];
       if (new_blocks == blocking_factor)
-	write_record (1);
+	write_record (true);
     }
 }
 
 static void
-write_recent_bytes (char *data, size_t bytes)
+write_recent_bytes (char *data, idx_t bytes)
 {
-  size_t blocks = bytes / BLOCKSIZE;
-  size_t rest = bytes % BLOCKSIZE;
+  idx_t blocks = bytes / BLOCKSIZE;
+  idx_t rest = bytes % BLOCKSIZE;
 
   write_recent_blocks ((union block *)data, blocks);
   memcpy (new_record[new_blocks].buffer, data + blocks * BLOCKSIZE, rest);
@@ -124,7 +123,7 @@ write_recent_bytes (char *data, size_t bytes)
     memset (new_record[new_blocks].buffer + rest, 0, BLOCKSIZE - rest);
   new_blocks++;
   if (new_blocks == blocking_factor)
-    write_record (1);
+    write_record (true);
 }
 
 static void
@@ -297,7 +296,7 @@ delete_archive_members (void)
 		= (current_stat_info.stat.st_size + BLOCKSIZE - 1) / BLOCKSIZE;
 	      set_next_block_after (current_header);
 	      if (new_blocks == blocking_factor)
-		write_record (1);
+		write_record (true);
 
 	      /* Copy data.  */
 
@@ -332,7 +331,7 @@ delete_archive_members (void)
 		  kept_blocks_in_record -= count;
 
 		  if (new_blocks == blocking_factor)
-		    write_record (1);
+		    write_record (true);
 		}
 	      break;
 
@@ -377,7 +376,7 @@ delete_archive_members (void)
 
       if (! acting_as_filter && ! _isrmt (archive))
 	{
-	  if (sys_truncate (archive))
+	  if (sys_truncate (archive) < 0)
 	    truncate_warn (archive_name_array[0]);
 	}
     }

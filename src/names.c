@@ -300,9 +300,7 @@ static char const *const backup_file_table[] = {
 static void
 add_exclude_array (char const *const *fv, int opts)
 {
-  int i;
-
-  for (i = 0; fv[i]; i++)
+  for (int i = 0; fv[i]; i++)
     add_exclude (excluded, fv[i], opts);
 }
 
@@ -391,7 +389,7 @@ handle_file_selection_option (int key, const char *arg)
     case 'X':
       if (add_exclude_file (add_exclude, excluded, arg,
 			    exclude_options (), '\n')
-	  != 0)
+	  < 0)
 	paxfatal (errno, "%s", quotearg_colon (arg));
       break;
 
@@ -534,15 +532,16 @@ gid_to_gname (gid_t gid, char **gname)
   *gname = xstrdup (cached_gname);
 }
 
-/* Given UNAME, set the corresponding UID and return 1, or else, return 0.  */
-int
+/* Given UNAME, set the corresponding UID and return true,
+   or else, return false.  */
+bool
 uname_to_uid (char const *uname, uid_t *uidp)
 {
   struct passwd *passwd;
 
   if (cached_no_such_uname
       && strcmp (uname, cached_no_such_uname) == 0)
-    return 0;
+    return false;
 
   if (!cached_uname
       || uname[0] != cached_uname[0]
@@ -557,22 +556,23 @@ uname_to_uid (char const *uname, uid_t *uidp)
       else
 	{
 	  assign_string (&cached_no_such_uname, uname);
-	  return 0;
+	  return false;
 	}
     }
   *uidp = cached_uid;
-  return 1;
+  return true;
 }
 
-/* Given GNAME, set the corresponding GID and return 1, or else, return 0.  */
-int
+/* Given GNAME, set the corresponding GID and return true,
+   or else, return false.  */
+bool
 gname_to_gid (char const *gname, gid_t *gidp)
 {
   struct group *group;
 
   if (cached_no_such_gname
       && strcmp (gname, cached_no_such_gname) == 0)
-    return 0;
+    return false;
 
   if (!cached_gname
       || gname[0] != cached_gname[0]
@@ -587,11 +587,11 @@ gname_to_gid (char const *gname, gid_t *gidp)
       else
 	{
 	  assign_string (&cached_no_such_gname, gname);
-	  return 0;
+	  return false;
 	}
     }
   *gidp = cached_gid;
-  return 1;
+  return true;
 }
 
 
@@ -656,7 +656,7 @@ struct name_elt        /* A name_array element. */
     {
       const char *name;/* File name */
       intmax_t line;   /* Input line number */
-      int term;        /* File name terminator in the list */
+      char term;       /* File name terminator in the list */
       bool verbatim;   /* Verbatim handling of file names: no white-space
 			  trimming, no option processing */
       FILE *fp;
@@ -867,22 +867,14 @@ name_add_file (const char *name)
 /* Names from external name file.  */
 
 static char *name_buffer;	/* buffer to hold the current file name */
-static size_t name_buffer_length; /* allocated length of name_buffer */
+static idx_t name_buffer_length; /* allocated length of name_buffer */
 
 /* Set up to gather file names for tar.  They can either come from a
    file or were saved from decoding arguments.  */
 void
 name_init (void)
 {
-  name_buffer = xmalloc (NAME_FIELD_SIZE + 2);
-  name_buffer_length = NAME_FIELD_SIZE;
   name_list_adjust ();
-}
-
-void
-name_term (void)
-{
-  free (name_buffer);
 }
 
 /* Prevent recursive inclusion of the same file */
@@ -910,14 +902,14 @@ file_list_name (void)
   return _("command line");
 }
 
-static int
+static bool
 add_file_id (const char *filename)
 {
   struct file_id_list *p;
   struct stat st;
   const char *reading_from;
 
-  if (stat (filename, &st))
+  if (stat (filename, &st) < 0)
     stat_fatal (filename);
   reading_from = file_list_name ();
   for (p = file_id_list; p; p = p->next)
@@ -928,7 +920,7 @@ add_file_id (const char *filename)
 		  quotearg_n (0, filename),
 		  reading_from, p->from_file);
 	set_char_quoting (NULL, ':', oldc);
-	return 1;
+	return false;
       }
   p = xmalloc (sizeof *p);
   p->next = file_id_list;
@@ -936,7 +928,7 @@ add_file_id (const char *filename)
   p->dev = st.st_dev;
   p->from_file = reading_from;
   file_id_list = p;
-  return 0;
+  return true;
 }
 
 /* Chop trailing slashes.  */
@@ -963,15 +955,15 @@ static enum read_file_list_state
 read_name_from_file (struct name_elt *ent)
 {
   int c;
-  size_t counter = 0;
+  idx_t counter = 0;
   FILE *fp = ent->v.file.fp;
-  int term = ent->v.file.term;
+  char term = ent->v.file.term;
 
   ++ent->v.file.line;
-  for (c = getc (fp); c != EOF && c != term; c = getc (fp))
+  while (! ((c = getc (fp)) < 0 || c == term))
     {
       if (counter == name_buffer_length)
-	name_buffer = x2realloc (name_buffer, &name_buffer_length);
+	name_buffer = xpalloc (name_buffer, &name_buffer_length, 1, -1, 1);
       name_buffer[counter++] = c;
       if (c == 0)
 	{
@@ -985,12 +977,12 @@ read_name_from_file (struct name_elt *ent)
     return file_list_skip;
 
   if (counter == name_buffer_length)
-    name_buffer = x2realloc (name_buffer, &name_buffer_length);
+    name_buffer = xpalloc (name_buffer, &name_buffer_length, 1, -1, 1);
   name_buffer[counter] = 0;
   return (counter == 0 && c == EOF) ? file_list_end : file_list_success;
 }
 
-static int
+static bool
 handle_option (const char *str, struct name_elt const *ent)
 {
   struct wordsplit ws;
@@ -999,10 +991,10 @@ handle_option (const char *str, struct name_elt const *ent)
   while (*str && c_isspace (*str))
     ++str;
   if (*str != '-')
-    return 1;
+    return false;
 
   ws.ws_offs = 1;
-  if (wordsplit (str, &ws, WRDSF_DEFFLAGS|WRDSF_DOOFFS))
+  if (wordsplit (str, &ws, WRDSF_DEFFLAGS | WRDSF_DOOFFS) != WRDSE_OK)
     paxfatal (0, _("cannot split string '%s': %s"),
 	      str, wordsplit_strerror (&ws));
   int argc;
@@ -1015,25 +1007,25 @@ handle_option (const char *str, struct name_elt const *ent)
   more_options (argc, ws.ws_wordv, &loc);
   memset (ws.ws_wordv, 0, argc * sizeof *ws.ws_wordv);
   wordsplit_free (&ws);
-  return 0;
+  return true;
 }
 
-static int
+static bool
 read_next_name (struct name_elt *ent, struct name_elt *ret)
 {
   if (!ent->v.file.fp)
     {
-      if (!strcmp (ent->v.file.name, "-"))
+      if (strcmp (ent->v.file.name, "-") == 0)
 	{
 	  request_stdin ("-T");
 	  ent->v.file.fp = stdin;
 	}
       else
 	{
-	  if (add_file_id (ent->v.file.name))
+	  if (!add_file_id (ent->v.file.name))
 	    {
 	      name_list_advance ();
-	      return 1;
+	      return false;
 	    }
 	  FILE *fp = fopen (ent->v.file.name, "r");
 	  if (!fp)
@@ -1062,23 +1054,23 @@ read_next_name (struct name_elt *ent, struct name_elt *ret)
 	    {
 	      if (unquote_option)
 		unquote_string (name_buffer);
-	      if (handle_option (name_buffer, ent) == 0)
+	      if (handle_option (name_buffer, ent))
 		{
 		  name_list_adjust ();
-		  return 1;
+		  return false;
 		}
 	    }
 	  chopslash (name_buffer);
 	  ret->type = NELT_NAME;
 	  ret->v.name = name_buffer;
-	  return 0;
+	  return true;
 
 	case file_list_end:
 	  if (strcmp (ent->v.file.name, "-"))
 	    fclose (ent->v.file.fp);
 	  ent->v.file.fp = NULL;
 	  name_list_advance ();
-	  return 1;
+	  return false;
 	}
     }
 }
@@ -1086,13 +1078,11 @@ read_next_name (struct name_elt *ent, struct name_elt *ret)
 static void
 copy_name (struct name_elt *ep)
 {
-  const char *source;
-  size_t source_len;
-
-  source = ep->v.name;
-  source_len = strlen (source);
-  while (name_buffer_length <= source_len)
-    name_buffer = x2realloc(name_buffer, &name_buffer_length);
+  char const *source = ep->v.name;
+  idx_t source_len = strlen (source);
+  ptrdiff_t incr = source_len + 1 - name_buffer_length;
+  if (0 < incr)
+    name_buffer = xpalloc (name_buffer, &name_buffer_length, incr, -1, 1);
   strcpy (name_buffer, source);
   chopslash (name_buffer);
 }
@@ -1120,7 +1110,7 @@ name_next_elt (bool change_dirs)
 	  break;
 
 	case NELT_FILE:
-	  if (read_next_name (ep, &entry) == 0)
+	  if (read_next_name (ep, &entry))
 	    return &entry;
 	  continue;
 
@@ -1390,13 +1380,10 @@ name_match (const char *file_name)
 bool
 all_names_found (struct tar_stat_info *p)
 {
-  struct name const *cursor;
-  size_t len;
-
   if (!p->file_name || occurrence_option == 0 || p->had_trailing_slash)
     return false;
-  len = strlen (p->file_name);
-  for (cursor = namelist; cursor; cursor = cursor->next)
+  idx_t len = strlen (p->file_name);
+  for (struct name const *cursor = namelist; cursor; cursor = cursor->next)
     {
       if ((cursor->name[0] && !wasfound (cursor))
 	  || (len >= cursor->length && ISSLASH (p->file_name[cursor->length])))
@@ -1405,20 +1392,20 @@ all_names_found (struct tar_stat_info *p)
   return true;
 }
 
-static int
+static bool
 regex_usage_warning (const char *name)
 {
-  static int warned_once = 0;
+  static bool warned_once;
 
   /* Warn about implicit use of the wildcards in command line arguments.
      (Default for tar prior to 1.15.91, but changed afterwards) */
   if (wildcards == default_wildcards
       && fnmatch_pattern_has_wildcards (name, 0))
     {
-      warned_once = 1;
       paxwarn (0, _("Pattern matching characters used in file names"));
       paxwarn (0, _("Use --wildcards to enable pattern matching,"
 		    " or --no-wildcards to suppress this warning"));
+      warned_once = true;
     }
   return warned_once;
 }
@@ -1483,13 +1470,9 @@ label_notfound (void)
   nametail = NULL;
 
   if (same_order_option)
-    {
-      const char *name;
-
-      while ((name = name_next (true))
-	     && regex_usage_warning (name) == 0)
-	;
-    }
+    for (char const *name;
+	 (name = name_next (true)) && !regex_usage_warning (name); )
+      continue;
 }
 
 /* Sorting name lists.  */
@@ -1500,51 +1483,36 @@ label_notfound (void)
 
    Apart from the type 'struct name' and its 'next' member,
    this is a generic list-sorting function, but it's too painful to
-   make it both generic and portable
-   in C.  */
+   make it both generic and portable in C.  */
 
 static struct name *
-merge_sort_sll (struct name *list, int length,
-		int (*compare) (struct name const*, struct name const*))
+merge_sort_sll (struct name *list, intptr_t length,
+		int (*compare) (struct name const *, struct name const *))
 {
-  struct name *first_list;
-  struct name *second_list;
-  int first_length;
-  int second_length;
-  struct name *result;
-  struct name **merge_point;
-  struct name *cursor;
-  int counter;
-
   if (length == 1)
     return list;
 
   if (length == 2)
     {
-      if (compare (list, list->next) > 0)
-	{
-	  result = list->next;
-	  result->next = list;
-	  list->next = 0;
-	  return result;
-	}
-      return list;
+      if (compare (list, list->next) <= 0)
+	return list;
+      struct name *r = list->next;
+      r->next = list;
+      list->next = NULL;
+      return r;
     }
 
-  first_list = list;
-  first_length = (length + 1) / 2;
-  second_length = length / 2;
-  for (cursor = list, counter = first_length - 1;
-       counter;
-       cursor = cursor->next, counter--)
-    continue;
-  second_list = cursor->next;
-  cursor->next = 0;
+  struct name *first_list = list, *cursor = list;
+  intptr_t second_length = length >> 1, first_length = length - second_length;
+  for (intptr_t counter = first_length - 1; counter; counter--)
+    cursor = cursor->next;
+  struct name *second_list = cursor->next;
+  cursor->next = NULL;
 
   first_list = merge_sort_sll (first_list, first_length, compare);
   second_list = merge_sort_sll (second_list, second_length, compare);
 
-  merge_point = &result;
+  struct name *result, **merge_point = &result;
   while (first_list && second_list)
     if (compare (first_list, second_list) < 0)
       {
@@ -1560,10 +1528,7 @@ merge_sort_sll (struct name *list, int length,
 	merge_point = &second_list->next;
 	second_list = cursor;
       }
-  if (first_list)
-    *merge_point = first_list;
-  else
-    *merge_point = second_list;
+  *merge_point = first_list ? first_list : second_list;
 
   return result;
 }
@@ -1571,14 +1536,16 @@ merge_sort_sll (struct name *list, int length,
 /* Sort doubly linked LIST of names, of given LENGTH, using COMPARE
    to order names.  Return the sorted list.  */
 static struct name *
-merge_sort (struct name *list, int length,
-	    int (*compare) (struct name const*, struct name const*))
+merge_sort (struct name *list, intptr_t length,
+	    int (*compare) (struct name const *, struct name const *))
 {
-  struct name *head, *p, *prev;
-  head = merge_sort_sll (list, length, compare);
-  /* Fixup prev pointers */
-  for (prev = NULL, p = head; p; prev = p, p = p->next)
+  struct name *head = merge_sort_sll (list, length, compare);
+
+  /* Fixup prev pointers.  */
+  struct name *prev = NULL;
+  for (struct name *p = head; p; prev = p, p = p->next)
     p->prev = prev;
+
   return head;
 }
 
@@ -1613,13 +1580,11 @@ add_hierarchy_to_namelist (struct tar_stat_info *st, struct name *name)
   if (buffer)
     {
       struct name *child_head = NULL, *child_tail = NULL;
-      size_t name_length = name->length;
-      size_t allocated_length = (name_length >= NAME_FIELD_SIZE
-				 ? name_length + NAME_FIELD_SIZE
-				 : NAME_FIELD_SIZE) + 2;
-      char *namebuf = xmalloc (allocated_length);
+      idx_t name_length = name->length;
+      idx_t allocated_length = 0;
+      char *namebuf = xpalloc (NULL, &allocated_length, name_length + 2, -1, 1);
       const char *string;
-      size_t string_length;
+      idx_t string_length;
       idx_t change_dir = name->change_dir;
 
       strcpy (namebuf, name->name);
@@ -1640,8 +1605,9 @@ add_hierarchy_to_namelist (struct tar_stat_info *st, struct name *name)
 
 	      /* need to have at least string_length bytes above the
 		 name_length, this includes the trailing null character */
-	      while (allocated_length < name_length + string_length)
-		namebuf = x2realloc (namebuf, &allocated_length);
+	      ptrdiff_t incr = name_length + string_length - allocated_length;
+	      if (0 < incr)
+		namebuf = xpalloc (namebuf, &allocated_length, incr, -1, 1);
 	      strcpy (namebuf + name_length, string + 1);
 	      np = addname (namebuf, change_dir, false, name);
 	      if (!child_head)
@@ -1665,7 +1631,7 @@ add_hierarchy_to_namelist (struct tar_stat_info *st, struct name *name)
 	      else
 		{
 		  subdir.fd = subfd;
-		  if (fstat (subfd, &subdir.stat) != 0)
+		  if (fstat (subfd, &subdir.stat) < 0)
 		    stat_diag (namebuf);
 		  else if (! (O_DIRECTORY || S_ISDIR (subdir.stat.st_mode)))
 		    {
@@ -1713,13 +1679,13 @@ name_compare (void const *entry1, void const *entry2)
 static void
 rebase_child_list (struct name *child, struct name *parent)
 {
-  size_t old_prefix_len = child->parent->length;
-  size_t new_prefix_len = parent->length;
+  idx_t old_prefix_len = child->parent->length;
+  idx_t new_prefix_len = parent->length;
   char *new_prefix = parent->name;
 
   for (; child; child = child->sibling)
     {
-      size_t size = child->length - old_prefix_len + new_prefix_len;
+      idx_t size = child->length - old_prefix_len + new_prefix_len;
       char *newp = xmalloc (size + 1);
       strcpy (newp, new_prefix);
       strcat (newp, child->name + old_prefix_len);
@@ -1742,7 +1708,7 @@ collect_and_sort_names (void)
 {
   struct name *name;
   struct name *next_name, *prev_name = NULL;
-  int num_names;
+  intptr_t num_names;
   Hash_table *nametab;
 
   name_gather ();
@@ -1789,7 +1755,7 @@ collect_and_sort_names (void)
 
       tar_stat_init (&st);
 
-      if (deref_stat (name->name, &st.stat) != 0)
+      if (deref_stat (name->name, &st.stat) < 0)
 	{
 	  stat_diag (name->name);
 	  continue;
@@ -1803,7 +1769,7 @@ collect_and_sort_names (void)
 	  else
 	    {
 	      st.fd = dir_fd;
-	      if (fstat (dir_fd, &st.stat) != 0)
+	      if (fstat (dir_fd, &st.stat) < 0)
 		stat_diag (name->name);
 	      else if (O_DIRECTORY || S_ISDIR (st.stat.st_mode))
 		{
@@ -1948,9 +1914,9 @@ blank_name_list (void)
 char *
 make_file_name (const char *directory_name, const char *name)
 {
-  size_t dirlen = strlen (directory_name);
-  size_t namelen = strlen (name) + 1;
-  int slash = dirlen && ! ISSLASH (directory_name[dirlen - 1]);
+  idx_t dirlen = strlen (directory_name);
+  idx_t namelen = strlen (name) + 1;
+  bool slash = dirlen && ! ISSLASH (directory_name[dirlen - 1]);
   char *buffer = xmalloc (dirlen + slash + namelen);
   memcpy (buffer, directory_name, dirlen);
   buffer[dirlen] = '/';
@@ -1966,7 +1932,7 @@ make_file_name (const char *directory_name, const char *name)
    enough components.  */
 
 ptrdiff_t
-stripped_prefix_len (char const *file_name, size_t num)
+stripped_prefix_len (char const *file_name, idx_t num)
 {
   char const *p = file_name + FILE_SYSTEM_PREFIX_LEN (file_name);
   while (ISSLASH (*p))

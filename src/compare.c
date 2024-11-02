@@ -85,11 +85,11 @@ process_noop (MAYBE_UNUSED idx_t size, MAYBE_UNUSED char *data)
 static bool
 process_rawdata (idx_t bytes, char *buffer)
 {
-  ptrdiff_t status = blocking_read (diff_handle, diff_buffer, bytes);
+  idx_t status = blocking_read (diff_handle, diff_buffer, bytes);
 
-  if (status != bytes)
+  if (status < bytes)
     {
-      if (status < 0)
+      if (errno)
 	{
 	  read_error (current_stat_info.file_name);
 	  report_difference (&current_stat_info, NULL);
@@ -105,7 +105,7 @@ process_rawdata (idx_t bytes, char *buffer)
       return false;
     }
 
-  if (memcmp (buffer, diff_buffer, bytes))
+  if (memcmp (buffer, diff_buffer, bytes) != 0)
     {
       report_difference (&current_stat_info, _("Contents differ"));
       return false;
@@ -114,33 +114,29 @@ process_rawdata (idx_t bytes, char *buffer)
   return true;
 }
 
-/* Some other routine wants SIZE bytes in the archive.  For each chunk
-   of the archive, call PROCESSOR with the size of the chunk, and the
-   address of the chunk it can work with.  PROCESSOR should return
+/* Some other routine wants ST->stat.st_size bytes in the archive.
+   For each chunk of the archive, call PROCESSOR with the size of the chunk,
+   and the address of the chunk it can work with.  PROCESSOR should return
    true for success.  Once it fails, continue skipping without calling
    PROCESSOR anymore.  */
 
 static void
 read_and_process (struct tar_stat_info *st, bool (*processor) (idx_t, char *))
 {
-  union block *data_block;
-  size_t data_size;
-  off_t size = st->stat.st_size;
-
   mv_begin_read (st);
-  while (size)
+  for (off_t size = st->stat.st_size; size; )
     {
-      data_block = find_next_block ();
+      union block *data_block = find_next_block ();
       if (! data_block)
 	{
 	  paxerror (0, _("Unexpected EOF in archive"));
 	  return;
 	}
 
-      data_size = available_space_after (data_block);
+      idx_t data_size = available_space_after (data_block);
       if (data_size > size)
 	data_size = size;
-      if (!(*processor) (data_size, data_block->buffer))
+      if (!processor (data_size, data_block->buffer))
 	processor = process_noop;
       set_next_block_after ((union block *)
 			    (data_block->buffer + data_size - 1));
@@ -152,23 +148,18 @@ read_and_process (struct tar_stat_info *st, bool (*processor) (idx_t, char *))
 
 /* Call either stat or lstat over STAT_DATA, depending on
    --dereference (-h), for a file which should exist.  Diagnose any
-   problem.  Return nonzero for success, zero otherwise.  */
-static int
+   problem.  Return true for success, false otherwise.  */
+static bool
 get_stat_data (char const *file_name, struct stat *stat_data)
 {
-  int status = deref_stat (file_name, stat_data);
-
-  if (status != 0)
+  if (deref_stat (file_name, stat_data) < 0)
     {
-      if (errno == ENOENT)
-	stat_warn (file_name);
-      else
-	stat_error (file_name);
+      (errno == ENOENT ? stat_warn : stat_error) (file_name);
       report_difference (&current_stat_info, NULL);
-      return 0;
+      return false;
     }
 
-  return 1;
+  return true;
 }
 
 
@@ -232,8 +223,6 @@ diff_file (void)
 	    }
 	  else
 	    {
-	      int status;
-
 	      if (current_stat_info.is_sparse)
 		sparse_diff_file (diff_handle, &current_stat_info);
 	      else
@@ -244,12 +233,11 @@ diff_file (void)
 		{
 		  struct timespec atime = get_stat_atime (&stat_data);
 		  if (set_file_atime (diff_handle, chdir_fd, file_name, atime)
-		      != 0)
+		      < 0)
 		    utime_error (file_name);
 		}
 
-	      status = close (diff_handle);
-	      if (status != 0)
+	      if (close (diff_handle) < 0)
 		close_error (file_name);
 	    }
 	}
@@ -275,7 +263,7 @@ static void
 diff_symlink (void)
 {
   char buf[1024];
-  size_t len = strlen (current_stat_info.link_name);
+  idx_t len = strlen (current_stat_info.link_name);
   char *linkbuf = len < sizeof buf ? buf : xmalloc (len + 1);
 
   ssize_t status = readlinkat (chdir_fd, current_stat_info.file_name,
@@ -331,7 +319,9 @@ diff_special (void)
     report_difference (&current_stat_info, _("Mode differs"));
 }
 
-static int
+/* Return zero if and only if A and B should be considered equal.
+   for the purposes of dump directory comparison.  */
+static char
 dumpdir_cmp (const char *a, const char *b)
 {
   while (*a)
@@ -380,7 +370,7 @@ diff_dumpdir (struct tar_stat_info *dir)
       int fd = subfile_open (dir->parent, dir->orig_file_name, open_read_flags);
       if (fd < 0)
 	diag = open_diag;
-      else if (fstat (fd, &dir->stat))
+      else if (fstat (fd, &dir->stat) < 0)
         {
 	  diag = stat_diag;
           close (fd);
@@ -397,7 +387,7 @@ diff_dumpdir (struct tar_stat_info *dir)
 
   if (dumpdir_buffer)
     {
-      if (dumpdir_cmp (dir->dumpdir, dumpdir_buffer))
+      if (dumpdir_cmp (dir->dumpdir, dumpdir_buffer) != 0)
 	report_difference (dir, _("Contents differ"));
     }
   else
@@ -526,17 +516,17 @@ diff_archive (void)
 void
 verify_volume (void)
 {
-  int may_fail = 0;
+  bool may_fail = false;
   if (removed_prefixes_p ())
     {
       paxwarn (0,
 	       _("Archive contains file names with leading prefixes removed."));
-      may_fail = 1;
+      may_fail = true;
     }
   if (transform_program_p ())
     {
       paxwarn (0, _("Archive contains transformed file names."));
-      may_fail = 1;
+      may_fail = true;
     }
   if (may_fail)
     paxwarn (0, _("Verification may fail to locate original files."));
@@ -582,7 +572,7 @@ verify_volume (void)
 
       if (status == HEADER_FAILURE)
 	{
-	  int counter = 0;
+	  intmax_t counter = 0;
 
 	  do
 	    {
@@ -594,8 +584,8 @@ verify_volume (void)
 	  while (status == HEADER_FAILURE);
 
 	  paxerror (0,
-		    ngettext ("VERIFY FAILURE: %d invalid header detected",
-			      "VERIFY FAILURE: %d invalid headers detected",
+		    ngettext ("VERIFY FAILURE: %jd invalid header detected",
+			      "VERIFY FAILURE: %jd invalid headers detected",
 			      counter),
 		    counter);
 	}
@@ -617,7 +607,7 @@ verify_volume (void)
 	  continue;
 	}
 
-      decode_header (current_header, &current_stat_info, &current_format, 1);
+      decode_header (current_header, &current_stat_info, &current_format, true);
       diff_archive ();
       tar_stat_destroy (&current_stat_info);
     }

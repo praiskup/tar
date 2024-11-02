@@ -68,12 +68,12 @@ assign_null (char **string)
 }
 
 void
-assign_string_n (char **string, const char *value, size_t n)
+assign_string_n (char **string, const char *value, idx_t n)
 {
   free (*string);
   if (value)
     {
-      size_t l = strnlen (value, n);
+      idx_t l = strnlen (value, n);
       char *p = xmalloc (l + 1);
       memcpy (p, value, l);
       p[l] = 0;
@@ -104,20 +104,20 @@ quote_copy_string (const char *string)
   const char *source = string;
   char *destination = 0;
   char *buffer = 0;
-  int copying = 0;
+  bool copying = false;
 
   while (*source)
     {
-      int character = *source++;
+      char character = *source++;
 
       switch (character)
 	{
 	case '\n': case '\\':
 	  if (!copying)
 	    {
-	      size_t length = (source - string) - 1;
+	      idx_t length = (source - string) - 1;
 
-	      copying = 1;
+	      copying = true;
 	      buffer = xmalloc (length + 2 + 2 * strlen (source) + 1);
 	      memcpy (buffer, string, length);
 	      destination = buffer + length;
@@ -141,20 +141,18 @@ quote_copy_string (const char *string)
 }
 #endif
 
-/* Takes a quoted C string (like those produced by quote_copy_string)
-   and turns it back into the un-quoted original.  This is done in
-   place.  Returns 0 only if the string was not properly quoted, but
-   completes the unquoting anyway.
+/* Take a quoted C string (like those produced by quote_copy_string)
+   and turn it back into the un-quoted original, in place.
+   Complete the unquoting even if the string was not properly quoted.
 
    This is used for reading the saved directory file in incremental
    dumps.  It is used for decoding old 'N' records (demangling names).
    But also, it is used for decoding file arguments, would they come
    from the shell or a -T file, and for decoding the --exclude
    argument.  */
-int
+void
 unquote_string (char *string)
 {
-  int result = 1;
   char *source = string;
   char *destination = string;
 
@@ -221,26 +219,24 @@ unquote_string (char *string)
 	case '6':
 	case '7':
 	  {
-	    int value = *source++ - '0';
+	    unsigned char value = *source++ - '0';
 
 	    if (*source < '0' || *source > '7')
 	      {
 		*destination++ = value;
 		break;
 	      }
-	    value = value * 8 + *source++ - '0';
-	    if (*source < '0' || *source > '7')
+	    unsigned char val1 = value * 8 + (*source++ - '0'), val2;
+	    if (*source < '0' || *source > '7' || ckd_mul (&val2, val1, 8))
 	      {
 		*destination++ = value;
 		break;
 	      }
-	    value = value * 8 + *source++ - '0';
-	    *destination++ = value;
+	    *destination++ = val2 + (*source++ - '0');
 	    break;
 	  }
 
 	default:
-	  result = 0;
 	  *destination++ = '\\';
 	  if (*source)
 	    *destination++ = *source++;
@@ -253,7 +249,6 @@ unquote_string (char *string)
 
   if (source != destination)
     *destination = '\0';
-  return result;
 }
 
 /* Zap trailing slashes.  */
@@ -331,7 +326,7 @@ normalize_filename (idx_t cdidx, const char *name)
          should use dev+ino pairs instead of names?  (See listed03.at for
          a related test case.) */
       const char *cdpath = tar_getcdpath (cdidx);
-      size_t copylen;
+      idx_t copylen;
       bool need_separator;
 
       copylen = strlen (cdpath);
@@ -351,11 +346,11 @@ normalize_filename (idx_t cdidx, const char *name)
 
 
 void
-replace_prefix (char **pname, const char *samp, size_t slen,
-		const char *repl, size_t rlen)
+replace_prefix (char **pname, const char *samp, idx_t slen,
+		const char *repl, idx_t rlen)
 {
   char *name = *pname;
-  size_t nlen = strlen (name);
+  idx_t nlen = strlen (name);
   if (nlen > slen && memcmp (name, samp, slen) == 0 && ISSLASH (name[slen]))
     {
       if (rlen > slen)
@@ -707,9 +702,9 @@ remove_any_file (const char *file_name, enum remove_option option)
 
 	case RECURSIVE_REMOVE_OPTION:
 	  {
-	    char *directory = tar_savedir (file_name, 0);
+	    char *directory = tar_savedir (file_name, false);
 	    char const *entry;
-	    size_t entrylen;
+	    idx_t entrylen;
 
 	    if (! directory)
 	      return 0;
@@ -765,7 +760,7 @@ maybe_backup_file (const char *file_name, bool this_is_the_archive)
   if (this_is_the_archive && _remdev (file_name))
     return true;
 
-  if (deref_stat (file_name, &file_stat) != 0)
+  if (deref_stat (file_name, &file_stat) < 0)
     {
       if (errno == ENOENT)
 	return true;
@@ -814,7 +809,7 @@ undo_last_backup (void)
   if (after_backup_name)
     {
       if (renameat (chdir_fd, after_backup_name, chdir_fd, before_backup_name)
-	  != 0)
+	  < 0)
 	{
 	  int e = errno;
 	  paxerror (e, _("%s: Cannot rename to %s"),
@@ -841,25 +836,29 @@ deref_stat (char const *name, struct stat *buf)
 /* Read from FD into the buffer BUF with COUNT bytes.  Attempt to fill
    BUF.  Wait until input is available; this matters because files are
    opened O_NONBLOCK for security reasons, and on some file systems
-   this can cause read to fail with errno == EAGAIN.  Return the
-   actual number of bytes read, zero for EOF, or
-   -1 upon error.  */
-ptrdiff_t
+   this can cause read to fail with errno == EAGAIN.
+   If returning less than COUNT, set errno to indicate the error
+   except set errno = 0 to indicate EOF.  */
+idx_t
 blocking_read (int fd, void *buf, idx_t count)
 {
-  size_t bytes = full_read (fd, buf, count);
+  idx_t bytes = full_read (fd, buf, count);
 
 #if defined F_SETFL && O_NONBLOCK
-  if (bytes == SAFE_READ_ERROR && errno == EAGAIN)
+  if (bytes < count && errno == EAGAIN)
     {
       int flags = fcntl (fd, F_GETFL);
       if (0 <= flags && flags & O_NONBLOCK
 	  && fcntl (fd, F_SETFL, flags & ~O_NONBLOCK) != -1)
-	bytes = full_read (fd, buf, count);
+	{
+	  char *cbuf = buf;
+	  count -= bytes;
+	  bytes += full_read (fd, cbuf + bytes, count);
+	}
     }
 #endif
 
-  return bytes == SAFE_READ_ERROR || (bytes == 0 && errno != 0) ? -1 : bytes;
+  return bytes;
 }
 
 /* Write to FD from the buffer BUF with COUNT bytes.  Do a full write.
@@ -923,7 +922,7 @@ static struct wd *wd;
 static idx_t wd_count;
 
 /* The allocated size of the vector.  */
-static size_t wd_alloc;
+static idx_t wd_alloc;
 
 /* The maximum number of chdir targets with open directories.
    Don't make it too large, as many operating systems have a small
@@ -933,10 +932,10 @@ enum { CHDIR_CACHE_SIZE = 16 };
 
 /* Indexes into WD of chdir targets with open file descriptors, sorted
    most-recently used first.  Zero indexes are unused.  */
-static int wdcache[CHDIR_CACHE_SIZE];
+static idx_t wdcache[CHDIR_CACHE_SIZE];
 
 /* Number of nonzero entries in WDCACHE.  */
-static size_t wdcache_count;
+static idx_t wdcache_count;
 
 idx_t
 chdir_count (void)
@@ -951,9 +950,7 @@ chdir_arg (char const *dir)
 {
   if (wd_count == wd_alloc)
     {
-      if (wd_alloc == 0)
-	wd_alloc = 2;
-      wd = x2nrealloc (wd, &wd_alloc, sizeof *wd);
+      wd = xpalloc (wd, &wd_alloc, wd_alloc ? 1 : 2, -1, sizeof *wd);
 
       if (! wd_count)
 	{
@@ -1021,7 +1018,7 @@ chdir_do (idx_t i)
 	  else
 	    {
 	      struct wd *stale = &wd[wdcache[CHDIR_CACHE_SIZE - 1]];
-	      if (close (stale->fd) != 0)
+	      if (close (stale->fd) < 0)
 		close_diag (stale->name);
 	      stale->fd = 0;
 	      wdcache[CHDIR_CACHE_SIZE - 1] = i;
@@ -1032,11 +1029,11 @@ chdir_do (idx_t i)
 	{
 	  /* Move the i value to the front of the cache.  This is
 	     O(CHDIR_CACHE_SIZE), but the cache is small.  */
-	  size_t ci;
-	  int prev = wdcache[0];
+	  idx_t ci;
+	  idx_t prev = wdcache[0];
 	  for (ci = 1; prev != i; ci++)
 	    {
-	      int cur = wdcache[ci];
+	      idx_t cur = wdcache[ci];
 	      wdcache[ci] = prev;
 	      if (cur == i)
 		break;
@@ -1136,7 +1133,7 @@ open_diag (char const *name)
 }
 
 void
-read_diag_details (char const *name, off_t offset, size_t size)
+read_diag_details (char const *name, off_t offset, idx_t size)
 {
   if (ignore_failed_read_option)
     {
@@ -1232,8 +1229,8 @@ xpipe (int fd[2])
 struct namebuf
 {
   char *buffer;		/* directory, '/', and directory member */
-  size_t buffer_size;	/* allocated size of name_buffer */
-  size_t dir_length;	/* length of directory part in buffer */
+  idx_t buffer_size;	/* allocated size of name_buffer */
+  idx_t dir_length;	/* length of directory part in buffer */
 };
 
 namebuf_t
@@ -1259,9 +1256,10 @@ namebuf_free (namebuf_t buf)
 char *
 namebuf_name (namebuf_t buf, const char *name)
 {
-  size_t len = strlen (name);
-  while (buf->dir_length + len + 1 >= buf->buffer_size)
-    buf->buffer = x2realloc (buf->buffer, &buf->buffer_size);
+  idx_t len = strlen (name);
+  ptrdiff_t incr_min = buf->dir_length + len + 2 - buf->buffer_size;
+  if (0 < incr_min)
+    buf->buffer = xpalloc (buf->buffer, &buf->buffer_size, incr_min, -1, 1);
   strcpy (buf->buffer + buf->dir_length, name);
   return buf->buffer;
 }
@@ -1297,7 +1295,7 @@ namebuf_finish (namebuf_t buf)
    Return NULL on errors.
 */
 char *
-tar_savedir (const char *name, int must_exist)
+tar_savedir (const char *name, bool must_exist)
 {
   char *ret = NULL;
   DIR *dir = NULL;
@@ -1312,7 +1310,7 @@ tar_savedir (const char *name, int must_exist)
 	      && (ret = streamsavedir (dir, savedir_sort_order))))
     savedir_error (name);
 
-  if (dir ? closedir (dir) != 0 : 0 <= fd && close (fd) != 0)
+  if (dir ? closedir (dir) < 0 : 0 <= fd && close (fd) < 0)
     savedir_error (name);
 
   return ret;

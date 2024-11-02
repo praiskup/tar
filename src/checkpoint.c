@@ -19,10 +19,14 @@
 
 #include <system.h>
 #include "common.h"
-#include "wordsplit.h"
+
+#include <wordsplit.h>
+
+#include <flexmember.h>
+#include <fprintftime.h>
+
 #include <sys/ioctl.h>
 #include <termios.h>
-#include "fprintftime.h"
 #include <signal.h>
 
 enum checkpoint_opcode
@@ -47,57 +51,46 @@ struct checkpoint_action
     char *command;
     int signal;
   } v;
+  char commandbuf[FLEXIBLE_ARRAY_MEMBER];
 };
 
 /* Checkpointing counter */
 static intmax_t checkpoint;
 
 /* List of checkpoint actions */
-static struct checkpoint_action *checkpoint_action, *checkpoint_action_tail;
+static struct checkpoint_action *checkpoint_action,
+  **checkpoint_action_tail = &checkpoint_action;
 
 /* State of the checkpoint system */
-enum {
+static enum {
   CHKP_INIT,       /* Needs initialization */
   CHKP_COMPILE,    /* Actions are being compiled */
   CHKP_RUN         /* Actions are being run */
-};
-static int checkpoint_state;
+} checkpoint_state;
 /* Blocked signals */
 static sigset_t sigs;
 
 static struct checkpoint_action *
-alloc_action (enum checkpoint_opcode opcode)
+alloc_action (enum checkpoint_opcode opcode, char const *quoted_string)
 {
-  struct checkpoint_action *p = xzalloc (sizeof *p);
-  if (checkpoint_action_tail)
-    checkpoint_action_tail->next = p;
-  else
-    checkpoint_action = p;
-  checkpoint_action_tail = p;
+  idx_t quoted_size = quoted_string ? strlen (quoted_string) + 1 : 0;
+  struct checkpoint_action *p = xmalloc (FLEXSIZEOF (struct checkpoint_action,
+						     commandbuf, quoted_size));
+  *checkpoint_action_tail = p;
+  checkpoint_action_tail = &p->next;
+  p->next = NULL;
   p->opcode = opcode;
-  return p;
-}
-
-static char *
-copy_string_unquote (const char *str)
-{
-  char *output = xstrdup (str);
-  size_t len = strlen (output);
-  if ((*output == '"' || *output == '\'')
-      && len > 1 && output[len-1] == *output)
+  if (quoted_string)
     {
-      memmove (output, output+1, len-2);
-      output[len-2] = 0;
+      p->v.command = memcpy (p->commandbuf, quoted_string, quoted_size);
+      unquote_string (p->v.command);
     }
-  unquote_string (output);
-  return output;
+  return p;
 }
 
 void
 checkpoint_compile_action (const char *str)
 {
-  struct checkpoint_action *act;
-
   if (checkpoint_state == CHKP_INIT)
     {
       sigemptyset (&sigs);
@@ -105,42 +98,33 @@ checkpoint_compile_action (const char *str)
     }
 
   if (strcmp (str, ".") == 0 || strcmp (str, "dot") == 0)
-    alloc_action (cop_dot);
+    alloc_action (cop_dot, NULL);
   else if (strcmp (str, "bell") == 0)
-    alloc_action (cop_bell);
+    alloc_action (cop_bell, NULL);
   else if (strcmp (str, "echo") == 0)
-    alloc_action (cop_echo);
+    alloc_action (cop_echo, NULL)->v.command = NULL;
   else if (strncmp (str, "echo=", 5) == 0)
-    {
-      act = alloc_action (cop_echo);
-      act->v.command = copy_string_unquote (str + 5);
-    }
+    alloc_action (cop_echo, str + 5);
   else if (strncmp (str, "exec=", 5) == 0)
-    {
-      act = alloc_action (cop_exec);
-      act->v.command = copy_string_unquote (str + 5);
-    }
+    alloc_action (cop_exec, str + 5);
   else if (strncmp (str, "ttyout=", 7) == 0)
-    {
-      act = alloc_action (cop_ttyout);
-      act->v.command = copy_string_unquote (str + 7);
-    }
+    alloc_action (cop_ttyout, str + 7);
   else if (strncmp (str, "sleep=", 6) == 0)
     {
       char const *arg = str + 6;
       char *p;
-      act = alloc_action (cop_sleep);
-      act->v.time = stoint (arg, &p, NULL, 0, TYPE_MAXIMUM (time_t));
+      alloc_action (cop_sleep, NULL)->v.time
+	= stoint (arg, &p, NULL, 0, TYPE_MAXIMUM (time_t));
       if ((p == arg) | *p)
 	paxfatal (0, _("%s: not a valid timeout"), str);
     }
   else if (strcmp (str, "totals") == 0)
-    alloc_action (cop_totals);
+    alloc_action (cop_totals, NULL);
   else if (strncmp (str, "wait=", 5) == 0)
     {
-      act = alloc_action (cop_wait);
-      act->v.signal = decode_signal (str + 5);
-      sigaddset (&sigs, act->v.signal);
+      int sig = decode_signal (str + 5);
+      alloc_action (cop_wait, NULL)->v.signal = sig;
+      sigaddset (&sigs, sig);
     }
   else
     paxfatal (0, _("%s: unknown checkpoint action"), str);
@@ -169,12 +153,6 @@ checkpoint_finish_compile (void)
     }
 }
 
-static const char *checkpoint_total_format[] = {
-  "R",
-  "W",
-  "D"
-};
-
 static intmax_t
 getwidth (FILE *fp)
 {
@@ -199,24 +177,20 @@ getwidth (FILE *fp)
 }
 
 static char *
-getarg (const char *input, const char ** endp, char **argbuf, size_t *arglen)
+getarg (char const *input, char const **endp, char **argbuf, idx_t *arglen)
 {
   if (input[0] == '{')
     {
       char *p = strchr (input + 1, '}');
       if (p)
 	{
-	  size_t n = p - input;
+	  idx_t n = p - input;
 	  if (n > *arglen)
-	    {
-	      *arglen = n;
-	      *argbuf = xrealloc (*argbuf, *arglen);
-	    }
+	    *argbuf = xpalloc (*argbuf, arglen, n - *arglen, -1, 1);
 	  n--;
-	  memcpy (*argbuf, input + 1, n);
-	  (*argbuf)[n] = 0;
 	  *endp = p + 1;
-	  return *argbuf;
+	  (*argbuf)[n] = 0;
+	  return memcpy (*argbuf, input + 1, n);
 	}
     }
 
@@ -224,13 +198,13 @@ getarg (const char *input, const char ** endp, char **argbuf, size_t *arglen)
   return NULL;
 }
 
-static int tty_cleanup;
+static bool tty_cleanup;
 
 static const char *def_format =
   "%{%Y-%m-%d %H:%M:%S}t: %ds, %{read,wrote}T%*\r";
 
-static int
-format_checkpoint_string (FILE *fp, size_t len,
+static intmax_t
+format_checkpoint_string (FILE *fp, intmax_t len,
 			  const char *input, bool do_write,
 			  intmax_t cpn)
 {
@@ -238,7 +212,7 @@ format_checkpoint_string (FILE *fp, size_t len,
   const char *ip;
 
   static char *argbuf = NULL;
-  static size_t arglen = 0;
+  static idx_t arglen = 0;
   char *arg = NULL;
 
   if (!input)
@@ -268,33 +242,38 @@ format_checkpoint_string (FILE *fp, size_t len,
 		{
 		  fputc ('%', fp);
 		  fputc (*ip, fp);
-		  len += 2;
+		  len = add_printf (len, 2);
 		  continue;
 		}
 	    }
 	  switch (*ip)
 	    {
 	    case 'c':
-	      len += format_checkpoint_string (fp, len, def_format, do_write,
-					       cpn);
+	      len = add_printf (len,
+				format_checkpoint_string (fp, len, def_format,
+							  do_write, cpn));
 	      break;
 
 	    case 'u':
-	      len += fprintf (fp, "%jd", cpn);
+	      len = add_printf (len, fprintf (fp, "%jd", cpn));
 	      break;
 
 	    case 's':
 	      fputs (opstr, fp);
-	      len += strlen (opstr);
+	      len = add_printf (len, strlen (opstr));
 	      break;
 
 	    case 'd':
-	      len += fprintf (fp, "%.0f", compute_duration_ns () / BILLION);
+	      len = add_printf (len,
+				fprintf (fp, "%.0f",
+					 compute_duration_ns () / BILLION));
 	      break;
 
 	    case 'T':
 	      {
-		const char **fmt = checkpoint_total_format, *fmtbuf[3];
+		static char const *const checkpoint_total_format[]
+		  = { "R", "W", "D" };
+		char const *const *fmt = checkpoint_total_format, *fmtbuf[3];
 		struct wordsplit ws;
 		compute_duration_ns ();
 
@@ -303,7 +282,8 @@ format_checkpoint_string (FILE *fp, size_t len,
 		    ws.ws_delim = ",";
 		    if (wordsplit (arg, &ws,
 				   (WRDSF_NOVAR | WRDSF_NOCMD
-				    | WRDSF_QUOTE | WRDSF_DELIM)))
+				    | WRDSF_QUOTE | WRDSF_DELIM))
+			!= WRDSE_OK)
 		      paxerror (0, _("cannot split string '%s': %s"),
 				arg, wordsplit_strerror (&ws));
 		    else if (3 < ws.ws_wordc)
@@ -319,7 +299,7 @@ format_checkpoint_string (FILE *fp, size_t len,
 			fmt = fmtbuf;
 		      }
 		  }
-		len += format_total_stats (fp, fmt, ',', 0);
+		len = add_printf (len, format_total_stats (fp, fmt, ',', 0));
 		if (arg)
 		  wordsplit_free (&ws);
 	      }
@@ -330,32 +310,34 @@ format_checkpoint_string (FILE *fp, size_t len,
 		struct timespec ts = current_timespec ();
 		const char *fmt = arg ? arg : "%c";
 		struct tm *tm = localtime (&ts.tv_sec);
-		len += (tm ? fprintftime (fp, fmt, tm, 0, ts.tv_nsec)
-			: fprintf (fp, "????""-??""-?? ??:??:??"));
+		len = add_printf (len,
+				  (tm ? fprintftime (fp, fmt, tm, 0, ts.tv_nsec)
+				   : fprintf (fp, "????""-??""-?? ??:??:??")));
 	      }
 	      break;
 
 	    case '*':
-	      {
-		intmax_t w;
-		if (!arg)
-		  w = getwidth (fp);
-		else
-		  {
-		    char *end;
-		    w = stoint (arg, &end, NULL, 0, INTMAX_MAX);
-		    if ((end == arg) | *end)
-		      w = 80;
-		  }
-		for (; w > len; len++)
-		  fputc (' ', fp);
-	      }
+	      if (0 <= len)
+		{
+		  intmax_t w;
+		  if (!arg)
+		    w = getwidth (fp);
+		  else
+		    {
+		      char *end;
+		      w = stoint (arg, &end, NULL, 0, INTMAX_MAX);
+		      if ((end == arg) | *end)
+			w = 80;
+		    }
+		  for (; w > len; len++)
+		    fputc (' ', fp);
+		}
 	      break;
 
 	    default:
 	      fputc ('%', fp);
 	      fputc (*ip, fp);
-	      len += 2;
+	      len = add_printf (len, 2);
 	      break;
 	    }
 	  arg = NULL;
@@ -366,10 +348,10 @@ format_checkpoint_string (FILE *fp, size_t len,
 	  if (*ip == '\r')
 	    {
 	      len = 0;
-	      tty_cleanup = 1;
+	      tty_cleanup = true;
 	    }
 	  else
-	    len++;
+	    len = add_printf (len, 1);
 	}
     }
   fflush (fp);
@@ -455,7 +437,7 @@ checkpoint_flush_actions (void)
 	case cop_ttyout:
 	  if (tty && tty_cleanup)
 	    {
-	      long w = getwidth (tty);
+	      intmax_t w = getwidth (tty);
 	      while (w--)
 		fputc (' ', tty);
 	      fputc ('\r', tty);

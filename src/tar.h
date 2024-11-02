@@ -287,9 +287,9 @@ struct sp_array
 struct xheader
 {
   struct obstack *stk;
-  size_t size;
+  idx_t size;
   char *buffer;
-  uintmax_t string_length;
+  idx_t string_length;
 };
 
 /* Information about xattrs for a file.  */
@@ -303,8 +303,8 @@ struct xattr_array
 struct xattr_map
 {
   struct xattr_array *xm_map;
-  size_t xm_size;   /* Size of the xattr map */
-  size_t xm_max;    /* Max. number of entries in xattr_map */
+  idx_t xm_size;   /* Size of the xattr map */
+  idx_t xm_max;    /* Max. number of entries in xattr_map */
 };
 
 struct tar_stat_info
@@ -322,10 +322,10 @@ struct tar_stat_info
   char *cntx_name;          /* SELinux context for the current archive entry. */
 
   char *acls_a_ptr;         /* Access ACLs for the current archive entry. */
-  size_t acls_a_len;        /* Access ACLs for the current archive entry. */
+  idx_t acls_a_len;	    /* Access ACLs for the current archive entry. */
 
   char *acls_d_ptr;         /* Default ACLs for the current archive entry. */
-  size_t acls_d_len;        /* Default ACLs for the current archive entry. */
+  idx_t acls_d_len;	    /* Default ACLs for the current archive entry. */
 
   struct stat   stat;       /* regular filesystem stat */
 
@@ -343,10 +343,10 @@ struct tar_stat_info
   /* For sparse files: */
   intmax_t sparse_major;
   intmax_t sparse_minor;
-  size_t sparse_map_avail;  /* Index to the first unused element in
+  idx_t sparse_map_avail;   /* Index to the first unused element in
 			       sparse_map array. Zero if the file is
 			       not sparse */
-  size_t sparse_map_size;   /* Size of the sparse map */
+  idx_t sparse_map_size;   /* Size of the sparse map */
   struct sp_array *sparse_map;
 
   off_t real_size;          /* The real size of sparse file */

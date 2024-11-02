@@ -120,13 +120,12 @@ struct delayed_set_stat
     /* extended attributes*/
     char *cntx_name;
     char *acls_a_ptr;
-    size_t acls_a_len;
+    idx_t acls_a_len;
     char *acls_d_ptr;
-    size_t acls_d_len;
-    size_t xattr_map_size;
+    idx_t acls_d_len;
     struct xattr_map xattr_map;
     /* Length and contents of name.  */
-    size_t file_name_len;
+    idx_t file_name_len;
     char *file_name;
   };
 
@@ -176,9 +175,9 @@ struct delayed_link
 
     /* ACLs */
     char *acls_a_ptr;
-    size_t acls_a_len;
+    idx_t acls_a_len;
     char *acls_d_ptr;
-    size_t acls_d_len;
+    idx_t acls_d_len;
 
     struct xattr_map xattr_map;
 
@@ -273,9 +272,9 @@ fd_i_chmod (int fd, char const *file, mode_t mode, int atflag)
    notation.
  */
 static int
-fd_chmod(int fd, char const *file_name, int mode, int atflag, int typeflag)
+fd_chmod (int fd, char const *file_name, int mode, int atflag, char typeflag)
 {
-  int chmod_errno = fd_i_chmod (fd, file_name, mode, atflag) == 0 ? 0 : errno;
+  int chmod_errno = fd_i_chmod (fd, file_name, mode, atflag) < 0 ? errno : 0;
 
   /* On Solaris, chmod may fail if we don't have PRIV_ALL, because
      setuid-root files would otherwise be a backdoor.  See
@@ -284,7 +283,7 @@ fd_chmod(int fd, char const *file_name, int mode, int atflag, int typeflag)
   if (chmod_errno == EPERM && (mode & S_ISUID)
       && priv_set_restore_linkdir () == 0)
     {
-      chmod_errno = fd_i_chmod (fd, file_name, mode, atflag) == 0 ? 0 : errno;
+      chmod_errno = fd_i_chmod (fd, file_name, mode, atflag) < 0 ? errno : 0;
       priv_set_remove_linkdir ();
     }
 
@@ -294,7 +293,7 @@ fd_chmod(int fd, char const *file_name, int mode, int atflag, int typeflag)
      supported and if the file is not a symlink.  This
      introduces a race, alas.  */
   if (atflag && typeflag != SYMTYPE && ! implemented (chmod_errno))
-    chmod_errno = fd_i_chmod (fd, file_name, mode, 0) == 0 ? 0 : errno;
+    chmod_errno = fd_i_chmod (fd, file_name, mode, 0) < 0 ? errno : 0;
 
   if (chmod_errno && (typeflag != SYMTYPE || implemented (chmod_errno)))
     {
@@ -345,7 +344,7 @@ set_mode (char const *file_name,
       if (MODE_ALL & ~ mode_mask & ~ current_mode_mask)
 	{
 	  struct stat st;
-	  if (fd_stat (fd, file_name, &st, atflag) != 0)
+	  if (fd_stat (fd, file_name, &st, atflag) < 0)
 	    {
 	      stat_error (file_name);
 	      return;
@@ -358,7 +357,7 @@ set_mode (char const *file_name,
 
       if (current_mode != mode)
 	{
-	  if (fd_chmod (fd, file_name, mode, atflag, typeflag))
+	  if (fd_chmod (fd, file_name, mode, atflag, typeflag) < 0)
 	    chmod_error_details (file_name, mode);
 	}
     }
@@ -457,7 +456,7 @@ set_stat (char const *file_name,
 
   /* these three calls must be done *after* fd_chown() call because fd_chown
      causes that linux capabilities becomes cleared. */
-  xattrs_xattrs_set (st, file_name, typeflag, 1);
+  xattrs_xattrs_set (st, file_name, typeflag, true);
   xattrs_acls_set (st, file_name, typeflag);
   xattrs_selinux_set (st, file_name, typeflag);
 }
@@ -493,7 +492,7 @@ mark_after_links (struct delayed_set_stat *head)
       struct stat st;
       h->after_links = 1;
 
-      if (deref_stat (h->file_name, &st) != 0)
+      if (deref_stat (h->file_name, &st) < 0)
 	stat_error (h->file_name);
       else
 	{
@@ -527,7 +526,7 @@ delay_set_stat (char const *file_name, struct tar_stat_info const *st,
 		mode_t current_mode, mode_t current_mode_mask,
 		mode_t mode, int atflag)
 {
-  size_t file_name_len = strlen (file_name);
+  idx_t file_name_len = strlen (file_name);
   struct delayed_set_stat *data;
 
   if (! (delayed_set_stat_table
@@ -545,7 +544,8 @@ delay_set_stat (char const *file_name, struct tar_stat_info const *st,
 	{
 	  struct stat real_st;
 	  if (fstatat (chdir_fd, data->file_name,
-		       &real_st, data->atflag) != 0)
+		       &real_st, data->atflag)
+	      < 0)
 	    {
 	      stat_error (data->file_name);
 	    }
@@ -628,7 +628,7 @@ repair_delayed_set_stat (char const *dir,
   for (data = delayed_set_stat_head; data; data = data->next)
     {
       struct stat st;
-      if (fstatat (chdir_fd, data->file_name, &st, data->atflag) != 0)
+      if (fstatat (chdir_fd, data->file_name, &st, data->atflag) < 0)
 	{
 	  stat_error (data->file_name);
 	  return;
@@ -787,9 +787,9 @@ make_directories (char *file_name, bool *interdir_made)
   *parent_end = '\0';
   struct stat st;
   int stat_status = fstatat (chdir_fd, file_name, &st, 0);
-  if (!stat_status && !S_ISDIR (st.st_mode))
+  if (! (stat_status < 0 || S_ISDIR (st.st_mode)))
     stat_status = -1;
-  if (stat_status)
+  if (stat_status < 0)
     {
       errno = parent_errno;
       mkdir_error (file_name);
@@ -813,7 +813,7 @@ file_newer_p (const char *file_name, struct stat const *stp,
 
   if (!stp)
     {
-      if (deref_stat (file_name, &st) != 0)
+      if (deref_stat (file_name, &st) < 0)
 	{
 	  if (errno != ENOENT)
 	    {
@@ -874,7 +874,7 @@ maybe_recoverable (char *file_name, bool regular, bool *interdir_made)
 	break;
       if (strchr (file_name, '/'))
 	{
-	  if (deref_stat (file_name, &st) != 0)
+	  if (deref_stat (file_name, &st) < 0)
 	    break;
 	  stp = &st;
 	}
@@ -938,12 +938,12 @@ set_xattr (char const *file_name, struct tar_stat_info const *st,
            mode_t mode, char typeflag)
 {
 #ifdef HAVE_XATTRS
-  if ((xattrs_option > 0) && st->xattr_map.xm_size)
+  if (xattrs_option && st->xattr_map.xm_size)
     {
       int r = mknodat (chdir_fd, file_name, mode, 0);
       if (r < 0)
 	return r;
-      xattrs_xattrs_set (st, file_name, typeflag, 0);
+      xattrs_xattrs_set (st, file_name, typeflag, false);
       return 1;
     }
 #endif
@@ -959,7 +959,7 @@ set_xattr (char const *file_name, struct tar_stat_info const *st,
 static void
 apply_nonancestor_delayed_set_stat (char const *file_name, bool after_links)
 {
-  size_t file_name_len = strlen (file_name);
+  idx_t file_name_len = strlen (file_name);
   bool check_for_renamed_directories = 0;
 
   while (delayed_set_stat_head)
@@ -984,7 +984,7 @@ apply_nonancestor_delayed_set_stat (char const *file_name, bool after_links)
 
       if (check_for_renamed_directories)
 	{
-	  if (fstatat (chdir_fd, data->file_name, &st, data->atflag) != 0)
+	  if (fstatat (chdir_fd, data->file_name, &st, data->atflag) < 0)
 	    {
 	      stat_error (data->file_name);
 	      skip_this_one = 1;
@@ -1061,8 +1061,8 @@ safe_dir_mode (struct stat const *st)
 
 /* Extractor functions for various member types */
 
-static int
-extract_dir (char *file_name, int typeflag)
+static bool
+extract_dir (char *file_name, char typeflag)
 {
   int status;
   mode_t mode;
@@ -1076,7 +1076,7 @@ extract_dir (char *file_name, int typeflag)
     {
       struct stat st;
 
-      if (fstatat (chdir_fd, ".", &st, 0) != 0)
+      if (fstatat (chdir_fd, ".", &st, 0) < 0)
 	stat_diag (".");
       else
 	root_device = st.st_dev;
@@ -1114,7 +1114,7 @@ extract_dir (char *file_name, int typeflag)
 
 	      if (keep_directory_symlink_option
 		  && is_directory_link (file_name, &st))
-		return 0;
+		return true;
 
 	      if ((st.st_mode != 0 && fstatat_flags == 0)
 		  || deref_stat (file_name, &st) == 0)
@@ -1127,7 +1127,7 @@ extract_dir (char *file_name, int typeflag)
 		      if (interdir_made)
 			{
 			  repair_delayed_set_stat (file_name, &st);
-			  return 0;
+			  return true;
 			}
 		      else if (old_files_option == NO_OVERWRITE_DIR_OLD_FILES)
 			{
@@ -1179,7 +1179,7 @@ extract_dir (char *file_name, int typeflag)
 	  if (errno != EEXIST)
 	    {
 	      mkdir_error (file_name);
-	      return 1;
+	      return false;
 	    }
 	  break;
 	}
@@ -1192,13 +1192,13 @@ extract_dir (char *file_name, int typeflag)
     delay_set_stat (file_name, &current_stat_info,
 		    current_mode, current_mode_mask,
 		    current_stat_info.stat.st_mode, atflag);
-  return status;
+  return status == 0;
 }
 
 
 
 static int
-open_output_file (char const *file_name, int typeflag, mode_t mode,
+open_output_file (char const *file_name, char typeflag, mode_t mode,
                   int file_created, mode_t *current_mode,
                   mode_t *current_mode_mask)
 {
@@ -1214,11 +1214,11 @@ open_output_file (char const *file_name, int typeflag, mode_t mode,
 
   if (typeflag == CONTTYPE)
     {
-      static int conttype_diagnosed;
+      static bool conttype_diagnosed;
 
       if (!conttype_diagnosed)
 	{
-	  conttype_diagnosed = 1;
+	  conttype_diagnosed = true;
 	  warnopt (WARN_CONTIGUOUS_CAST, 0,
 		   _("Extracting contiguous files as regular files"));
 	}
@@ -1249,7 +1249,7 @@ open_output_file (char const *file_name, int typeflag, mode_t mode,
       else
 	{
 	  struct stat st;
-	  if (fstat (fd, &st) != 0)
+	  if (fstat (fd, &st) < 0)
 	    {
 	      int e = errno;
 	      close (fd);
@@ -1270,14 +1270,13 @@ open_output_file (char const *file_name, int typeflag, mode_t mode,
   return fd;
 }
 
-static int
-extract_file (char *file_name, int typeflag)
+static bool
+extract_file (char *file_name, char typeflag)
 {
   int fd;
   off_t size;
   union block *data_block;
   int status;
-  size_t written;
   bool interdir_made = false;
   mode_t mode = (current_stat_info.stat.st_mode & MODE_RWX
 		 & ~ (0 < same_owner_option ? S_IRWXG | S_IRWXO : 0));
@@ -1292,7 +1291,7 @@ extract_file (char *file_name, int typeflag)
       if (fd < 0)
 	{
 	  skip_member ();
-	  return 0;
+	  return true;
 	}
     }
   else
@@ -1316,9 +1315,9 @@ extract_file (char *file_name, int typeflag)
 	    {
 	      skip_member ();
 	      if (recover == RECOVER_SKIP)
-		return 0;
+		return true;
 	      open_error (file_name);
-	      return 1;
+	      return false;
 	    }
 	}
     }
@@ -1342,7 +1341,7 @@ extract_file (char *file_name, int typeflag)
 	    break;		/* FIXME: What happens, then?  */
 	  }
 
-	written = available_space_after (data_block);
+	idx_t written = available_space_after (data_block);
 
 	if (written > size)
 	  written = size;
@@ -1369,7 +1368,7 @@ extract_file (char *file_name, int typeflag)
      it doesn't exist, or we don't want to touch it anyway.  */
 
   if (to_stdout_option)
-    return 0;
+    return true;
 
   if (! to_command_option)
     set_stat (file_name, &current_stat_info, fd,
@@ -1384,7 +1383,7 @@ extract_file (char *file_name, int typeflag)
   if (to_command_option)
     sys_wait_command ();
 
-  return status;
+  return status == 0;
 }
 
 /* Return true if NAME is a delayed link.  This can happen only if the link
@@ -1404,7 +1403,7 @@ find_delayed_link_source (char const *name)
   if (!delayed_link_table)
     return false;
 
-  if (fstatat (chdir_fd, name, &st, AT_SYMLINK_NOFOLLOW))
+  if (fstatat (chdir_fd, name, &st, AT_SYMLINK_NOFOLLOW) < 0)
     {
       if (errno != ENOENT)
 	stat_error (name);
@@ -1424,7 +1423,7 @@ find_delayed_link_source (char const *name)
    process.
 */
 
-static int
+static bool
 create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made)
 {
   int fd;
@@ -1438,7 +1437,7 @@ create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made)
 	     that the link being extracted is a duplicate of an already
 	     processed one.  Skip it.
 	   */
-	  return 0;
+	  return true;
 	}
 
       switch (maybe_recoverable (file_name, false, interdir_made))
@@ -1447,20 +1446,20 @@ create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made)
 	  continue;
 
 	case RECOVER_SKIP:
-	  return 0;
+	  return true;
 
 	case RECOVER_NO:
 	  open_error (file_name);
-	  return -1;
+	  return false;
 	}
       }
 
-  if (fstat (fd, &st) != 0)
+  if (fstat (fd, &st) < 0)
     {
       stat_error (file_name);
       close (fd);
     }
-  else if (close (fd) != 0)
+  else if (close (fd) < 0)
     close_error (file_name);
   else
     {
@@ -1509,14 +1508,14 @@ create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made)
       if ((h = find_direct_ancestor (file_name)) != NULL)
 	mark_after_links (h);
 
-      return 0;
+      return true;
     }
 
-  return -1;
+  return false;
 }
 
-static int
-extract_link (char *file_name, MAYBE_UNUSED int typeflag)
+static bool
+extract_link (char *file_name, MAYBE_UNUSED char typeflag)
 {
   bool interdir_made = false;
   char const *link_name;
@@ -1556,7 +1555,7 @@ extract_link (char *file_name, MAYBE_UNUSED int typeflag)
 		}
 	    }
 
-	  return 0;
+	  return true;
 	}
       else if ((e == EEXIST && strcmp (link_name, file_name) == 0)
 	       || ((fstatat (chdir_fd, link_name, &st1, AT_SYMLINK_NOFOLLOW)
@@ -1565,7 +1564,7 @@ extract_link (char *file_name, MAYBE_UNUSED int typeflag)
 		       == 0)
 		   && st1.st_dev == st2.st_dev
 		   && st1.st_ino == st2.st_ino))
-	return 0;
+	return true;
 
       errno = e;
     }
@@ -1573,17 +1572,17 @@ extract_link (char *file_name, MAYBE_UNUSED int typeflag)
 	 == RECOVER_OK);
 
   if (rc == RECOVER_SKIP)
-    return 0;
+    return true;
   if (!(incremental_option && errno == EEXIST))
     {
       link_error (link_name, file_name);
-      return 1;
+      return false;
     }
-  return 0;
+  return true;
 }
 
-static int
-extract_symlink (char *file_name, MAYBE_UNUSED int typeflag)
+static bool
+extract_symlink (char *file_name, MAYBE_UNUSED char typeflag)
 {
   bool interdir_made = false;
 
@@ -1592,14 +1591,14 @@ extract_symlink (char *file_name, MAYBE_UNUSED int typeflag)
 	  || contains_dot_dot (current_stat_info.link_name)))
     return create_placeholder_file (file_name, true, &interdir_made);
 
-  while (symlinkat (current_stat_info.link_name, chdir_fd, file_name) != 0)
+  while (symlinkat (current_stat_info.link_name, chdir_fd, file_name) < 0)
     switch (maybe_recoverable (file_name, false, &interdir_made))
       {
       case RECOVER_OK:
 	continue;
 
       case RECOVER_SKIP:
-	return 0;
+	return true;
 
       case RECOVER_NO:
 	if (!implemented (errno))
@@ -1615,84 +1614,84 @@ extract_symlink (char *file_name, MAYBE_UNUSED int typeflag)
 	    return extract_link (file_name, typeflag);
 	  }
 	symlink_error (current_stat_info.link_name, file_name);
-	return -1;
+	return false;
       }
 
   set_stat (file_name, &current_stat_info, -1, 0, 0,
 	    SYMTYPE, false, AT_SYMLINK_NOFOLLOW);
-  return 0;
+  return true;
 }
 
 #if S_IFCHR || S_IFBLK
-static int
-extract_node (char *file_name, int typeflag)
+static bool
+extract_node (char *file_name, char typeflag)
 {
   bool interdir_made = false;
   mode_t mode = (current_stat_info.stat.st_mode & (MODE_RWX | S_IFBLK | S_IFCHR)
 		 & ~ (0 < same_owner_option ? S_IRWXG | S_IRWXO : 0));
 
   while (mknodat (chdir_fd, file_name, mode, current_stat_info.stat.st_rdev)
-	 != 0)
+	 < 0)
     switch (maybe_recoverable (file_name, false, &interdir_made))
       {
       case RECOVER_OK:
 	continue;
 
       case RECOVER_SKIP:
-	return 0;
+	return true;
 
       case RECOVER_NO:
 	mknod_error (file_name);
-	return -1;
+	return false;
       }
 
   set_stat (file_name, &current_stat_info, -1,
 	    mode & ~ current_umask, MODE_RWX,
 	    typeflag, false, AT_SYMLINK_NOFOLLOW);
-  return 0;
+  return true;
 }
 #endif
 
 #if HAVE_MKFIFO || defined mkfifo
-static int
-extract_fifo (char *file_name, int typeflag)
+static bool
+extract_fifo (char *file_name, char typeflag)
 {
   bool interdir_made = false;
   mode_t mode = (current_stat_info.stat.st_mode & MODE_RWX
 		 & ~ (0 < same_owner_option ? S_IRWXG | S_IRWXO : 0));
 
-  while (mkfifoat (chdir_fd, file_name, mode) != 0)
+  while (mkfifoat (chdir_fd, file_name, mode) < 0)
     switch (maybe_recoverable (file_name, false, &interdir_made))
       {
       case RECOVER_OK:
 	continue;
 
       case RECOVER_SKIP:
-	return 0;
+	return true;
 
       case RECOVER_NO:
 	mkfifo_error (file_name);
-	return -1;
+	return false;
       }
 
   set_stat (file_name, &current_stat_info, -1,
 	    mode & ~ current_umask, MODE_RWX,
 	    typeflag, false, AT_SYMLINK_NOFOLLOW);
-  return 0;
+  return true;
 }
 #endif
 
-typedef int (*tar_extractor_t) (char *file_name, int typeflag);
+typedef bool (*tar_extractor_t) (char *file_name, char typeflag);
 
 
 /* Prepare to extract a file. Find extractor function.
-   Return true to proceed with the extraction, false to skip the current
-   member.  */
+   Return an extractor to proceed with the extraction,
+   a null pointer to skip the current member.  */
 
-static bool
-prepare_to_extract (char const *file_name, int typeflag, tar_extractor_t *fun)
+static tar_extractor_t
+prepare_to_extract (char const *file_name, char typeflag)
 {
-  tar_extractor_t extractor = NULL;
+  tar_extractor_t extractor;
 
   /* Select the extractor */
   switch (typeflag)
@@ -1706,10 +1705,8 @@ prepare_to_extract (char const *file_name, int typeflag, tar_extractor_t *fun)
     case CONTTYPE:
       /* Appears to be a file.  But BSD tar uses the convention that a slash
 	 suffix means a directory.  */
-      if (current_stat_info.had_trailing_slash)
-	extractor = extract_dir;
-      else
-	extractor = extract_file;
+      extractor = (current_stat_info.had_trailing_slash
+		   ? extract_dir : extract_file);
       break;
 
     case SYMTYPE:
@@ -1748,17 +1745,17 @@ prepare_to_extract (char const *file_name, int typeflag, tar_extractor_t *fun)
       break;
 
     case GNUTYPE_VOLHDR:
-      return false;
+      return NULL;
 
     case GNUTYPE_MULTIVOL:
       paxerror (0, _("%s: Cannot extract -- file is continued from another volume"),
 		quotearg_colon (current_stat_info.file_name));
-      return false;
+      return NULL;
 
     case GNUTYPE_LONGNAME:
     case GNUTYPE_LONGLINK:
       paxerror (0, _("Unexpected long name header"));
-      return false;
+      return NULL;
 
     default:
       warnopt (WARN_UNKNOWN_CAST, 0,
@@ -1770,7 +1767,7 @@ prepare_to_extract (char const *file_name, int typeflag, tar_extractor_t *fun)
   if (to_stdout_option || to_command_option)
     {
       if (extractor != extract_file)
-	return false;
+	return NULL;
     }
   else
     {
@@ -1784,7 +1781,7 @@ prepare_to_extract (char const *file_name, int typeflag, tar_extractor_t *fun)
 	      && errno && errno != ENOENT)
 	    {
 	      unlink_error (file_name);
-	      return false;
+	      return NULL;
 	    }
 	  break;
 
@@ -1793,7 +1790,7 @@ prepare_to_extract (char const *file_name, int typeflag, tar_extractor_t *fun)
 	    {
 	      warnopt (WARN_IGNORE_NEWER, 0, _("Current %s is newer or same age"),
 		       quote (file_name));
-	      return false;
+	      return NULL;
 	    }
 	  break;
 
@@ -1801,9 +1798,7 @@ prepare_to_extract (char const *file_name, int typeflag, tar_extractor_t *fun)
 	  break;
 	}
     }
-  *fun = extractor;
-
-  return true;
+  return extractor;
 }
 
 /* Extract a file from the archive.  */
@@ -1811,7 +1806,6 @@ void
 extract_archive (void)
 {
   char typeflag;
-  tar_extractor_t fun;
   bool skip_dotdot_name;
 
   fatal_exit_hook = extract_finish;
@@ -1860,12 +1854,14 @@ extract_archive (void)
 
   /* Extract the archive entry according to its type.  */
   /* KLUDGE */
-  typeflag = sparse_member_p (&current_stat_info) ?
-                  GNUTYPE_SPARSE : current_header->header.typeflag;
+  typeflag = (sparse_member_p (&current_stat_info)
+	      ? GNUTYPE_SPARSE : current_header->header.typeflag);
 
-  if (prepare_to_extract (current_stat_info.file_name, typeflag, &fun))
+  tar_extractor_t fun = prepare_to_extract (current_stat_info.file_name,
+					    typeflag);
+  if (fun)
     {
-      if (fun (current_stat_info.file_name, typeflag) == 0)
+      if (fun (current_stat_info.file_name, typeflag))
 	return;
     }
   else
@@ -1899,7 +1895,7 @@ apply_delayed_link (struct delayed_link *ds)
 	{
 	  /* Unlink the placeholder, then create a hard link if possible,
 	     a symbolic link otherwise.  */
-	  if (unlinkat (chdir_fd, source, 0) != 0)
+	  if (unlinkat (chdir_fd, source, 0) < 0)
 	    unlink_error (source);
 	  else if (valid_source
 		   && (linkat (chdir_fd, valid_source, chdir_fd, source, 0)
@@ -1907,10 +1903,10 @@ apply_delayed_link (struct delayed_link *ds)
 	    ;
 	  else if (!ds->is_symlink)
 	    {
-	      if (linkat (chdir_fd, ds->target, chdir_fd, source, 0) != 0)
+	      if (linkat (chdir_fd, ds->target, chdir_fd, source, 0) < 0)
 		link_error (ds->target, source);
 	    }
-	  else if (symlinkat (ds->target, chdir_fd, source) != 0)
+	  else if (symlinkat (ds->target, chdir_fd, source) < 0)
 	    symlink_error (ds->target, source);
 	  else
 	    {

@@ -33,7 +33,7 @@
 #include "common.h"
 #include <rmt.h>
 
-/* Work around GCC bug 109856.  */
+/* Work around GCC bug 117236.  */
 # if 13 <= __GNUC__
 #  pragma GCC diagnostic ignored "-Wnull-dereference"
 # endif
@@ -46,7 +46,7 @@ enum { READ_ERROR_MAX = 10 };
 static tarlong prev_written;    /* bytes written on previous volumes */
 static tarlong bytes_written;   /* bytes written on this volume */
 static void *record_buffer[2];  /* allocated memory */
-static int record_index;
+static bool record_index;
 
 /* FIXME: The following variables should ideally be static to this
    module.  However, this cannot be done yet.  The cleanup continues!  */
@@ -65,7 +65,7 @@ union block *current_block;     /* current block of archive */
 enum access_mode access_mode;   /* how do we handle the archive */
 off_t records_read;             /* number of records read from this archive */
 off_t records_written;          /* likewise, for records written */
-off_t start_offset;             /* start offset in the archive */
+static off_t start_offset;	/* start offset in the archive */
 
 /* When file status was last computed.  */
 static struct timespec last_stat_time;
@@ -91,20 +91,20 @@ static bool read_full_records = false;
 
 bool write_archive_to_stdout;
 
-static void (*flush_write_ptr) (size_t);
+static void (*flush_write_ptr) (idx_t);
 static void (*flush_read_ptr) (void);
 
 
 char *volume_label;
 char *continued_file_name;
-uintmax_t continued_file_size;
-uintmax_t continued_file_offset;
+off_t continued_file_size;
+off_t continued_file_offset;
 
 
-static int volno = 1;           /* which volume of a multi-volume tape we're
+static intmax_t volno = 1;	/* which volume of a multi-volume tape we're
                                    on */
-static int global_volno = 1;    /* volume number to print in external
-                                   messages */
+static intmax_t global_volno = 1; /* volume number to print in external
+                                     messages */
 
 bool write_archive_to_stdout;
 
@@ -132,17 +132,17 @@ bool write_archive_to_stdout;
 struct bufmap
 {
   struct bufmap *next;          /* Pointer to the next map entry */
-  size_t start;                 /* Offset of the first data block */
+  idx_t start;			/* Offset of the first data block */
   char *file_name;              /* Name of the stored file */
   off_t sizetotal;              /* Size of the stored file */
   off_t sizeleft;               /* Size left to read/write */
-  size_t nblocks;               /* Number of blocks written since reset */
+  idx_t nblocks;		/* Number of blocks written since reset */
 };
 static struct bufmap *bufmap_head, *bufmap_tail;
 
 /* This variable, when set, inhibits updating the bufmap chain after
    a write.  This is necessary when writing extended POSIX headers. */
-static int inhibit_map;
+static bool inhibit_map;
 
 void
 mv_begin_write (const char *file_name, off_t totsize, off_t sizeleft)
@@ -166,7 +166,7 @@ mv_begin_write (const char *file_name, off_t totsize, off_t sizeleft)
 }
 
 static struct bufmap *
-bufmap_locate (size_t off)
+bufmap_locate (idx_t off)
 {
   struct bufmap *map;
 
@@ -303,7 +303,7 @@ static enum compress_type archive_compression_type = ct_none;
 struct zip_magic
 {
   enum compress_type type;
-  size_t length;
+  char length;
   char const *magic;
 };
 
@@ -391,9 +391,8 @@ next_decompress_program (int *pstate)
 static const char *
 compress_option (enum compress_type type)
 {
-  struct zip_program const *zp;
   int i = 0;
-  zp = find_zip_program (type, &i);
+  struct zip_program const *zp = find_zip_program (type, &i);
   return zp ? zp->option : NULL;
 }
 
@@ -491,30 +490,31 @@ open_compressed_archive (void)
   return archive;
 }
 
-static int
+static intmax_t
 print_stats (FILE *fp, const char *text, tarlong numbytes)
 {
   char abbr[LONGEST_HUMAN_READABLE + 1];
   int human_opts = human_autoscale | human_base_1024 | human_SI | human_B;
   double ulim = UINTMAX_MAX + 1.0;
 
-  int n = fprintf (fp, "%s: "TARLONG_FORMAT" (", gettext (text), numbytes);
+  intmax_t n = fprintf (fp, "%s: "TARLONG_FORMAT" (", gettext (text), numbytes);
 
   if (numbytes < ulim)
-    n += fprintf (fp, "%s", human_readable (numbytes, abbr, human_opts, 1, 1));
+    n = add_printf (n, fprintf (fp, "%s", human_readable (numbytes, abbr,
+							  human_opts, 1, 1)));
   else
-    n += fprintf (fp, "%g", numbytes);
+    n = add_printf (n, fprintf (fp, "%g", numbytes));
 
   if (!duration_ns)
-    n += fprintf (fp, ")");
+    n = add_printf (n, ! (fputc (')', fp) < 0));
   else
     {
       double rate = 1e9 * numbytes / duration_ns;
-      if (rate < ulim)
-	n += fprintf (fp, ", %s/s)",
-		      human_readable (rate, abbr, human_opts, 1, 1));
-      else
-	n += fprintf (fp, ", %g/s)", rate);
+      n = add_printf (n, (rate < ulim
+			  ? fprintf (fp, ", %s/s)",
+				     human_readable (rate, abbr, human_opts,
+						     1, 1))
+			  : fprintf (fp, ", %g/s)", rate)));
     }
 
   return n;
@@ -525,10 +525,10 @@ print_stats (FILE *fp, const char *text, tarlong numbytes)
    EOR is a delimiter to output after each item (used only if deleting
    from the archive), EOL is a delimiter to add at the end of the output
    line. */
-int
-format_total_stats (FILE *fp, char const *const *formats, int eor, int eol)
+intmax_t
+format_total_stats (FILE *fp, char const *const *formats, char eor, char eol)
 {
-  int n;
+  intmax_t n;
 
   switch (subcommand_option)
     {
@@ -545,16 +545,15 @@ format_total_stats (FILE *fp, char const *const *formats, int eor, int eol)
         n = print_stats (fp, formats[TF_READ],
 			 records_read * record_size);
 
-	fputc (eor, fp);
-	n++;
+	n = add_printf (n, ! (fputc (eor, fp) < 0));
 
-        n += print_stats (fp, formats[TF_WRITE],
-			  prev_written + bytes_written);
+	n = add_printf (n, print_stats (fp, formats[TF_WRITE],
+					prev_written + bytes_written));
 
 	intmax_t deleted = ((records_read - records_skipped) * record_size
 			    - (prev_written + bytes_written));
-	n += fprintf (fp, "%c%s: %jd", eor, gettext (formats[TF_DELETED]),
-		      deleted);
+	n = add_printf (n, fprintf (fp, "%c%s: %jd", eor,
+				    gettext (formats[TF_DELETED]), deleted));
       }
       break;
 
@@ -569,10 +568,7 @@ format_total_stats (FILE *fp, char const *const *formats, int eor, int eol)
       abort ();
     }
   if (eol)
-    {
-      fputc (eol, fp);
-      n++;
-    }
+    n = add_printf (n, ! (fputc (eol, fp) < 0));
   return n;
 }
 
@@ -648,7 +644,7 @@ set_next_block_after (union block *block)
    through the end of the current buffer of blocks.  This space is
    available for filling with data, or taking data from.  POINTER is
    usually (but not always) the result of previous find_next_block call.  */
-size_t
+idx_t
 available_space_after (union block *pointer)
 {
   return record_end->buffer - pointer->buffer;
@@ -658,7 +654,7 @@ available_space_after (union block *pointer)
 void
 xclose (int fd)
 {
-  if (close (fd) != 0)
+  if (close (fd) < 0)
     close_error (_("(pipe)"));
 }
 
@@ -745,7 +741,7 @@ _open_archive (enum access_mode wanted_access)
 
   tar_stat_destroy (&current_stat_info);
 
-  record_index = 0;
+  record_index = false;
   init_buffer ();
 
   /* When updating the archive, we start with reading.  */
@@ -872,10 +868,10 @@ _open_archive (enum access_mode wanted_access)
 }
 
 /* Perform a write to flush the buffer.  */
-static ssize_t
+static idx_t
 _flush_write (void)
 {
-  ssize_t status;
+  idx_t status;
 
   checkpoint_run (true);
   if (tape_length_option && tape_length_option <= bytes_written)
@@ -893,8 +889,8 @@ _flush_write (void)
       struct bufmap *map = bufmap_locate (status);
       if (map)
 	{
-	  size_t delta = status - map->start * BLOCKSIZE;
-	  ptrdiff_t diff;
+	  idx_t delta = status - map->start * BLOCKSIZE;
+	  idx_t diff;
 	  map->nblocks += delta / BLOCKSIZE;
 	  if (delta > map->sizeleft)
 	    delta = map->sizeleft;
@@ -953,7 +949,7 @@ archive_is_dev (void)
 {
   struct stat st;
 
-  if (fstat (archive, &st))
+  if (fstat (archive, &st) < 0)
     {
       stat_diag (*archive_name_cursor);
       return false;
@@ -962,9 +958,9 @@ archive_is_dev (void)
 }
 
 static void
-short_read (size_t status)
+short_read (idx_t status)
 {
-  size_t left;                  /* bytes left */
+  idx_t left;			/* bytes left */
   char *more;                   /* pointer to next byte to read */
 
   more = record_start->buffer + status;
@@ -987,8 +983,12 @@ short_read (size_t status)
          || (left && status && read_full_records))
     {
       if (status)
-        while ((status = rmtread (archive, more, left)) == SAFE_READ_ERROR)
-          archive_read_error ();
+	{
+	  ptrdiff_t nread;
+	  while ((nread = rmtread (archive, more, left)) < 0)
+	    archive_read_error ();
+	  status = nread;
+	}
 
       if (status == 0)
         break;
@@ -1015,7 +1015,7 @@ short_read (size_t status)
 void
 flush_archive (void)
 {
-  size_t buffer_level;
+  idx_t buffer_level;
 
   if (access_mode == ACCESS_READ && time_to_start_writing)
     {
@@ -1062,7 +1062,7 @@ backspace_output (void)
     return;
 
   {
-    off_t position = rmtlseek (archive, (off_t) 0, SEEK_CUR);
+    off_t position = rmtlseek (archive, 0, SEEK_CUR);
 
     /* Seek back to the beginning of this record and start writing there.  */
 
@@ -1143,7 +1143,7 @@ close_archive (void)
   if (verify_option)
     verify_volume ();
 
-  if (rmtclose (archive) != 0)
+  if (rmtclose (archive) < 0)
     close_error (*archive_name_cursor);
 
   sys_wait_for_child (child_pid, hit_eof);
@@ -1158,7 +1158,7 @@ static void
 write_fatal_details (char const *name, ssize_t status, idx_t size)
 {
   write_error_details (name, status, size);
-  if (rmtclose (archive) != 0)
+  if (rmtclose (archive) < 0)
     close_error (*archive_name_cursor);
   sys_wait_for_child (child_pid, false);
   fatal_exit ();
@@ -1172,13 +1172,13 @@ init_volume_number (void)
 
   if (file)
     {
-      if (fscanf (file, "%d", &global_volno) != 1
+      if (fscanf (file, "%jd", &global_volno) != 1
           || global_volno < 0)
 	paxfatal (0, _("%s: contains invalid volume number"),
 		  quotearg_colon (volno_file_option));
       if (ferror (file))
         read_error (volno_file_option);
-      if (fclose (file) != 0)
+      if (fclose (file) < 0)
         close_error (volno_file_option);
     }
   else if (errno != ENOENT)
@@ -1193,10 +1193,10 @@ closeout_volume_number (void)
 
   if (file)
     {
-      fprintf (file, "%d\n", global_volno);
+      fprintf (file, "%jd\n", global_volno);
       if (ferror (file))
         write_error (volno_file_option);
-      if (fclose (file) != 0)
+      if (fclose (file) < 0)
         close_error (volno_file_option);
     }
   else
@@ -1208,8 +1208,6 @@ static void
 increase_volume_number (void)
 {
   global_volno++;
-  if (global_volno < 0)
-    paxfatal (0, _("Volume number overflow"));
   volno++;
 }
 
@@ -1224,7 +1222,7 @@ change_tape_menu (FILE *read_file)
     {
       fputc ('\007', stderr);
       fprintf (stderr,
-               _("Prepare volume #%d for %s and hit return: "),
+               _("Prepare volume #%jd for %s and hit return: "),
                global_volno + 1, quote (*archive_name_cursor));
       fflush (stderr);
 
@@ -1314,14 +1312,17 @@ change_tape_menu (FILE *read_file)
 }
 
 /* We've hit the end of the old volume.  Close it and open the next one.
-   Return nonzero on success.
+   Return true on success.
 */
 static bool
 new_volume (enum access_mode mode)
 {
   static FILE *read_file;
-  static int looped;
-  int prompt;
+  static bool looped;
+  bool prompt;
+
+  if (global_volno == INTMAX_MAX)
+    paxfatal (0, _("Volume number overflow"));
 
   if (!read_file && !info_script_option)
     /* FIXME: if fopen is used, it will never be closed.  */
@@ -1337,14 +1338,14 @@ new_volume (enum access_mode mode)
   continued_file_size = continued_file_offset = 0;
   current_block = record_start;
 
-  if (rmtclose (archive) != 0)
+  if (rmtclose (archive) < 0)
     close_error (*archive_name_cursor);
 
   archive_name_cursor++;
   if (archive_name_cursor == archive_name_array + archive_names)
     {
       archive_name_cursor = archive_name_array;
-      looped = 1;
+      looped = true;
     }
   prompt = looped;
 
@@ -1357,7 +1358,7 @@ new_volume (enum access_mode mode)
         {
           if (volno_file_option)
             closeout_volume_number ();
-          if (sys_exec_info_script (archive_name_cursor, global_volno+1))
+	  if (sys_exec_info_script (archive_name_cursor, global_volno + 1) != 0)
 	    paxfatal (0, _("%s command failed"), quote (info_script_option));
         }
       else
@@ -1398,7 +1399,7 @@ new_volume (enum access_mode mode)
       open_warn (*archive_name_cursor);
       if (!verify_option && mode == ACCESS_WRITE && backup_option)
         undo_last_backup ();
-      prompt = 1;
+      prompt = true;
       goto tryagain;
     }
 
@@ -1426,7 +1427,7 @@ read_header0 (struct tar_stat_info *info)
 static bool
 try_new_volume (void)
 {
-  size_t status;
+  ptrdiff_t status;
   union block *header;
   enum access_mode acc;
 
@@ -1447,7 +1448,7 @@ try_new_volume (void)
     return true;
 
   while ((status = rmtread (archive, record_start->buffer, record_size))
-         == SAFE_READ_ERROR)
+         < 0)
     archive_read_error ();
 
   if (status != record_size)
@@ -1519,9 +1520,9 @@ try_new_volume (void)
       tar_stat_destroy (&dummy);
       ASSIGN_STRING_N (&continued_file_name, current_header->header.name);
       continued_file_size =
-        UINTMAX_FROM_HEADER (current_header->header.size);
+        OFF_FROM_HEADER (current_header->header.size);
       continued_file_offset =
-        UINTMAX_FROM_HEADER (current_header->oldgnu_header.offset);
+        OFF_FROM_HEADER (current_header->oldgnu_header.offset);
       break;
 
     default:
@@ -1537,7 +1538,7 @@ try_new_volume (void)
 	  return false;
 	}
 
-      if (strcmp (continued_file_name, bufmap_head->file_name))
+      if (strcmp (continued_file_name, bufmap_head->file_name) != 0)
         {
           if ((archive_format == GNU_FORMAT || archive_format == OLDGNU_FORMAT)
               && strlen (bufmap_head->file_name) >= NAME_FIELD_SIZE
@@ -1555,25 +1556,25 @@ try_new_volume (void)
             }
         }
 
-      uintmax_t s;
+      off_t s;
       if (ckd_add (&s, continued_file_size, continued_file_offset)
 	  || s != bufmap_head->sizetotal)
         {
-	  paxwarn (0, _("%s is the wrong size (%jd != %ju + %ju)"),
+	  paxwarn (0, _("%s is the wrong size (%jd != %jd + %jd)"),
 		   quote (continued_file_name),
 		   intmax (bufmap_head->sizetotal),
-		   uintmax (continued_file_size),
-		   uintmax (continued_file_offset));
+		   intmax (continued_file_size),
+		   intmax (continued_file_offset));
           return false;
         }
 
       if (bufmap_head->sizetotal - bufmap_head->sizeleft
 	  != continued_file_offset)
         {
-	  paxwarn (0, _("This volume is out of sequence (%jd - %jd != %ju)"),
+	  paxwarn (0, _("This volume is out of sequence (%jd - %jd != %jd)"),
 		   intmax (bufmap_head->sizetotal),
 		   intmax (bufmap_head->sizeleft),
-		   uintmax (continued_file_offset));
+		   intmax (continued_file_offset));
           return false;
         }
     }
@@ -1693,8 +1694,8 @@ add_volume_label (void)
 {
   static char const VOL_SUFFIX[] = "Volume";
   char *s = xmalloc (strlen (volume_label_option) + sizeof VOL_SUFFIX
-		     + INT_BUFSIZE_BOUND (int) + 2);
-  sprintf (s, "%s %s %d", volume_label_option, VOL_SUFFIX, volno);
+		     + INT_BUFSIZE_BOUND (intmax_t) + 2);
+  sprintf (s, "%s %s %jd", volume_label_option, VOL_SUFFIX, volno);
   _write_volume_label (s);
   free (s);
 }
@@ -1743,7 +1744,7 @@ gnu_add_multi_volume_header (struct bufmap *map)
 {
   int tmp;
   union block *block = find_next_block ();
-  size_t len = strlen (map->file_name);
+  idx_t len = strlen (map->file_name);
 
   if (len > NAME_FIELD_SIZE)
     {
@@ -1793,8 +1794,6 @@ add_multi_volume_header (struct bufmap *map)
 static void
 simple_flush_read (void)
 {
-  size_t status;                /* result from system call */
-
   checkpoint_run (false);
 
   /* Clear the count of errors.  This only applies to a single call to
@@ -1805,37 +1804,26 @@ simple_flush_read (void)
   if (write_archive_to_stdout && record_start_block != 0)
     {
       archive = STDOUT_FILENO;
-      status = sys_write_archive_buffer ();
+      idx_t status = sys_write_archive_buffer ();
       archive = STDIN_FILENO;
       if (status != record_size)
         archive_write_error (status);
     }
 
-  for (;;)
-    {
-      status = rmtread (archive, record_start->buffer, record_size);
-      if (status == record_size)
-        {
-          records_read++;
-          return;
-        }
-      if (status == SAFE_READ_ERROR)
-        {
-          archive_read_error ();
-          continue;             /* try again */
-        }
-      break;
-    }
-  short_read (status);
+  ptrdiff_t nread;
+  while ((nread = rmtread (archive, record_start->buffer, record_size)) < 0)
+    archive_read_error ();
+  if (nread == record_size)
+    records_read++;
+  else
+    short_read (nread);
 }
 
 /* Simple flush write (no multi-volume or label extensions) */
 static void
-simple_flush_write (MAYBE_UNUSED size_t level)
+simple_flush_write (MAYBE_UNUSED idx_t level)
 {
-  ssize_t status;
-
-  status = _flush_write ();
+  idx_t status = _flush_write ();
   if (status != record_size)
     archive_write_error (status);
   else
@@ -1852,8 +1840,6 @@ simple_flush_write (MAYBE_UNUSED size_t level)
 static void
 _gnu_flush_read (void)
 {
-  size_t status;                /* result from system call */
-
   checkpoint_run (false);
 
   /* Clear the count of errors.  This only applies to a single call to
@@ -1864,45 +1850,33 @@ _gnu_flush_read (void)
   if (write_archive_to_stdout && record_start_block != 0)
     {
       archive = STDOUT_FILENO;
-      status = sys_write_archive_buffer ();
+      idx_t status = sys_write_archive_buffer ();
       archive = STDIN_FILENO;
       if (status != record_size)
         archive_write_error (status);
     }
 
-  for (;;)
+  ptrdiff_t nread;
+  while ((nread = rmtread (archive, record_start->buffer, record_size)) < 0
+	 && ! (errno == ENOSPC && multi_volume_option))
+    archive_read_error ();
+  /* The condition below used to include
+     || (nread > 0 && !read_full_records)
+     This is incorrect since even if new_volume() succeeds, the
+     subsequent call to rmtread will overwrite the chunk of data
+     already read in the buffer, so the processing will fail */
+  if (nread <= 0 && multi_volume_option)
     {
-      status = rmtread (archive, record_start->buffer, record_size);
-      if (status == record_size)
-        {
-          records_read++;
-          return;
-        }
-
-      /* The condition below used to include
-              || (status > 0 && !read_full_records)
-         This is incorrect since even if new_volume() succeeds, the
-         subsequent call to rmtread will overwrite the chunk of data
-         already read in the buffer, so the processing will fail */
-      if ((status == 0
-           || (status == SAFE_READ_ERROR && errno == ENOSPC))
-          && multi_volume_option)
-        {
-          while (!try_new_volume ())
-            ;
-	  if (current_block == record_end)
-	    /* Necessary for blocking_factor == 1 */
-	    flush_archive();
-          return;
-        }
-      else if (status == SAFE_READ_ERROR)
-        {
-          archive_read_error ();
-          continue;
-        }
-      break;
+      while (!try_new_volume ())
+	continue;
+      if (current_block == record_end)
+	/* Necessary for blocking_factor == 1 */
+	flush_archive ();
     }
-  short_read (status);
+  else if (nread == record_size)
+    records_read++;
+  else
+    short_read (nread);
 }
 
 static void
@@ -1914,24 +1888,17 @@ gnu_flush_read (void)
 }
 
 static void
-_gnu_flush_write (size_t buffer_level)
+_gnu_flush_write (idx_t buffer_level)
 {
-  ssize_t status;
   union block *header;
   char *copy_ptr;
-  size_t copy_size;
-  size_t bufsize;
+  idx_t copy_size;
+  idx_t bufsize;
   struct bufmap *map;
 
-  status = _flush_write ();
-  if (status != record_size && !multi_volume_option)
-    archive_write_error (status);
-  else
-    {
-      if (status)
-        records_written++;
-      bytes_written += status;
-    }
+  idx_t status = _flush_write ();
+  records_written += !!status;
+  bytes_written += status;
 
   if (status == record_size)
     {
@@ -1942,14 +1909,18 @@ _gnu_flush_write (size_t buffer_level)
 
   if (status % BLOCKSIZE)
     {
+      int e = errno;
       paxerror (0, _("write did not end on a block boundary"));
+      errno = e;
       archive_write_error (status);
     }
 
-  /* In multi-volume mode. */
   /* ENXIO is for the UNIX PC.  */
-  if (status < 0 && errno != ENOSPC && errno != EIO && errno != ENXIO)
+  if (! (multi_volume_option
+	 && (errno == ENOSPC || errno == EIO || errno == ENXIO)))
     archive_write_error (status);
+
+  /* In multi-volume mode.  */
 
   if (!new_volume (ACCESS_WRITE))
     return;
@@ -1967,7 +1938,7 @@ _gnu_flush_write (size_t buffer_level)
   record_index = !record_index;
   init_buffer ();
 
-  inhibit_map = 1;
+  inhibit_map = true;
 
   if (volume_label_option)
     add_volume_label ();
@@ -1983,7 +1954,7 @@ _gnu_flush_write (size_t buffer_level)
   header = find_next_block ();
   bufmap_reset (map, header - record_start);
   bufsize = available_space_after (header);
-  inhibit_map = 0;
+  inhibit_map = false;
   while (bufsize < copy_size)
     {
       memcpy (header->buffer, copy_ptr, bufsize);
@@ -2000,7 +1971,7 @@ _gnu_flush_write (size_t buffer_level)
 }
 
 static void
-gnu_flush_write (size_t buffer_level)
+gnu_flush_write (idx_t buffer_level)
 {
   flush_write_ptr = simple_flush_write; /* Avoid recursion */
   _gnu_flush_write (buffer_level);
