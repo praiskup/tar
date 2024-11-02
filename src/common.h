@@ -611,8 +611,8 @@ extern idx_t recent_long_name_blocks;
 extern idx_t recent_long_link_blocks;
 
 void decode_header (union block *header, struct tar_stat_info *stat_info,
-		    enum archive_format *format_pointer, int do_user_group);
-void transform_stat_info (int typeflag, struct tar_stat_info *stat_info);
+		    enum archive_format *format_pointer, bool do_user_group);
+void transform_stat_info (char typeflag, struct tar_stat_info *stat_info);
 char const *tartime (struct timespec t, bool full_time);
 
 #define OFF_FROM_HEADER(where) off_from_header (where, sizeof (where))
@@ -975,7 +975,7 @@ enum
 void set_transform_expr (const char *expr);
 bool transform_name (char **pinput, int type);
 bool transform_name_fp (char **pinput, int type,
-			char *(*fun)(char *, void *), void *);
+			char *(*fun) (char *, int), int dat);
 bool transform_program_p (void);
 
 /* Module suffix.c */

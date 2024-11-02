@@ -589,7 +589,7 @@ _transform_name_to_obstack (int flags, char *input, char **output)
 
 bool
 transform_name_fp (char **pinput, int flags,
-		   char *(*fun)(char *, void *), void *dat)
+		   char *(*fun) (char *, int), int dat)
 {
     char *str;
     bool ret = _transform_name_to_obstack (flags, *pinput, &str);
@@ -611,7 +611,7 @@ transform_name_fp (char **pinput, int flags,
 bool
 transform_name (char **pinput, int type)
 {
-  return transform_name_fp (pinput, type, NULL, NULL);
+  return transform_name_fp (pinput, type, NULL, 0);
 }
 
 bool

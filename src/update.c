@@ -122,7 +122,7 @@ update_archive (void)
 	    struct name *name;
 
 	    decode_header (current_header, &current_stat_info,
-			   &current_format, 0);
+			   &current_format, false);
 	    transform_stat_info (current_header->header.typeflag,
 				 &current_stat_info);
 	    archive_format = current_format;

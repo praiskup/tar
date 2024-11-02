@@ -607,7 +607,7 @@ verify_volume (void)
 	  continue;
 	}
 
-      decode_header (current_header, &current_stat_info, &current_format, 1);
+      decode_header (current_header, &current_stat_info, &current_format, true);
       diff_archive ();
       tar_stat_destroy (&current_stat_info);
     }

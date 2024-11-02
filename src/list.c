@@ -76,10 +76,8 @@ static char const base64_map[UCHAR_MAX + 1] = {
 };
 
 static char *
-decode_xform (char *file_name, void *data)
+decode_xform (char *file_name, int type)
 {
-  int type = *(int*)data;
-
   switch (type)
     {
     case XFORM_SYMLINK:
@@ -113,7 +111,7 @@ decode_xform (char *file_name, void *data)
 static bool
 transform_member_name (char **pinput, int type)
 {
-  return transform_name_fp (pinput, type, decode_xform, &type);
+  return transform_name_fp (pinput, type, decode_xform, type);
 }
 
 static void
@@ -127,7 +125,7 @@ enforce_one_top_level (char **pfile_name)
 
   if (*p)
     {
-      int pos = strlen (one_top_level_dir);
+      idx_t pos = strlen (one_top_level_dir);
       if (strncmp (p, one_top_level_dir, pos) == 0)
 	{
 	  if (ISSLASH (p[pos]) || p[pos] == 0)
@@ -143,7 +141,7 @@ enforce_one_top_level (char **pfile_name)
 }
 
 void
-transform_stat_info (int typeflag, struct tar_stat_info *stat_info)
+transform_stat_info (char typeflag, struct tar_stat_info *stat_info)
 {
   if (typeflag == GNUTYPE_VOLHDR)
     /* Name transformations don't apply to volume headers. */
@@ -193,7 +191,7 @@ read_and (void (*do_something) (void))
 	  /* Valid header.  We should decode next field (mode) first.
 	     Ensure incoming names are null terminated.  */
 	  decode_header (current_header, &current_stat_info,
-			 &current_format, 1);
+			 &current_format, true);
 	  if (! name_match (current_stat_info.file_name)
 	      || (time_option_initialized (newer_mtime_option)
 		  /* FIXME: We get mtime now, and again later; this causes
@@ -603,7 +601,7 @@ is_octal_digit (char c)
    e.g. print_header, that assumes decoded data.  */
 void
 decode_header (union block *header, struct tar_stat_info *stat_info,
-	       enum archive_format *format_pointer, int do_user_group)
+	       enum archive_format *format_pointer, bool do_user_group)
 {
   enum archive_format format;
   bool hbits;
@@ -1088,7 +1086,7 @@ tartime (struct timespec t, bool full_time)
    stairstepping in the output.  Make it too small and the output will
    almost always look ragged.  Make it too large and the output will
    be spaced out too far.  */
-static int ugswidth = 19;
+static idx_t ugswidth = 19;
 
 /* Width of printed time stamps.  It grows if longer time stamps are
    found (typically, those with nanosecond resolution).  Like
@@ -1101,24 +1099,10 @@ static void
 simple_print_header (struct tar_stat_info *st, union block *blk,
 		     off_t block_ordinal)
 {
-  char modes[12];
-  char const *time_stamp;
-  int time_stamp_len;
-  char *temp_name;
-
-  /* These hold formatted ints.  */
-  char uform[SYSINT_BUFSIZE];
-  char gform[SYSINT_BUFSIZE];
-  char *user, *group;
-  char size[2 * UINTMAX_STRSIZE_BOUND];
-  				/* holds formatted size or major,minor */
-  int pad;
-  int sizelen;
-
-  if (show_transformed_names_option)
-    temp_name = st->file_name ? st->file_name : st->orig_file_name;
-  else
-    temp_name = st->orig_file_name ? st->orig_file_name : st->file_name;
+  char *temp_name
+    = (show_transformed_names_option
+       ? (st->file_name ? st->file_name : st->orig_file_name)
+       : (st->orig_file_name ? st->orig_file_name : st->file_name));
 
   if (block_number_option)
     {
@@ -1141,6 +1125,7 @@ simple_print_header (struct tar_stat_info *st, union block *blk,
     {
       /* File type and modes.  */
 
+      char modes[12];
       modes[0] = '?';
       switch (blk->header.typeflag)
 	{
@@ -1197,33 +1182,32 @@ simple_print_header (struct tar_stat_info *st, union block *blk,
 
       /* Time stamp.  */
 
-      time_stamp = tartime (st->mtime, full_time_option);
-      time_stamp_len = strlen (time_stamp);
+      char const *time_stamp = tartime (st->mtime, full_time_option);
+      int time_stamp_len = strlen (time_stamp);
       if (datewidth < time_stamp_len)
 	datewidth = time_stamp_len;
 
       /* User and group names.  */
+      char uform[SYSINT_BUFSIZE];
+      char *user
+	= ((st->uname && st->uname[0] && current_format != V7_FORMAT
+	    && !numeric_owner_option)
+	   ? st->uname
+	   : sysinttostr (st->stat.st_uid, TYPE_MINIMUM (uid_t),
+			  TYPE_MAXIMUM (uid_t), uform));
 
-      if (st->uname
-	  && st->uname[0]
-	  && current_format != V7_FORMAT
-	  && !numeric_owner_option)
-	user = st->uname;
-      else
-	user = sysinttostr (st->stat.st_uid, TYPE_MINIMUM (uid_t),
-			    TYPE_MAXIMUM (uid_t), uform);
-
-      if (st->gname
-	  && st->gname[0]
-	  && current_format != V7_FORMAT
-	  && !numeric_owner_option)
-	group = st->gname;
-      else
-	group = sysinttostr (st->stat.st_gid, TYPE_MINIMUM (gid_t),
-			     TYPE_MAXIMUM (gid_t), gform);
+      char gform[SYSINT_BUFSIZE];
+      char *group
+	= ((st->gname && st->gname[0] && current_format != V7_FORMAT
+	    && !numeric_owner_option)
+	   ? st->gname
+	   : sysinttostr (st->stat.st_gid, TYPE_MINIMUM (gid_t),
+			  TYPE_MAXIMUM (gid_t), gform));
 
       /* Format the file size or major/minor device numbers.  */
 
+      char size[2 * UINTMAX_STRSIZE_BOUND];
+      int sizelen;
       switch (blk->header.typeflag)
 	{
 	case CHRTYPE:
@@ -1258,38 +1242,28 @@ simple_print_header (struct tar_stat_info *st, union block *blk,
 
       /* Figure out padding and print the whole line.  */
 
-      pad = strlen (user) + 1 + strlen (group) + 1 + sizelen;
+      idx_t pad = strlen (user) + 1 + strlen (group) + 1 + sizelen;
       if (pad > ugswidth)
 	ugswidth = pad;
 
-      fprintf (stdlis, "%s %s/%s %*s %-*s",
-	       modes, user, group, ugswidth - pad + sizelen, size,
-	       datewidth, time_stamp);
-
-      fprintf (stdlis, " %s", quotearg (temp_name));
+      fprintf (stdlis, "%s %s/%s", modes, user, group);
+      for (idx_t spaces = ugswidth - pad + 1; 0 < spaces; spaces--)
+	putc (' ', stdlis);
+      fprintf (stdlis, "%s %-*s ", size, datewidth, time_stamp);
+      fputs (quotearg (temp_name), stdlis);
       if (show_transformed_names_option && st->had_trailing_slash)
 	fputc ('/', stdlis);
 
+      char const *link_to = " -> ";
       switch (blk->header.typeflag)
 	{
-	case SYMTYPE:
-	  fprintf (stdlis, " -> %s\n", quotearg (st->link_name));
-	  break;
-
 	case LNKTYPE:
-	  fprintf (stdlis, _(" link to %s\n"), quotearg (st->link_name));
-	  break;
-
-	default:
-	  {
-	    char type_string[2];
-	    type_string[0] = blk->header.typeflag;
-	    type_string[1] = '\0';
-	    fprintf (stdlis, _(" unknown file type %s\n"),
-		     quote (type_string));
-	  }
-	  break;
-
+	  link_to = _(" link to ");
+	  FALLTHROUGH;
+	case SYMTYPE:
+	  fputs (link_to, stdlis);
+	  fputs (quotearg (st->link_name), stdlis);
+	  FALLTHROUGH;
 	case AREGTYPE:
 	case REGTYPE:
 	case GNUTYPE_SPARSE:
@@ -1318,6 +1292,11 @@ simple_print_header (struct tar_stat_info *st, union block *blk,
 	  fprintf (stdlis, _("--Continued at byte %jd--\n"),
 		   intmax (OFF_FROM_HEADER (blk->oldgnu_header.offset)));
 	  break;
+
+	default:
+	  fprintf (stdlis, _(" unknown file type %s\n"),
+		   quote ((char []) {blk->header.typeflag, 0}));
+	  break;
 	}
     }
   fflush (stdlis);
@@ -1339,7 +1318,7 @@ print_volume_label (void)
 	    sizeof vblk.header.mtime);
   tar_stat_init (&vstat);
   assign_string (&vstat.file_name, ".");
-  decode_header (&vblk, &vstat, &dummy, 0);
+  decode_header (&vblk, &vstat, &dummy, false);
   assign_string (&vstat.file_name, volume_label);
   simple_print_header (&vstat, &vblk, 0);
   tar_stat_destroy (&vstat);
@@ -1375,8 +1354,15 @@ print_for_mkdir (char *dirname, mode_t mode)
 	fprintf (stdlis, _("block %jd: "),
 		 intmax (current_block_ordinal ()));
 
-      fprintf (stdlis, "%s %*s %s\n", modes, ugswidth + 1 + datewidth,
-	       _("Creating directory:"), quotearg (dirname));
+      fputs (modes, stdlis);
+      char const *creating = _("Creating directory:");
+      idx_t creating_len = strlen (creating);
+      for (idx_t spaces = max (1, 1 + ugswidth + 1 + datewidth - creating_len);
+	   0 < spaces; spaces--)
+	putc (' ', stdlis);
+      fputs (creating, stdlis);
+      fputc(' ', stdlis);
+      fputs (quotearg (dirname), stdlis);
     }
 }
 
@@ -1452,7 +1438,7 @@ test_archive_label (void)
       == HEADER_SUCCESS)
     {
       decode_header (current_header,
-		     &current_stat_info, &current_format, 0);
+		     &current_stat_info, &current_format, false);
       if (current_header->header.typeflag == GNUTYPE_VOLHDR)
 	ASSIGN_STRING_N (&volume_label, current_header->header.name);
 
