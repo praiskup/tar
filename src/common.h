@@ -644,13 +644,13 @@ void assign_string (char **dest, const char *src) ATTRIBUTE_NONNULL ((1, 2));
 void assign_null (char **dest) ATTRIBUTE_NONNULL ((1));
 void assign_string_n (char **string, const char *value, idx_t n);
 #define ASSIGN_STRING_N(s,v) assign_string_n (s, v, sizeof (v))
-int unquote_string (char *str);
+void unquote_string (char *str);
 char *zap_slashes (char *name);
 char *normalize_filename (idx_t, char const *);
 void normalize_filename_x (char *name);
 void replace_prefix (char **pname, const char *samp, idx_t slen,
 		     const char *repl, idx_t rlen);
-char *tar_savedir (const char *name, int must_exist);
+char *tar_savedir (const char *name, bool must_exist);
 
 typedef struct namebuf *namebuf_t;
 namebuf_t namebuf_create (const char *dir);
@@ -779,9 +779,9 @@ extern struct argp names_argp;
 extern struct name *gnu_list_name;
 
 void gid_to_gname (gid_t gid, char **gname);
-int gname_to_gid (char const *gname, gid_t *pgid);
+bool gname_to_gid (char const *gname, gid_t *pgid);
 void uid_to_uname (uid_t uid, char **uname);
-int uname_to_uid (char const *uname, uid_t *puid);
+bool uname_to_uid (char const *uname, uid_t *puid);
 
 void name_init (void);
 void name_add_name (const char *name);

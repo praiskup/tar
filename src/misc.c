@@ -104,11 +104,11 @@ quote_copy_string (const char *string)
   const char *source = string;
   char *destination = 0;
   char *buffer = 0;
-  int copying = 0;
+  bool copying = false;
 
   while (*source)
     {
-      int character = *source++;
+      char character = *source++;
 
       switch (character)
 	{
@@ -117,7 +117,7 @@ quote_copy_string (const char *string)
 	    {
 	      idx_t length = (source - string) - 1;
 
-	      copying = 1;
+	      copying = true;
 	      buffer = xmalloc (length + 2 + 2 * strlen (source) + 1);
 	      memcpy (buffer, string, length);
 	      destination = buffer + length;
@@ -141,20 +141,18 @@ quote_copy_string (const char *string)
 }
 #endif
 
-/* Takes a quoted C string (like those produced by quote_copy_string)
-   and turns it back into the un-quoted original.  This is done in
-   place.  Returns 0 only if the string was not properly quoted, but
-   completes the unquoting anyway.
+/* Take a quoted C string (like those produced by quote_copy_string)
+   and turn it back into the un-quoted original, in place.
+   Complete the unquoting even if the string was not properly quoted.
 
    This is used for reading the saved directory file in incremental
    dumps.  It is used for decoding old 'N' records (demangling names).
    But also, it is used for decoding file arguments, would they come
    from the shell or a -T file, and for decoding the --exclude
    argument.  */
-int
+void
 unquote_string (char *string)
 {
-  int result = 1;
   char *source = string;
   char *destination = string;
 
@@ -221,26 +219,24 @@ unquote_string (char *string)
 	case '6':
 	case '7':
 	  {
-	    int value = *source++ - '0';
+	    unsigned char value = *source++ - '0';
 
 	    if (*source < '0' || *source > '7')
 	      {
 		*destination++ = value;
 		break;
 	      }
-	    value = value * 8 + *source++ - '0';
-	    if (*source < '0' || *source > '7')
+	    unsigned char val1 = value * 8 + (*source++ - '0'), val2;
+	    if (*source < '0' || *source > '7' || ckd_mul (&val2, val1, 8))
 	      {
 		*destination++ = value;
 		break;
 	      }
-	    value = value * 8 + *source++ - '0';
-	    *destination++ = value;
+	    *destination++ = val2 + (*source++ - '0');
 	    break;
 	  }
 
 	default:
-	  result = 0;
 	  *destination++ = '\\';
 	  if (*source)
 	    *destination++ = *source++;
@@ -253,7 +249,6 @@ unquote_string (char *string)
 
   if (source != destination)
     *destination = '\0';
-  return result;
 }
 
 /* Zap trailing slashes.  */
@@ -707,7 +702,7 @@ remove_any_file (const char *file_name, enum remove_option option)
 
 	case RECURSIVE_REMOVE_OPTION:
 	  {
-	    char *directory = tar_savedir (file_name, 0);
+	    char *directory = tar_savedir (file_name, false);
 	    char const *entry;
 	    idx_t entrylen;
 
@@ -937,7 +932,7 @@ enum { CHDIR_CACHE_SIZE = 16 };
 
 /* Indexes into WD of chdir targets with open file descriptors, sorted
    most-recently used first.  Zero indexes are unused.  */
-static int wdcache[CHDIR_CACHE_SIZE];
+static idx_t wdcache[CHDIR_CACHE_SIZE];
 
 /* Number of nonzero entries in WDCACHE.  */
 static idx_t wdcache_count;
@@ -1035,10 +1030,10 @@ chdir_do (idx_t i)
 	  /* Move the i value to the front of the cache.  This is
 	     O(CHDIR_CACHE_SIZE), but the cache is small.  */
 	  idx_t ci;
-	  int prev = wdcache[0];
+	  idx_t prev = wdcache[0];
 	  for (ci = 1; prev != i; ci++)
 	    {
-	      int cur = wdcache[ci];
+	      idx_t cur = wdcache[ci];
 	      wdcache[ci] = prev;
 	      if (cur == i)
 		break;
@@ -1300,7 +1295,7 @@ namebuf_finish (namebuf_t buf)
    Return NULL on errors.
 */
 char *
-tar_savedir (const char *name, int must_exist)
+tar_savedir (const char *name, bool must_exist)
 {
   char *ret = NULL;
   DIR *dir = NULL;

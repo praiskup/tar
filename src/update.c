@@ -137,7 +137,9 @@ update_archive (void)
 		  {
 		    if (S_ISDIR (s.st_mode))
 		      {
-			char *p, *dirp = tar_savedir (current_stat_info.file_name, 1);
+			char *p;
+			char *dirp = tar_savedir (current_stat_info.file_name,
+						  true);
 			if (dirp)
 			  {
 			    namebuf_t nbuf = namebuf_create (current_stat_info.file_name);

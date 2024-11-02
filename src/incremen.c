@@ -1645,7 +1645,7 @@ try_purge_directory (char const *directory_name)
   if (!is_dumpdir (&current_stat_info))
     return false;
 
-  current_dir = tar_savedir (directory_name, 0);
+  current_dir = tar_savedir (directory_name, false);
 
   if (!current_dir)
     /* The directory doesn't exist now.  It'll be created.  In any
