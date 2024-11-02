@@ -47,6 +47,7 @@ static tarlong prev_written;    /* bytes written on previous volumes */
 static tarlong bytes_written;   /* bytes written on this volume */
 static void *record_buffer[2];  /* allocated memory */
 static bool record_index;
+static idx_t short_read_slop;	/* excess bytes at end of short read */
 
 /* FIXME: The following variables should ideally be static to this
    module.  However, this cannot be done yet.  The cleanup continues!  */
@@ -703,22 +704,20 @@ get_archive_status (enum access_mode wanted_access, bool backed_up_flag)
     = (! (multi_volume_option || use_compress_program_option)
        && (seek_option < 0
 	   ? (_isrmt (archive)
-	      || S_ISREG (archive_stat.st_mode)
-	      || S_ISBLK (archive_stat.st_mode))
-	   : seek_option));
+	      || ! (S_ISFIFO (archive_stat.st_mode)
+		    || S_ISSOCK (archive_stat.st_mode)))
+	   : seek_option != 0));
 
   if (wanted_access == ACCESS_READ)
     {
-      if (archive == STDIN_FILENO && seekable_archive)
+      if (seekable_archive)
 	{
-	  start_offset = lseek (archive, 0, SEEK_CUR);
-	  if (start_offset == -1)
+	  start_offset = (lseek (archive, 0, SEEK_CUR)
+			  - (record_end - record_start) * BLOCKSIZE
+			  - short_read_slop);
+	  if (start_offset < 0)
 	    seekable_archive = false;
-	  else
-	    start_offset -= (record_end - record_start) * BLOCKSIZE;
 	}
-      else
-	start_offset = 0;
     }
   else
     sys_detect_dev_null_output ();
@@ -999,7 +998,7 @@ short_read (idx_t status)
 
 	  paxfatal (0, ngettext ("Unaligned block (%td byte) in archive",
 				 "Unaligned block (%td bytes) in archive",
-                                  rest),
+				 rest),
 		    rest);
         }
 
@@ -1008,6 +1007,7 @@ short_read (idx_t status)
     }
 
   record_end = record_start + (record_size - left) / BLOCKSIZE;
+  short_read_slop = (record_size - left) % BLOCKSIZE;
   records_read++;
 }
 
@@ -1451,6 +1451,7 @@ try_new_volume (void)
          < 0)
     archive_read_error ();
 
+  short_read_slop = 0;
   if (status != record_size)
     short_read (status);
 
@@ -1813,6 +1814,7 @@ simple_flush_read (void)
   ptrdiff_t nread;
   while ((nread = rmtread (archive, record_start->buffer, record_size)) < 0)
     archive_read_error ();
+  short_read_slop = 0;
   if (nread == record_size)
     records_read++;
   else
@@ -1873,10 +1875,14 @@ _gnu_flush_read (void)
 	/* Necessary for blocking_factor == 1 */
 	flush_archive ();
     }
-  else if (nread == record_size)
-    records_read++;
   else
-    short_read (nread);
+    {
+      short_read_slop = 0;
+      if (nread == record_size)
+	records_read++;
+      else
+	short_read (nread);
+    }
 }
 
 static void
