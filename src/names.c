@@ -300,9 +300,7 @@ static char const *const backup_file_table[] = {
 static void
 add_exclude_array (char const *const *fv, int opts)
 {
-  int i;
-
-  for (i = 0; fv[i]; i++)
+  for (int i = 0; fv[i]; i++)
     add_exclude (excluded, fv[i], opts);
 }
 
@@ -534,15 +532,16 @@ gid_to_gname (gid_t gid, char **gname)
   *gname = xstrdup (cached_gname);
 }
 
-/* Given UNAME, set the corresponding UID and return 1, or else, return 0.  */
-int
+/* Given UNAME, set the corresponding UID and return true,
+   or else, return false.  */
+bool
 uname_to_uid (char const *uname, uid_t *uidp)
 {
   struct passwd *passwd;
 
   if (cached_no_such_uname
       && strcmp (uname, cached_no_such_uname) == 0)
-    return 0;
+    return false;
 
   if (!cached_uname
       || uname[0] != cached_uname[0]
@@ -557,22 +556,23 @@ uname_to_uid (char const *uname, uid_t *uidp)
       else
 	{
 	  assign_string (&cached_no_such_uname, uname);
-	  return 0;
+	  return false;
 	}
     }
   *uidp = cached_uid;
-  return 1;
+  return true;
 }
 
-/* Given GNAME, set the corresponding GID and return 1, or else, return 0.  */
-int
+/* Given GNAME, set the corresponding GID and return true,
+   or else, return false.  */
+bool
 gname_to_gid (char const *gname, gid_t *gidp)
 {
   struct group *group;
 
   if (cached_no_such_gname
       && strcmp (gname, cached_no_such_gname) == 0)
-    return 0;
+    return false;
 
   if (!cached_gname
       || gname[0] != cached_gname[0]
@@ -587,11 +587,11 @@ gname_to_gid (char const *gname, gid_t *gidp)
       else
 	{
 	  assign_string (&cached_no_such_gname, gname);
-	  return 0;
+	  return false;
 	}
     }
   *gidp = cached_gid;
-  return 1;
+  return true;
 }
 
 
@@ -656,7 +656,7 @@ struct name_elt        /* A name_array element. */
     {
       const char *name;/* File name */
       intmax_t line;   /* Input line number */
-      int term;        /* File name terminator in the list */
+      char term;       /* File name terminator in the list */
       bool verbatim;   /* Verbatim handling of file names: no white-space
 			  trimming, no option processing */
       FILE *fp;
@@ -957,10 +957,10 @@ read_name_from_file (struct name_elt *ent)
   int c;
   idx_t counter = 0;
   FILE *fp = ent->v.file.fp;
-  int term = ent->v.file.term;
+  char term = ent->v.file.term;
 
   ++ent->v.file.line;
-  for (c = getc (fp); c != EOF && c != term; c = getc (fp))
+  while (! ((c = getc (fp)) < 0 || c == term))
     {
       if (counter == name_buffer_length)
 	name_buffer = xpalloc (name_buffer, &name_buffer_length, 1, -1, 1);
@@ -982,7 +982,7 @@ read_name_from_file (struct name_elt *ent)
   return (counter == 0 && c == EOF) ? file_list_end : file_list_success;
 }
 
-static int
+static bool
 handle_option (const char *str, struct name_elt const *ent)
 {
   struct wordsplit ws;
@@ -991,7 +991,7 @@ handle_option (const char *str, struct name_elt const *ent)
   while (*str && c_isspace (*str))
     ++str;
   if (*str != '-')
-    return 1;
+    return false;
 
   ws.ws_offs = 1;
   if (wordsplit (str, &ws, WRDSF_DEFFLAGS | WRDSF_DOOFFS) != WRDSE_OK)
@@ -1007,7 +1007,7 @@ handle_option (const char *str, struct name_elt const *ent)
   more_options (argc, ws.ws_wordv, &loc);
   memset (ws.ws_wordv, 0, argc * sizeof *ws.ws_wordv);
   wordsplit_free (&ws);
-  return 0;
+  return true;
 }
 
 static bool
@@ -1054,7 +1054,7 @@ read_next_name (struct name_elt *ent, struct name_elt *ret)
 	    {
 	      if (unquote_option)
 		unquote_string (name_buffer);
-	      if (handle_option (name_buffer, ent) == 0)
+	      if (handle_option (name_buffer, ent))
 		{
 		  name_list_adjust ();
 		  return false;
@@ -1483,51 +1483,36 @@ label_notfound (void)
 
    Apart from the type 'struct name' and its 'next' member,
    this is a generic list-sorting function, but it's too painful to
-   make it both generic and portable
-   in C.  */
+   make it both generic and portable in C.  */
 
 static struct name *
-merge_sort_sll (struct name *list, int length,
-		int (*compare) (struct name const*, struct name const*))
+merge_sort_sll (struct name *list, intptr_t length,
+		int (*compare) (struct name const *, struct name const *))
 {
-  struct name *first_list;
-  struct name *second_list;
-  int first_length;
-  int second_length;
-  struct name *result;
-  struct name **merge_point;
-  struct name *cursor;
-  int counter;
-
   if (length == 1)
     return list;
 
   if (length == 2)
     {
-      if (compare (list, list->next) > 0)
-	{
-	  result = list->next;
-	  result->next = list;
-	  list->next = 0;
-	  return result;
-	}
-      return list;
+      if (compare (list, list->next) <= 0)
+	return list;
+      struct name *r = list->next;
+      r->next = list;
+      list->next = NULL;
+      return r;
     }
 
-  first_list = list;
-  first_length = (length + 1) / 2;
-  second_length = length / 2;
-  for (cursor = list, counter = first_length - 1;
-       counter;
-       cursor = cursor->next, counter--)
-    continue;
-  second_list = cursor->next;
-  cursor->next = 0;
+  struct name *first_list = list, *cursor = list;
+  intptr_t second_length = length >> 1, first_length = length - second_length;
+  for (intptr_t counter = first_length - 1; counter; counter--)
+    cursor = cursor->next;
+  struct name *second_list = cursor->next;
+  cursor->next = NULL;
 
   first_list = merge_sort_sll (first_list, first_length, compare);
   second_list = merge_sort_sll (second_list, second_length, compare);
 
-  merge_point = &result;
+  struct name *result, **merge_point = &result;
   while (first_list && second_list)
     if (compare (first_list, second_list) < 0)
       {
@@ -1543,10 +1528,7 @@ merge_sort_sll (struct name *list, int length,
 	merge_point = &second_list->next;
 	second_list = cursor;
       }
-  if (first_list)
-    *merge_point = first_list;
-  else
-    *merge_point = second_list;
+  *merge_point = first_list ? first_list : second_list;
 
   return result;
 }
@@ -1554,14 +1536,16 @@ merge_sort_sll (struct name *list, int length,
 /* Sort doubly linked LIST of names, of given LENGTH, using COMPARE
    to order names.  Return the sorted list.  */
 static struct name *
-merge_sort (struct name *list, int length,
-	    int (*compare) (struct name const*, struct name const*))
+merge_sort (struct name *list, intptr_t length,
+	    int (*compare) (struct name const *, struct name const *))
 {
-  struct name *head, *p, *prev;
-  head = merge_sort_sll (list, length, compare);
-  /* Fixup prev pointers */
-  for (prev = NULL, p = head; p; prev = p, p = p->next)
+  struct name *head = merge_sort_sll (list, length, compare);
+
+  /* Fixup prev pointers.  */
+  struct name *prev = NULL;
+  for (struct name *p = head; p; prev = p, p = p->next)
     p->prev = prev;
+
   return head;
 }
 
@@ -1724,7 +1708,7 @@ collect_and_sort_names (void)
 {
   struct name *name;
   struct name *next_name, *prev_name = NULL;
-  int num_names;
+  intptr_t num_names;
   Hash_table *nametab;
 
   name_gather ();
@@ -1932,7 +1916,7 @@ make_file_name (const char *directory_name, const char *name)
 {
   idx_t dirlen = strlen (directory_name);
   idx_t namelen = strlen (name) + 1;
-  int slash = dirlen && ! ISSLASH (directory_name[dirlen - 1]);
+  bool slash = dirlen && ! ISSLASH (directory_name[dirlen - 1]);
   char *buffer = xmalloc (dirlen + slash + namelen);
   memcpy (buffer, directory_name, dirlen);
   buffer[dirlen] = '/';
