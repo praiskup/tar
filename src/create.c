@@ -814,11 +814,11 @@ start_header (struct tar_stat_info *st)
 	break;
 
       case COMMAND_MTIME:
-	if (sys_exec_setmtime_script (set_mtime_command,
-				      chdir_fd,
-				      st->orig_file_name,
-				      set_mtime_format,
-				      &mtime))
+	if (!sys_exec_setmtime_script (set_mtime_command,
+				       chdir_fd,
+				       st->orig_file_name,
+				       set_mtime_format,
+				       &mtime))
 	  mtime = st->mtime;
 	break;
       }

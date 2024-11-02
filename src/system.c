@@ -157,7 +157,7 @@ sys_child_open_for_uncompress (void)
   paxfatal (0, _("Cannot use compressed or remote archives"));
 }
 
-int
+bool
 sys_exec_setmtime_script (const char *script_name,
 			  int dirfd,
 			  const char *file_name,
@@ -293,15 +293,15 @@ sys_truncate (int fd)
   return pos < 0 ? -1 : ftruncate (fd, pos);
 }
 
-/* Return nonzero if NAME is the name of a regular file, or if the file
+/* Return true if NAME is the name of a regular file, or if the file
    does not exist (so it would be created as a regular file).  */
-static int
+static bool
 is_regular_file (const char *name)
 {
   struct stat stbuf;
 
   if (stat (name, &stbuf) == 0)
-    return S_ISREG (stbuf.st_mode);
+    return !!S_ISREG (stbuf.st_mode);
   else
     return errno == ENOENT;
 }
@@ -747,7 +747,7 @@ static pid_t global_pid;
 static void (*pipe_handler) (int sig);
 
 int
-sys_exec_command (char *file_name, int typechar, struct tar_stat_info *st)
+sys_exec_command (char *file_name, char typechar, struct tar_stat_info *st)
 {
   int p[2];
 
@@ -914,7 +914,7 @@ sys_exec_checkpoint_script (const char *script_name,
   xexec (script_name);
 }
 
-int
+bool
 sys_exec_setmtime_script (const char *script_name,
 			  int dirfd,
 			  const char *file_name,
@@ -923,14 +923,14 @@ sys_exec_setmtime_script (const char *script_name,
 {
   pid_t pid;
   int p[2];
-  int stop = 0;
+  bool stop = false;
   struct pollfd pfd;
 
   char *buffer = NULL;
   idx_t buflen = 0;
   idx_t bufsize = 0;
   char *cp;
-  int rc = 0;
+  bool rc = true;
 
   if (pipe (p) < 0)
     paxfatal (errno, _("pipe failed"));
@@ -974,7 +974,7 @@ sys_exec_setmtime_script (const char *script_name,
 	  if (errno != EINTR)
 	    {
 	      paxerror (errno, _("poll failed"));
-	      stop = 1;
+	      stop = true;
 	      break;
 	    }
 	}
@@ -988,7 +988,7 @@ sys_exec_setmtime_script (const char *script_name,
 	  if (nread < 0)
 	    {
 	      paxerror (errno, _("error reading output of %s"), script_name);
-	      stop = 1;
+	      stop = true;
 	      break;
 	    }
 	  if (nread == 0)
@@ -1008,13 +1008,13 @@ sys_exec_setmtime_script (const char *script_name,
   if (stop)
     {
       free (buffer);
-      return -1;
+      return false;
     }
 
   if (buflen == 0)
     {
       paxerror (0, _("empty output from \"%s %s\""), script_name, file_name);
-      return -1;
+      return false;
     }
 
   cp = memchr (buffer, '\n', buflen);
@@ -1037,13 +1037,13 @@ sys_exec_setmtime_script (const char *script_name,
 	  paxerror (0, _("output from \"%s %s\" does not satisfy format string:"
 			 " %s"),
 		    script_name, file_name, buffer);
-	  rc = -1;
+	  rc = false;
 	}
       else if (*cp != 0)
 	{
 	  paxwarn (0, _("unconsumed output from \"%s %s\": %s"),
 		   script_name, file_name, cp);
-	  rc = -1;
+	  rc = false;
 	}
       else
 	{
@@ -1052,7 +1052,7 @@ sys_exec_setmtime_script (const char *script_name,
 	  if (tm.tm_wday < 0)
 	    {
 	      paxerror (errno, _("mktime failed"));
-	      rc = -1;
+	      rc = false;
 	    }
 	  else
 	    {
@@ -1065,7 +1065,7 @@ sys_exec_setmtime_script (const char *script_name,
     {
       paxerror (0, _("unparsable output from \"%s %s\": %s"),
 		script_name, file_name, buffer);
-      rc = -1;
+      rc = false;
     }
 
   free (buffer);

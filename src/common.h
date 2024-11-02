@@ -933,18 +933,16 @@ pid_t sys_child_open_for_compress (void);
 pid_t sys_child_open_for_uncompress (void);
 idx_t sys_write_archive_buffer (void);
 bool sys_get_archive_stat (void);
-int sys_exec_command (char *file_name, int typechar, struct tar_stat_info *st);
+int sys_exec_command (char *file_name, char typechar, struct tar_stat_info *st);
 void sys_wait_command (void);
 int sys_exec_info_script (const char **archive_name, intmax_t volume_number);
 void sys_exec_checkpoint_script (const char *script_name,
 				 const char *archive_name,
 				 intmax_t checkpoint_number);
 bool mtioseek (bool count_files, off_t count);
-int sys_exec_setmtime_script (const char *script_name,
-			      int dirfd,
-			      const char *file_name,
-			      const char *fmt,
-			      struct timespec *ts);
+bool sys_exec_setmtime_script (const char *script_name, int dirfd,
+			       const char *file_name, const char *fmt,
+			       struct timespec *ts);
 
 /* Module compare.c */
 void report_difference (struct tar_stat_info *st, const char *message, ...)
