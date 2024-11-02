@@ -456,7 +456,7 @@ set_stat (char const *file_name,
 
   /* these three calls must be done *after* fd_chown() call because fd_chown
      causes that linux capabilities becomes cleared. */
-  xattrs_xattrs_set (st, file_name, typeflag, 1);
+  xattrs_xattrs_set (st, file_name, typeflag, true);
   xattrs_acls_set (st, file_name, typeflag);
   xattrs_selinux_set (st, file_name, typeflag);
 }
@@ -943,7 +943,7 @@ set_xattr (char const *file_name, struct tar_stat_info const *st,
       int r = mknodat (chdir_fd, file_name, mode, 0);
       if (r < 0)
 	return r;
-      xattrs_xattrs_set (st, file_name, typeflag, 0);
+      xattrs_xattrs_set (st, file_name, typeflag, false);
       return 1;
     }
 #endif

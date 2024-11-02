@@ -278,7 +278,7 @@ fixup_extra_acl_fields (char *ptr)
    attribute.  Called only when acls_option > 0. */
 static void
 xattrs__acls_set (struct tar_stat_info const *st,
-                  char const *file_name, int type,
+		  char const *file_name, acl_type_t type,
 		  char *ptr, bool def)
 {
   acl_t acl;
@@ -362,12 +362,12 @@ acls_get_text (int parentfd, const char *file_name, acl_type_t type,
       val = acl_to_any_text (acl, NULL, '\n',
 			     TEXT_SOME_EFFECTIVE | TEXT_NUMERIC_IDS);
 #else
-      static int warned;
+      static bool warned;
       if (!warned)
 	{
+	  warned = true;
 	  paxwarn (0, _("--numeric-owner is ignored for ACLs:"
 			" libacl is not available"));
-	  warned = 1;
 	}
 #endif
     }
@@ -442,15 +442,17 @@ acls_one_line (const char *prefix, char delim,
 void
 xattrs_acls_get (MAYBE_UNUSED int parentfd, MAYBE_UNUSED char const *file_name,
 		 MAYBE_UNUSED struct tar_stat_info *st,
-		 MAYBE_UNUSED int xisfile)
+		 MAYBE_UNUSED bool xisfile)
 {
   if (acls_option > 0)
     {
 #ifndef HAVE_POSIX_ACLS
-      static int done = 0;
+      static bool done;
       if (!done)
-	paxwarn (0, _("POSIX ACL support is not available"));
-      done = 1;
+	{
+	  done = true;
+	  paxwarn (0, _("POSIX ACL support is not available"));
+	}
 #else
       int err = file_has_acl_at (parentfd, file_name, &st->stat);
       if (err == 0)
@@ -477,10 +479,12 @@ xattrs_acls_set (MAYBE_UNUSED struct tar_stat_info const *st,
   if (acls_option > 0 && typeflag != SYMTYPE)
     {
 #ifndef HAVE_POSIX_ACLS
-      static int done = 0;
+      static bool done;
       if (!done)
-	paxwarn (0, _("POSIX ACL support is not available"));
-      done = 1;
+	{
+	  done = true;
+	  paxwarn (0, _("POSIX ACL support is not available"));
+	}
 #else
       xattrs__acls_set (st, file_name, ACL_TYPE_ACCESS,
 			st->acls_a_ptr, false);
@@ -523,10 +527,12 @@ xattrs_xattrs_get (int parentfd, char const *file_name,
   if (xattrs_option)
     {
 #ifndef HAVE_XATTRS
-      static int done = 0;
+      static bool done;
       if (!done)
-	paxwarn (0, _("XATTR support is not available"));
-      done = 1;
+	{
+	  done = true;
+	  paxwarn (0, _("XATTR support is not available"));
+	}
 #else
       static idx_t xsz = 1024 / 2 * 3;
       static char *xatrs = NULL;
@@ -618,10 +624,12 @@ xattrs_selinux_get (MAYBE_UNUSED int parentfd, MAYBE_UNUSED char const *file_nam
   if (selinux_context_option > 0)
     {
 #if HAVE_SELINUX_SELINUX_H != 1
-      static int done = 0;
+      static bool done;
       if (!done)
-	paxwarn (0, _("SELinux support is not available"));
-      done = 1;
+	{
+	  done = true;
+	  paxwarn (0, _("SELinux support is not available"));
+	}
 #else
       int result = (fd
 		    ? fgetfilecon (fd, &st->cntx_name)
@@ -640,10 +648,12 @@ xattrs_selinux_set (MAYBE_UNUSED struct tar_stat_info const *st,
   if (selinux_context_option > 0)
     {
 #if HAVE_SELINUX_SELINUX_H != 1
-      static int done = 0;
+      static bool done;
       if (!done)
-	paxwarn (0, _("SELinux support is not available"));
-      done = 1;
+	{
+	  done = true;
+	  paxwarn (0, _("SELinux support is not available"));
+	}
 #else
       const char *sysname = "setfilecon";
       int ret;
@@ -713,15 +723,17 @@ xattrs_masked_out (const char *kw, bool archiving)
 
 void
 xattrs_xattrs_set (struct tar_stat_info const *st,
-                   char const *file_name, char typeflag, int later_run)
+                   char const *file_name, char typeflag, bool later_run)
 {
   if (xattrs_option)
     {
 #ifndef HAVE_XATTRS
-      static int done = 0;
+      static bool done;
       if (!done)
-	paxwarn (0, _("XATTR support is not available"));
-      done = 1;
+	{
+	  done = true;
+	  paxwarn (0, _("XATTR support is not available"));
+	}
 #else
       if (!st->xattr_map.xm_size)
         return;

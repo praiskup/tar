@@ -27,7 +27,7 @@
 extern void xattrs_mask_add (const char *mask, bool incl);
 
 extern void xattrs_acls_get (int parentfd, char const *file_name,
-			     struct tar_stat_info *st, int xisfile);
+			     struct tar_stat_info *st, bool xisfile);
 extern void xattrs_selinux_get (int parentfd, char const *file_name,
                                 struct tar_stat_info *st, int fd);
 extern void xattrs_xattrs_get (int parentfd, char const *file_name,
@@ -39,7 +39,7 @@ extern void xattrs_selinux_set (struct tar_stat_info const *st,
                                 char const *file_name, char typeflag);
 extern void xattrs_xattrs_set (struct tar_stat_info const *st,
                                char const *file_name, char typeflag,
-                               int later_run);
+                               bool later_run);
 
 extern void xattrs_print_char (struct tar_stat_info const *st, char *output);
 extern void xattrs_print (struct tar_stat_info const *st);
