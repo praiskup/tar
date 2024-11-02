@@ -450,7 +450,7 @@ sparse_dump_region (struct tar_sparse_file *file, idx_t i)
 	  return false;
 	}
 
-      set_next_block_after (blk + (bufsize - 1) / BLOCKSIZE);
+      set_next_block_after (blk + ((bufsize - 1) >> LG_BLOCKSIZE));
     }
 
   return true;
@@ -482,7 +482,7 @@ sparse_extract_region (struct tar_sparse_file *file, idx_t i)
 	}
       idx_t avail = available_space_after (blk);
       idx_t wrbytes = min (write_size, avail);
-      set_next_block_after (blk + (wrbytes - 1) / BLOCKSIZE);
+      set_next_block_after (blk + ((wrbytes - 1) >> LG_BLOCKSIZE));
       file->dumped_size += avail;
       idx_t count = blocking_write (file->fd, blk->buffer, wrbytes);
       write_size -= count;
@@ -1170,7 +1170,7 @@ pax_dump_header_1 (struct tar_sparse_file *file)
       size += floorlog10 (map[i].offset) + 2;
       size += floorlog10 (map[i].numbytes) + 2;
     }
-  size = (size + BLOCKSIZE - 1) / BLOCKSIZE * BLOCKSIZE;
+  size = (size + BLOCKSIZE - 1) & ~(BLOCKSIZE - 1);
   file->stat_info->archive_file_size += size;
   file->dumped_size += size;
 

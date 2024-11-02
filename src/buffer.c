@@ -890,7 +890,7 @@ _flush_write (void)
 	{
 	  idx_t delta = status - map->start * BLOCKSIZE;
 	  idx_t diff;
-	  map->nblocks += delta / BLOCKSIZE;
+	  map->nblocks += delta >> LG_BLOCKSIZE;
 	  if (delta > map->sizeleft)
 	    delta = map->sizeleft;
 	  map->sizeleft -= delta;
@@ -970,7 +970,7 @@ short_read (idx_t status)
       && record_start_block == 0 && status != 0
       && archive_is_dev ())
     {
-      idx_t rsize = status / BLOCKSIZE;
+      idx_t rsize = status >> LG_BLOCKSIZE;
       paxwarn (0,
 	       ngettext ("Record size = %td block",
 			 "Record size = %td blocks",
@@ -1006,8 +1006,8 @@ short_read (idx_t status)
       more += status;
     }
 
-  record_end = record_start + (record_size - left) / BLOCKSIZE;
-  short_read_slop = (record_size - left) % BLOCKSIZE;
+  record_end = record_start + ((record_size - left) >> LG_BLOCKSIZE);
+  short_read_slop = (record_size - left) & (BLOCKSIZE - 1);
   records_read++;
 }
 
@@ -1116,7 +1116,7 @@ seek_archive (off_t size)
     paxfatal (0, _("rmtlseek not stopped at a record boundary"));
 
   /* Convert to number of records */
-  offset /= BLOCKSIZE;
+  offset >>= LG_BLOCKSIZE;
   /* Compute number of skipped blocks */
   nblk = offset - start;
 
@@ -1966,13 +1966,13 @@ _gnu_flush_write (idx_t buffer_level)
       memcpy (header->buffer, copy_ptr, bufsize);
       copy_ptr += bufsize;
       copy_size -= bufsize;
-      set_next_block_after (header + (bufsize - 1) / BLOCKSIZE);
+      set_next_block_after (header + ((bufsize - 1) >> LG_BLOCKSIZE));
       header = find_next_block ();
       bufsize = available_space_after (header);
     }
   memcpy (header->buffer, copy_ptr, copy_size);
   memset (header->buffer + copy_size, 0, bufsize - copy_size);
-  set_next_block_after (header + (copy_size - 1) / BLOCKSIZE);
+  set_next_block_after (header + ((copy_size - 1) >> LG_BLOCKSIZE));
   find_next_block ();
 }
 

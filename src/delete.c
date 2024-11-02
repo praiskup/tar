@@ -114,8 +114,8 @@ write_recent_blocks (union block *h, idx_t blocks)
 static void
 write_recent_bytes (char *data, idx_t bytes)
 {
-  idx_t blocks = bytes / BLOCKSIZE;
-  idx_t rest = bytes % BLOCKSIZE;
+  idx_t blocks = bytes >> LG_BLOCKSIZE;
+  idx_t rest = bytes & (BLOCKSIZE - 1);
 
   write_recent_blocks ((union block *)data, blocks);
   memcpy (new_record[new_blocks].buffer, data + blocks * BLOCKSIZE, rest);
@@ -131,7 +131,7 @@ flush_file (void)
 {
   set_next_block_after (current_header);
   off_t size = current_stat_info.stat.st_size;
-  off_t blocks_to_skip = size / BLOCKSIZE + (size % BLOCKSIZE != 0);
+  off_t blocks_to_skip = (size >> LG_BLOCKSIZE) + !!(size & (BLOCKSIZE - 1));
 
   while (record_end - current_block <= blocks_to_skip)
     {
@@ -293,7 +293,8 @@ delete_archive_members (void)
 	      new_record[new_blocks] = *current_header;
 	      new_blocks++;
 	      blocks_to_keep
-		= (current_stat_info.stat.st_size + BLOCKSIZE - 1) / BLOCKSIZE;
+		= ((current_stat_info.stat.st_size >> LG_BLOCKSIZE)
+		   + !!(current_stat_info.stat.st_size & (BLOCKSIZE - 1)));
 	      set_next_block_after (current_header);
 	      if (new_blocks == blocking_factor)
 		write_record (true);

@@ -543,13 +543,13 @@ write_gnu_long_link (struct tar_stat_info *st, const char *p, char type)
       memcpy (header->buffer, p, bufsize);
       p += bufsize;
       size -= bufsize;
-      set_next_block_after (header + (bufsize - 1) / BLOCKSIZE);
+      set_next_block_after (header + ((bufsize - 1) >> LG_BLOCKSIZE));
       header = find_next_block ();
       bufsize = available_space_after (header);
     }
   memcpy (header->buffer, p, size);
   memset (header->buffer + size, 0, bufsize - size);
-  set_next_block_after (header + (size - 1) / BLOCKSIZE);
+  set_next_block_after (header + ((size - 1) >> LG_BLOCKSIZE));
 }
 
 static int
@@ -1041,7 +1041,7 @@ dump_regular_file (int fd, struct tar_stat_info *st)
 	{
 	  /* Last read -- zero out area beyond.  */
 	  bufsize = size_left;
-	  idx_t beyond = bufsize % BLOCKSIZE;
+	  idx_t beyond = bufsize & (BLOCKSIZE - 1);
 	  if (beyond)
 	    memset (blk->buffer + size_left, 0, BLOCKSIZE - beyond);
 	}
@@ -1049,7 +1049,7 @@ dump_regular_file (int fd, struct tar_stat_info *st)
       idx_t count = (fd <= 0 ? bufsize
 		     : blocking_read (fd, blk->buffer, bufsize));
       size_left -= count;
-      set_next_block_after (blk + (bufsize - 1) / BLOCKSIZE);
+      set_next_block_after (blk + ((bufsize - 1) >> LG_BLOCKSIZE));
 
       if (count != bufsize)
 	{
@@ -1130,14 +1130,14 @@ dump_dir0 (struct tar_stat_info *st, char const *directory)
 	      if (size_left < bufsize)
 		{
 		  bufsize = size_left;
-		  idx_t count = bufsize % BLOCKSIZE;
+		  idx_t count = bufsize & (BLOCKSIZE - 1);
 		  if (count)
 		    memset (blk->buffer + size_left, 0, BLOCKSIZE - count);
 		}
 	      memcpy (blk->buffer, p_buffer, bufsize);
 	      size_left -= bufsize;
 	      p_buffer += bufsize;
-	      set_next_block_after (blk + (bufsize - 1) / BLOCKSIZE);
+	      set_next_block_after (blk + ((bufsize - 1) >> LG_BLOCKSIZE));
 	    }
 	}
       return;

@@ -62,10 +62,10 @@ append_file (char *file_name)
 	read_fatal (file_name);
       if (status == 0)
 	break;
-      if (status % BLOCKSIZE)
-	memset (start->buffer + status - status % BLOCKSIZE, 0,
-		BLOCKSIZE - status % BLOCKSIZE);
-      set_next_block_after (start + (status - 1) / BLOCKSIZE);
+      idx_t rem = status % BLOCKSIZE;
+      if (rem)
+	memset (start->buffer + (status - rem), 0, BLOCKSIZE - rem);
+      set_next_block_after (start + ((status - 1) >> LG_BLOCKSIZE));
     }
 
   if (close (handle) < 0)
