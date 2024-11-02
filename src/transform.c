@@ -116,7 +116,7 @@ add_literal_segment (struct transform *tf, const char *str, const char *end)
 }
 
 static void
-add_char_segment (struct transform *tf, int chr)
+add_char_segment (struct transform *tf, char chr)
 {
   struct replace_segm *segm = add_segment (tf);
   segm->type = segm_literal;
@@ -135,7 +135,7 @@ add_backref_segment (struct transform *tf, idx_t ref)
 }
 
 static bool
-parse_xform_flags (int *pflags, int c)
+parse_xform_flags (int *pflags, char c)
 {
   switch (c)
     {
@@ -180,8 +180,7 @@ add_case_ctl_segment (struct transform *tf, enum case_ctl_type ctl)
 static const char *
 parse_transform_expr (const char *expr)
 {
-  int delim;
-  int i, j, rc;
+  idx_t i, j;
   char *str, *beg, *cur;
   const char *p;
   int cflags = 0;
@@ -207,7 +206,7 @@ parse_transform_expr (const char *expr)
       paxusage (_("Invalid transform expression"));
     }
 
-  delim = expr[1];
+  char delim = expr[1];
   if (!delim)
     paxusage (_("Invalid transform expression"));
 
@@ -267,7 +266,7 @@ parse_transform_expr (const char *expr)
   memcpy (str, expr + 2, i - 2);
   str[i - 2] = 0;
 
-  rc = regcomp (&tf->regex, str, cflags);
+  int rc = regcomp (&tf->regex, str, cflags);
 
   if (rc)
     {
