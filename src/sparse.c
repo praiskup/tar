@@ -415,7 +415,8 @@ sparse_dump_region (struct tar_sparse_file *file, idx_t i)
   while (bytes_left > 0)
     {
       union block *blk = find_next_block ();
-      idx_t bufsize = min (bytes_left, BLOCKSIZE);
+      idx_t avail = available_space_after (blk);
+      idx_t bufsize = min (bytes_left, avail);
       idx_t bytes_read = full_read (file->fd, blk->buffer, bufsize);
       if (bytes_read < BLOCKSIZE)
 	memset (blk->buffer + bytes_read, 0, BLOCKSIZE - bytes_read);
@@ -449,7 +450,7 @@ sparse_dump_region (struct tar_sparse_file *file, idx_t i)
 	  return false;
 	}
 
-      set_next_block_after (blk);
+      set_next_block_after (blk + (bufsize - 1) / BLOCKSIZE);
     }
 
   return true;
@@ -473,15 +474,16 @@ sparse_extract_region (struct tar_sparse_file *file, idx_t i)
     }
   else while (write_size > 0)
     {
-      idx_t wrbytes = min (write_size, BLOCKSIZE);
       union block *blk = find_next_block ();
       if (!blk)
 	{
 	  paxerror (0, _("Unexpected EOF in archive"));
 	  return false;
 	}
-      set_next_block_after (blk);
-      file->dumped_size += BLOCKSIZE;
+      idx_t avail = available_space_after (blk);
+      idx_t wrbytes = min (write_size, avail);
+      set_next_block_after (blk + (wrbytes - 1) / BLOCKSIZE);
+      file->dumped_size += avail;
       idx_t count = blocking_write (file->fd, blk->buffer, wrbytes);
       write_size -= count;
       mv_size_left (file->stat_info->archive_file_size - file->dumped_size);
