@@ -1797,7 +1797,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
 
     case 't':
       set_subcommand_option (LIST_SUBCOMMAND);
-      verbose_option++;
+      verbose_option += verbose_option <= 2;
       break;
 
     case TEST_LABEL_OPTION:
@@ -1825,7 +1825,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
       break;
 
     case 'v':
-      verbose_option++;
+      verbose_option += verbose_option <= 2;
       warning_option |= WARN_VERBOSE_WARNINGS;
       break;
 
@@ -2710,7 +2710,7 @@ decode_options (int argc, char **argv)
       /* --test-label is silent if the user has specified the label name to
 	 compare against. */
       if (!name_more_files ())
-	verbose_option++;
+	verbose_option += verbose_option <= 2;
     }
   else if (utc_option)
     verbose_option = 2;
