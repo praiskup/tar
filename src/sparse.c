@@ -781,7 +781,6 @@ static bool
 oldgnu_get_sparse_info (struct tar_sparse_file *file)
 {
   union block *h = current_header;
-  int ext_p;
   enum oldgnu_add_status rc;
 
   file->stat_info->sparse_map_avail = 0;
@@ -792,7 +791,7 @@ oldgnu_get_sparse_info (struct tar_sparse_file *file)
 	break;
     }
 
-  for (ext_p = h->oldgnu_header.isextended;
+  for (char ext_p = h->oldgnu_header.isextended;
        rc == add_ok && ext_p; ext_p = h->sparse_header.isextended)
     {
       h = find_next_block ();
@@ -903,7 +902,7 @@ static bool
 star_get_sparse_info (struct tar_sparse_file *file)
 {
   union block *h = current_header;
-  int ext_p;
+  char ext_p;
   enum oldgnu_add_status rc = add_ok;
 
   file->stat_info->sparse_map_avail = 0;
