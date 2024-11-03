@@ -1020,30 +1020,22 @@ enum { TAR_INCREMENTAL_VERSION = 2 };
 
 /* Read incremental snapshot formats 0 and 1 */
 static void
-read_incr_db_01 (bool version_1, const char *initbuf)
+read_incr_db_01 (bool version_1, char **pbuf, size_t *pbufsize)
 {
-  char *buf = NULL;
-  size_t bufsize = 0;
   char *ebuf;
   intmax_t lineno = 1;
 
   if (version_1)
     {
-      if (getline (&buf, &bufsize, listed_incremental_stream) <= 0)
+      if (getline (pbuf, pbufsize, listed_incremental_stream) <= 0)
 	{
 	  read_error (listed_incremental_option);
-	  free (buf);
 	  return;
 	}
       ++lineno;
     }
-  else
-    {
-      buf = xstrdup (initbuf);
-      bufsize = strlen (buf) + 1;
-    }
 
-  newer_mtime_option = decode_timespec (buf, &ebuf, false);
+  newer_mtime_option = decode_timespec (*pbuf, &ebuf, false);
 
   if (! valid_timespec (newer_mtime_option))
     paxfatal (errno, "%s:%jd: %s",
@@ -1069,10 +1061,11 @@ read_incr_db_01 (bool version_1, const char *initbuf)
     }
 
   for (ssize_t n;
-       0 < (n = getline (&buf, &bufsize, listed_incremental_stream)); )
+       0 < (n = getline (pbuf, pbufsize, listed_incremental_stream)); )
     {
       dev_t dev;
       ino_t ino;
+      char *buf = *pbuf;
       bool nfs = buf[0] == '+';
       char *strp = buf + nfs;
       struct timespec mtime;
@@ -1125,7 +1118,6 @@ read_incr_db_01 (bool version_1, const char *initbuf)
       unquote_string (strp);
       note_directory (strp, mtime, dev, ino, nfs, false, NULL);
     }
-  free (buf);
 }
 
 /* Read a nul-terminated string from FP and store it in STK.
@@ -1411,7 +1403,7 @@ read_directory_file (void)
 	{
 	case 0:
 	case 1:
-	  read_incr_db_01 (incremental_version, buf);
+	  read_incr_db_01 (incremental_version, &buf, &bufsize);
 	  break;
 
 	case TAR_INCREMENTAL_VERSION:

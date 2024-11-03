@@ -447,7 +447,7 @@ read_header (union block **return_block, struct tar_stat_info *info,
 	      union block *header_copy;
 	      if (ckd_add (&size, info->stat.st_size, 2 * BLOCKSIZE - 1))
 		xalloc_die ();
-	      size -= size % BLOCKSIZE;
+	      size -= size & (BLOCKSIZE - 1);
 
 	      header_copy = xmalloc (size + 1);
 
@@ -455,13 +455,13 @@ read_header (union block **return_block, struct tar_stat_info *info,
 		{
 		  free (next_long_name);
 		  next_long_name = header_copy;
-		  next_long_name_blocks = size / BLOCKSIZE;
+		  next_long_name_blocks = size >> LG_BLOCKSIZE;
 		}
 	      else
 		{
 		  free (next_long_link);
 		  next_long_link = header_copy;
-		  next_long_link_blocks = size / BLOCKSIZE;
+		  next_long_link_blocks = size >> LG_BLOCKSIZE;
 		}
 
 	      set_next_block_after (header);

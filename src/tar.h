@@ -261,8 +261,9 @@ struct star_ext_header
 
 /* tar Header Block, overall structure.  */
 
-/* tar files are made in basic blocks of this size.  */
-enum { BLOCKSIZE = 512 };
+/* tar files are made in basic blocks of size BLOCKSIZE.
+   LG_BLOCKSIZE is the log base 2 of BLOCKSIZE.  */
+enum { LG_BLOCKSIZE = 9, BLOCKSIZE = 1 << LG_BLOCKSIZE };
 
 enum archive_format
 {

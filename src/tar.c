@@ -2065,7 +2065,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
 	  paxusage ("%s: %s", quotearg_colon (arg), _("Invalid record size"));
 	if (record_size % BLOCKSIZE != 0)
 	  paxusage (_("Record size must be a multiple of %d."), BLOCKSIZE);
-	blocking_factor = record_size / BLOCKSIZE;
+	blocking_factor = record_size >> LG_BLOCKSIZE;
       }
       break;
 

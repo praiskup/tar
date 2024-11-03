@@ -425,8 +425,7 @@ extern struct tar_stat_info current_stat_info;
 /* Status of archive file, or all zeros if remote.  */
 extern struct stat archive_stat;
 
-/* true if archive if lseek should be used on the archive, 0 if it
-   should not be used.  */
+/* Whether lseek should be used on the archive.  */
 extern bool seekable_archive;
 
 extern FILE *stdlis;

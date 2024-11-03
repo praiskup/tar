@@ -1,4 +1,4 @@
-GNU tar NEWS - User visible changes. 2023-09-12
+GNU tar NEWS - User visible changes. 2024-11-02
 Please send GNU tar bug reports to <bug-tar@gnu.org>
 
 version TBD
@@ -35,6 +35,10 @@ used, command output will be parsed using strptime(3).
 
 ** Transformations that change case (e.g., --transform='s/.*/\L&/')
    now work correctly with multi-byte characters.
+
+* Performance improvements
+
+** Sparse files are now read and written with larger blocksizes.
 
 
 version 1.35 - Sergey Poznyakoff, 2023-07-18

@@ -47,6 +47,7 @@ static tarlong prev_written;    /* bytes written on previous volumes */
 static tarlong bytes_written;   /* bytes written on this volume */
 static void *record_buffer[2];  /* allocated memory */
 static bool record_index;
+static idx_t short_read_slop;	/* excess bytes at end of short read */
 
 /* FIXME: The following variables should ideally be static to this
    module.  However, this cannot be done yet.  The cleanup continues!  */
@@ -703,22 +704,20 @@ get_archive_status (enum access_mode wanted_access, bool backed_up_flag)
     = (! (multi_volume_option || use_compress_program_option)
        && (seek_option < 0
 	   ? (_isrmt (archive)
-	      || S_ISREG (archive_stat.st_mode)
-	      || S_ISBLK (archive_stat.st_mode))
-	   : seek_option));
+	      || ! (S_ISFIFO (archive_stat.st_mode)
+		    || S_ISSOCK (archive_stat.st_mode)))
+	   : seek_option != 0));
 
   if (wanted_access == ACCESS_READ)
     {
-      if (archive == STDIN_FILENO && seekable_archive)
+      if (seekable_archive)
 	{
-	  start_offset = lseek (archive, 0, SEEK_CUR);
-	  if (start_offset == -1)
+	  start_offset = (lseek (archive, 0, SEEK_CUR)
+			  - (record_end - record_start) * BLOCKSIZE
+			  - short_read_slop);
+	  if (start_offset < 0)
 	    seekable_archive = false;
-	  else
-	    start_offset -= (record_end - record_start) * BLOCKSIZE;
 	}
-      else
-	start_offset = 0;
     }
   else
     sys_detect_dev_null_output ();
@@ -891,7 +890,7 @@ _flush_write (void)
 	{
 	  idx_t delta = status - map->start * BLOCKSIZE;
 	  idx_t diff;
-	  map->nblocks += delta / BLOCKSIZE;
+	  map->nblocks += delta >> LG_BLOCKSIZE;
 	  if (delta > map->sizeleft)
 	    delta = map->sizeleft;
 	  map->sizeleft -= delta;
@@ -971,7 +970,7 @@ short_read (idx_t status)
       && record_start_block == 0 && status != 0
       && archive_is_dev ())
     {
-      idx_t rsize = status / BLOCKSIZE;
+      idx_t rsize = status >> LG_BLOCKSIZE;
       paxwarn (0,
 	       ngettext ("Record size = %td block",
 			 "Record size = %td blocks",
@@ -999,7 +998,7 @@ short_read (idx_t status)
 
 	  paxfatal (0, ngettext ("Unaligned block (%td byte) in archive",
 				 "Unaligned block (%td bytes) in archive",
-                                  rest),
+				 rest),
 		    rest);
         }
 
@@ -1007,7 +1006,8 @@ short_read (idx_t status)
       more += status;
     }
 
-  record_end = record_start + (record_size - left) / BLOCKSIZE;
+  record_end = record_start + ((record_size - left) >> LG_BLOCKSIZE);
+  short_read_slop = (record_size - left) & (BLOCKSIZE - 1);
   records_read++;
 }
 
@@ -1116,7 +1116,7 @@ seek_archive (off_t size)
     paxfatal (0, _("rmtlseek not stopped at a record boundary"));
 
   /* Convert to number of records */
-  offset /= BLOCKSIZE;
+  offset >>= LG_BLOCKSIZE;
   /* Compute number of skipped blocks */
   nblk = offset - start;
 
@@ -1216,9 +1216,8 @@ change_tape_menu (FILE *read_file)
 {
   char *input_buffer = NULL;
   size_t size = 0;
-  bool stop = false;
 
-  while (!stop)
+  while (true)
     {
       fputc ('\007', stderr);
       fprintf (stderr,
@@ -1283,17 +1282,18 @@ change_tape_menu (FILE *read_file)
 
             for (cursor = name; *cursor && *cursor != '\n'; cursor++)
               ;
-            *cursor = '\0';
 
-            if (name[0])
+            if (cursor != name)
               {
-                /* FIXME: the following allocation is never reclaimed.  */
-                *archive_name_cursor = xstrdup (name);
-                stop = true;
+		memmove (input_buffer, name, cursor - name);
+		input_buffer[cursor - name] = '\0';
+		*archive_name_cursor = input_buffer;
+		/* FIXME: *archive_name_cursor is never freed.  */
+		return;
               }
-            else
-              fprintf (stderr, "%s",
-                       _("File name not specified. Try again.\n"));
+
+	    fprintf (stderr, "%s",
+		     _("File name not specified. Try again.\n"));
           }
           break;
 
@@ -1451,6 +1451,7 @@ try_new_volume (void)
          < 0)
     archive_read_error ();
 
+  short_read_slop = 0;
   if (status != record_size)
     short_read (status);
 
@@ -1813,6 +1814,7 @@ simple_flush_read (void)
   ptrdiff_t nread;
   while ((nread = rmtread (archive, record_start->buffer, record_size)) < 0)
     archive_read_error ();
+  short_read_slop = 0;
   if (nread == record_size)
     records_read++;
   else
@@ -1873,10 +1875,14 @@ _gnu_flush_read (void)
 	/* Necessary for blocking_factor == 1 */
 	flush_archive ();
     }
-  else if (nread == record_size)
-    records_read++;
   else
-    short_read (nread);
+    {
+      short_read_slop = 0;
+      if (nread == record_size)
+	records_read++;
+      else
+	short_read (nread);
+    }
 }
 
 static void
@@ -1960,13 +1966,13 @@ _gnu_flush_write (idx_t buffer_level)
       memcpy (header->buffer, copy_ptr, bufsize);
       copy_ptr += bufsize;
       copy_size -= bufsize;
-      set_next_block_after (header + (bufsize - 1) / BLOCKSIZE);
+      set_next_block_after (header + ((bufsize - 1) >> LG_BLOCKSIZE));
       header = find_next_block ();
       bufsize = available_space_after (header);
     }
   memcpy (header->buffer, copy_ptr, copy_size);
   memset (header->buffer + copy_size, 0, bufsize - copy_size);
-  set_next_block_after (header + (copy_size - 1) / BLOCKSIZE);
+  set_next_block_after (header + ((copy_size - 1) >> LG_BLOCKSIZE));
   find_next_block ();
 }
 
