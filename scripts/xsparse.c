@@ -281,19 +281,6 @@ static void
 expand_sparse (FILE *sfp, int ofd)
 {
   size_t i;
-  off_t max_numbytes = 0;
-  size_t maxbytes;
-  char *buffer;
-
-  for (i = 0; i < sparse_map_size; i++)
-    if (max_numbytes < sparse_map[i].numbytes)
-      max_numbytes = sparse_map[i].numbytes;
-
-  maxbytes = max_numbytes < SIZE_MAX ? max_numbytes : SIZE_MAX;
-
-  for (buffer = malloc (maxbytes); !buffer; maxbytes /= 2)
-    if (maxbytes == 0)
-      die (1, "not enough memory");
 
   for (i = 0; i < sparse_map_size; i++)
     {
@@ -310,7 +297,8 @@ expand_sparse (FILE *sfp, int ofd)
 	    die (1, "lseek error (%d)", errno);
 	  while (size)
 	    {
-	      size_t rdsize = (size < maxbytes) ? size : maxbytes;
+	      char buffer[BUFSIZ];
+	      size_t rdsize = size < BUFSIZ ? size : BUFSIZ;
 	      if (rdsize != fread (buffer, 1, rdsize, sfp))
 		die (1, "read error (%d)", errno);
 	      if (0 <= ofd)
@@ -323,7 +311,6 @@ expand_sparse (FILE *sfp, int ofd)
 	    }
 	}
     }
-  free (buffer);
 }
 
 static void
