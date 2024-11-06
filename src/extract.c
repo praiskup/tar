@@ -969,7 +969,7 @@ set_xattr (char const *file_name, struct tar_stat_info const *st,
 #ifdef HAVE_XATTRS
   if (xattrs_option && st->xattr_map.xm_size)
     {
-      int r = mknodat (chdir_fd, file_name, mode, 0);
+      int r = mknodat (chdir_fd, file_name, mode | S_IFREG, 0);
       if (r < 0)
 	return r;
       xattrs_xattrs_set (st, file_name, typeflag, false);
