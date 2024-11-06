@@ -65,7 +65,7 @@ static void *
 emalloc (size_t size)
 {
   char *p = malloc (size);
-  if (!p)
+  if (!p && size)
     die (1, "not enough memory");
   return p;
 }
@@ -168,7 +168,6 @@ read_xheader (char *name)
 {
   char *kw, *val;
   FILE *fp = fopen (name, "r");
-  char *expect = NULL;
   size_t i = 0;
 
   if (verbose)
@@ -179,10 +178,6 @@ read_xheader (char *name)
       if (verbose)
 	printf ("Found variable GNU.sparse.%s = %s\n", kw, val);
 
-      if (expect && strcmp (kw, expect))
-	die (1, "bad keyword sequence: expected '%s' but found '%s'",
-	     expect, kw);
-      expect = NULL;
       if (strcmp (kw, "name") == 0)
 	{
 	  outname = emalloc (strlen (val) + 1);
@@ -205,16 +200,25 @@ read_xheader (char *name)
 	{
 	  sparse_map_size = string_to_size (val, NULL,
 					    SIZE_MAX / sizeof *sparse_map);
-	  sparse_map = emalloc (sparse_map_size * sizeof *sparse_map);
+	  if (sparse_map_size)
+	    {
+	      sparse_map = emalloc (sparse_map_size * sizeof *sparse_map);
+	      sparse_map[0].offset = -1;
+	    }
 	}
       else if (strcmp (kw, "offset") == 0)
 	{
+	  if (sparse_map_size <= i)
+	    die (1, "bad GNU.sparse.map: spurious offset");
 	  sparse_map[i].offset = string_to_off (val, NULL);
-	  expect = "numbytes";
 	}
       else if (strcmp (kw, "numbytes") == 0)
 	{
+	  if (sparse_map_size <= i || sparse_map[i].offset < 0)
+	    die (1, "bad GNU.sparse.map: spurious numbytes");
 	  sparse_map[i++].numbytes = string_to_off (val, NULL);
+	  if (i < sparse_map_size)
+	    sparse_map[i].offset = -1;
 	}
       else if (strcmp (kw, "map") == 0)
 	{
@@ -238,8 +242,6 @@ read_xheader (char *name)
 	    die (1, "bad GNU.sparse.map: garbage at the end");
 	}
     }
-  if (expect)
-    die (1, "bad keyword sequence: expected '%s' not found", expect);
   if (version_major == 0 && sparse_map_size == 0)
     die (1, "size of the sparse map unknown");
   if (i != sparse_map_size)
@@ -281,19 +283,6 @@ static void
 expand_sparse (FILE *sfp, int ofd)
 {
   size_t i;
-  off_t max_numbytes = 0;
-  size_t maxbytes;
-  char *buffer;
-
-  for (i = 0; i < sparse_map_size; i++)
-    if (max_numbytes < sparse_map[i].numbytes)
-      max_numbytes = sparse_map[i].numbytes;
-
-  maxbytes = max_numbytes < SIZE_MAX ? max_numbytes : SIZE_MAX;
-
-  for (buffer = malloc (maxbytes); !buffer; maxbytes /= 2)
-    if (maxbytes == 0)
-      die (1, "not enough memory");
 
   for (i = 0; i < sparse_map_size; i++)
     {
@@ -310,7 +299,8 @@ expand_sparse (FILE *sfp, int ofd)
 	    die (1, "lseek error (%d)", errno);
 	  while (size)
 	    {
-	      size_t rdsize = (size < maxbytes) ? size : maxbytes;
+	      char buffer[BUFSIZ];
+	      size_t rdsize = size < BUFSIZ ? size : BUFSIZ;
 	      if (rdsize != fread (buffer, 1, rdsize, sfp))
 		die (1, "read error (%d)", errno);
 	      if (0 <= ofd)
@@ -323,7 +313,6 @@ expand_sparse (FILE *sfp, int ofd)
 	    }
 	}
     }
-  free (buffer);
 }
 
 static void
