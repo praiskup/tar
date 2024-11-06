@@ -65,7 +65,7 @@ static void *
 emalloc (size_t size)
 {
   char *p = malloc (size);
-  if (!p)
+  if (!p && size)
     die (1, "not enough memory");
   return p;
 }
