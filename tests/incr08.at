@@ -40,7 +40,7 @@ AT_KEYWORDS([incremental create incr08 chdir])
 
 AT_TAR_WITH_HOOK(
 [AT_CHECK([
-DIR=`pwd`/gnu/tartest
+DIR=`pwd -P`/gnu/tartest
 sed "s|$DIR|ABSPATH|" stdout
 ],
 [0],
