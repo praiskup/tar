@@ -1,6 +1,6 @@
 /* A tar (tape archiver) program.
 
-   Copyright 1988-2024 Free Software Foundation, Inc.
+   Copyright 1988-2025 Free Software Foundation, Inc.
 
    Written by John Gilmore, starting 1985-08-25.
 
