@@ -25,6 +25,7 @@ argp-version-etc
 assert-h
 attribute
 backupfile
+bool
 c-ctype
 c32rtomb
 c32tolower
@@ -33,7 +34,7 @@ closeout
 configmake
 dirname
 dup2
-errno
+errno-h
 error
 exclude
 extern-inline
@@ -66,7 +67,7 @@ ialloc
 idx
 intprops
 inttostr
-inttypes
+inttypes-h
 largefile
 lchown
 limits-h
@@ -98,16 +99,15 @@ selinux-at
 setenv
 stat-time
 std-gnu23
-stdbool
-stddef
-stdint
+stddef-h
+stdint-h
 stpcpy
 stdopen
 strdup-posix
 strerror
 strnlen
 symlinkat
-sys_stat
+sys_stat-h
 timespec
 timespec-sub
 unlinkat
