@@ -4,7 +4,7 @@
 
 scriptversion=2021-03-01.13
 
-# Copyright 2003-2024 Free Software Foundation, Inc.
+# Copyright 2003-2025 Free Software Foundation, Inc.
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -73,7 +73,7 @@ texarg="-t @finalout"
 
 version="gendocs.sh $scriptversion
 
-Copyright 2021 Free Software Foundation, Inc.
+Copyright 2021, 2025 Free Software Foundation, Inc.
 There is NO warranty.  You may redistribute this software
 under the terms of the GNU General Public License.
 For more information about these matters, see the files named COPYING."

@@ -1,6 +1,6 @@
 # Make GNU tar scripts.
 
-# Copyright 2004-2024 Free Software Foundation, Inc.
+# Copyright 2004-2025 Free Software Foundation, Inc.
 
 # This file is part of GNU tar.
 
