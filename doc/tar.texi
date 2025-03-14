@@ -11769,10 +11769,8 @@ in chunks known as @dfn{records}.  To change the default blocking
 factor, use the @option{--blocking-factor=@var{512-size}} (@option{-b
 @var{512-size}}) option.  Each record will then be composed of
 @var{512-size} blocks.  (Each @command{tar} block is 512 bytes.
-@xref{Standard}.)  Each file written to the archive uses at least one
-full record.  As a result, using a larger record size can result in
-more wasted space for small files.  On the other hand, a larger record
-size can often be read and written much more efficiently.
+@xref{Standard}.)  On some devices, a larger record size can be read
+and written much more efficiently.
 
 Further complicating the problem is that some tape drives ignore the
 blocking entirely.  For these, a larger record size can still improve
