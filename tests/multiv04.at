@@ -25,7 +25,7 @@
 
 # Test idea:
 # 1. Create a listed-incremental archive of a directory containing
-# a cetrain number of zero-length files.
+# a certain number of zero-length files.
 # 2. Using the same snapshot file, create a *multivolume* listed-incremental
 # archive. Number of files created in the directory and volume size should
 # be selected so that the first volume ends in the midst of the directory

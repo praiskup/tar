@@ -1,0 +1,46 @@
+# Test suite for GNU tar.                             -*- autotest -*-
+# Copyright 2025 Free Software Foundation, Inc.
+#
+# This file is part of GNU tar.
+#
+# GNU tar is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# GNU tar is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# Description: When invoked with --skip-old-files, tar 1.35 failed
+# to restore mode of a directory member, if the directory was previously
+# created as an intermediate (i.e. member ordering in the archive was
+# inverted).
+# References: https://savannah.gnu.org/bugs/index.php?66774
+
+AT_SETUP([extract intermediates with --skip-old-files])
+AT_KEYWORDS([extract extrac28])
+AT_TAR_CHECK([
+mkdir dir
+chmod 700 dir
+touch dir/one dir/two
+tar cf archive.tar dir/one
+tar rf archive.tar --exclude dir/one dir
+tar tf archive.tar
+rm -rf dir
+tar xf archive.tar --skip-old-files --delay-directory-restore
+genfile --stat=mode.777 dir
+],
+[0],
+[dir/one
+dir/
+dir/two
+700
+])
+AT_CLEANUP
+
+

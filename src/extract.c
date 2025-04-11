@@ -616,6 +616,35 @@ delay_set_stat (char const *file_name, struct tar_stat_info const *st,
     mark_after_links (data);
 }
 
+/* If DIR is an intermediate directory created earlier, update its
+   metadata from the current_stat_info and clear, its intermediate
+   status and return true.  Return false otherwise.
+ */
+static bool
+update_interdir_set_stat (char const *dir)
+{
+  if (delayed_set_stat_table)
+    {
+      struct delayed_set_stat key, *data;
+
+      key.file_name = (char *) dir;
+      data = hash_lookup (delayed_set_stat_table, &key);
+      if (data && data->interdir)
+	{
+	  data->dev = current_stat_info.stat.st_dev;
+	  data->ino = current_stat_info.stat.st_ino;
+	  data->mode = current_stat_info.stat.st_mode;
+	  data->uid = current_stat_info.stat.st_uid;
+	  data->gid = current_stat_info.stat.st_gid;
+	  data->atime = current_stat_info.atime;
+	  data->mtime = current_stat_info.mtime;
+	  data->interdir = false;
+	  return true;
+	}
+    }
+  return false;
+}
+
 /* Update the delayed_set_stat info for an intermediate directory
    created within the file name of DIR.  The intermediate directory turned
    out to be the same as this directory, e.g. due to ".." or symbolic
@@ -1158,6 +1187,8 @@ extract_dir (char *file_name, char typeflag)
 		    }
 		}
 	    }
+	  else if (update_interdir_set_stat (file_name))
+	    return true;
 	  else if (old_files_option == UNLINK_FIRST_OLD_FILES)
 	    {
 	      status = 0;

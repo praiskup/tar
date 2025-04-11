@@ -9617,6 +9617,10 @@ File names and symbolic links can contain at most 100 bytes.
 @item
 File sizes must be less than 8 GiB (@math{2^33} bytes = 8,589,934,592 bytes).
 @item
+File timestamps must be nonnegative and less than @math{2^33} seconds
+since the Epoch, corresponding to the range from 1970-01-01 00:00:00
+(inclusive) to 2242-03-16 12:56:32 (exclusive) UTC, ignoring leap seconds.
+@item
 It is impossible to store special files (block and character
 devices, fifos etc.)
 @item
@@ -9647,7 +9651,11 @@ So, in most cases file names must be a bit shorter than 255 bytes.
 @item
 Symbolic links can contain at most 100 bytes.
 @item
-Files can contain at most 8 GiB (@math{2^33} bytes = 8,589,934,592 bytes).
+File sizes must be less than 8 GiB (@math{2^33} bytes = 8,589,934,592 bytes).
+@item
+File timestamps must be nonnegative and less than @math{2^33} seconds
+since the Epoch, corresponding to the range from 1970-01-01 00:00:00
+(inclusive) to 2242-03-16 12:56:32 (exclusive) UTC, ignoring leap seconds.
 @item
 UIDs, GIDs, device major numbers, and device minor numbers
 must be less than @math{2^21} (2,097,152).
@@ -9655,18 +9663,19 @@ must be less than @math{2^21} (2,097,152).
 
 @item star
 The format used by the late J@"org Schilling's @command{star}
-implementation.  @GNUTAR{} is able to read @samp{star} archives but
-currently does not produce them.
+implementation.  @GNUTAR{} can read @samp{star} archives but
+does not produce them.
 
 @item posix
 The format defined by @acronym{POSIX.1-2001} and later.  This is the
 most flexible and feature-rich format.  It does not impose arbitrary
-restrictions on file sizes or file name lengths.  This format is more
+restrictions on file sizes or timestamps or file name lengths.
+This format is more
 recent, so some @command{tar} implementations cannot handle it properly.
 However, any @command{tar} implementation able to read @samp{ustar}
 archives should be able to read most @samp{posix} archives as well,
 except that it will extract any additional information (such as long
-file names) as extra plain text files.
+file names) as extra plain text files and their parent directories.
 
 This archive format will be the default format for future versions
 of @GNUTAR{}.
@@ -9676,13 +9685,13 @@ of @GNUTAR{}.
 The following table summarizes the limitations of each of these
 formats:
 
-@multitable @columnfractions .10 .20 .20 .20 .20
-@headitem Format @tab UID @tab File Size @tab File Name @tab Devn
-@item gnu    @tab 1.8e19 @tab Unlimited @tab Unlimited @tab 63
-@item oldgnu @tab 1.8e19 @tab Unlimited @tab Unlimited @tab 63
-@item v7     @tab 2097151 @tab 8 GiB @minus{} 1 @tab 99 @tab n/a
-@item ustar  @tab 2097151 @tab 8 GiB @minus{} 1 @tab 255 @tab 21
-@item posix  @tab Unlimited @tab Unlimited @tab Unlimited @tab Unlimited
+@multitable {Format} {no limit} {File Size} {File Date} {File Name} {no limit}
+@headitem Format @tab UID @tab File Size @tab File Date @tab File Name @tab Devn
+@item gnu    @tab 1.8e19 @tab no limit @tab no limit @tab no limit @tab 63
+@item oldgnu @tab 1.8e19 @tab no limit @tab no limit @tab no limit @tab 63
+@item v7     @tab 2097151 @tab < 8 GiB @tab 1970--2242 @tab 99 @tab n/a
+@item ustar  @tab 2097151 @tab < 8 GiB @tab 1970--2242 @tab 255 @tab 21
+@item posix  @tab no limit @tab no limit @tab no limit @tab no limit @tab no limit
 @end multitable
 
 The default format for @GNUTAR{} is defined at compilation
@@ -11760,10 +11769,8 @@ in chunks known as @dfn{records}.  To change the default blocking
 factor, use the @option{--blocking-factor=@var{512-size}} (@option{-b
 @var{512-size}}) option.  Each record will then be composed of
 @var{512-size} blocks.  (Each @command{tar} block is 512 bytes.
-@xref{Standard}.)  Each file written to the archive uses at least one
-full record.  As a result, using a larger record size can result in
-more wasted space for small files.  On the other hand, a larger record
-size can often be read and written much more efficiently.
+@xref{Standard}.)  On some devices, a larger record size can be read
+and written much more efficiently.
 
 Further complicating the problem is that some tape drives ignore the
 blocking entirely.  For these, a larger record size can still improve
