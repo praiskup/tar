@@ -110,7 +110,7 @@ check_exclusion_tags (struct tar_stat_info const *st, char const **tag_file_name
 bool
 cachedir_file_p (int fd)
 {
-  static char const sig[43]
+  static char const sig[43] ATTRIBUTE_NONSTRING
     = "Signature: 8a477f597d28d172789f06886806bc55";
   char tagbuf[sizeof sig];
   return (read (fd, tagbuf, sizeof sig) == sizeof sig
