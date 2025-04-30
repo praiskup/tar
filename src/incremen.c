@@ -428,7 +428,7 @@ void
 remove_directory (const char *caname)
 {
   struct directory *dir = make_directory (caname, xstrdup (caname));
-  struct directory *ret = hash_delete (directory_table, dir);
+  struct directory *ret = hash_remove (directory_table, dir);
   if (ret)
     free_directory (ret);
   free_directory (dir);
