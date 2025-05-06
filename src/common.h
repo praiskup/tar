@@ -611,7 +611,7 @@ extern idx_t recent_long_link_blocks;
 
 void decode_header (union block *header, struct tar_stat_info *stat_info,
 		    enum archive_format *format_pointer, bool do_user_group);
-void transform_stat_info (char typeflag, struct tar_stat_info *stat_info);
+bool transform_stat_info (char typeflag, struct tar_stat_info *stat_info);
 char const *tartime (struct timespec t, bool full_time);
 
 #define OFF_FROM_HEADER(where) off_from_header (where, sizeof (where))
@@ -972,7 +972,7 @@ enum
 void set_transform_expr (const char *expr);
 bool transform_name (char **pinput, int type);
 bool transform_name_fp (char **pinput, int type,
-			char *(*fun) (char *, int), int dat);
+			char const *(*fun) (char const *, int));
 bool transform_program_p (void);
 
 /* Module suffix.c */
@@ -1014,7 +1014,8 @@ enum
     WARN_XATTR_WRITE		= 1 << 21,
     WARN_RECORD_SIZE		= 1 << 22,
     WARN_FAILED_READ		= 1 << 23,
-    WARN_MISSING_ZERO_BLOCKS	= 1 << 24
+    WARN_MISSING_ZERO_BLOCKS	= 1 << 24,
+    WARN_EMPTY_TRANSFORM        = 1 << 25
   };
 /* These warnings are enabled by default in verbose mode: */
 enum

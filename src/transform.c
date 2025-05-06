@@ -17,6 +17,7 @@
 #include <system.h>
 #include <regex.h>
 #include <mcel.h>
+#include <quotearg.h>
 #include "common.h"
 
 enum transform_type
@@ -561,11 +562,11 @@ _single_transform_name_to_obstack (struct transform *tf, char *input)
   free (rmp);
 }
 
-static bool
+static void
 _transform_name_to_obstack (int flags, char *input, char **output)
 {
   struct transform *tf;
-  bool alloced = false;
+  bool ok = false;
 
   if (!stk_init)
     {
@@ -579,38 +580,53 @@ _transform_name_to_obstack (int flags, char *input, char **output)
 	{
 	  _single_transform_name_to_obstack (tf, input);
 	  input = obstack_finish (&stk);
-	  alloced = true;
+	  ok = true;
 	}
     }
+  if (!ok)
+    {
+      obstack_grow0 (&stk, input, strlen (input));
+      input = obstack_finish (&stk);
+    }
   *output = input;
-  return alloced;
 }
 
+/* Transform name *PINPUT of a file or archive member of type TYPE
+   (a single XFORM_* bit).  If FUN is not NULL, call this function
+   to further transform the result.  Arguments to FUN are the transformed
+   name and type, it's return value is the new transformed name.
+
+   If transformation results in a non-empty string, store the result in
+   *PINPUT and return true.  Otherwise, if it results in an empty string,
+   issue a warning, return false and don't modify PINPUT.
+ */
 bool
-transform_name_fp (char **pinput, int flags,
-		   char *(*fun) (char *, int), int dat)
+transform_name_fp (char **pinput, int type,
+		   char const *(*fun) (char const *, int))
 {
-    char *str;
-    bool ret = _transform_name_to_obstack (flags, *pinput, &str);
-    if (ret)
-      {
-	assign_string (pinput, fun ? fun (str, dat) : str);
-	obstack_free (&stk, str);
-      }
-    else if (fun)
-      {
-	*pinput = NULL;
-	assign_string (pinput, fun (str, dat));
-	free (str);
-	ret = true;
-      }
-    return ret;
+  char *str;
+  char const *result;
+
+  _transform_name_to_obstack (type, *pinput, &str);
+  result = (str[0] != 0 && fun) ? fun (str, type) : str;
+
+  if (result[0] == 0)
+    {
+      warnopt (WARN_EMPTY_TRANSFORM, 0,
+	       _("%s: transforms to empty name"), quotearg_colon (*pinput));
+      obstack_free (&stk, str);
+      return false;
+    }
+
+  assign_string (pinput, result);
+  obstack_free (&stk, str);
+  return true;
 }
 
 bool
 transform_name (char **pinput, int type)
 {
-  return transform_name_fp (pinput, type, NULL, 0);
+  return transform_name_fp (pinput, type, NULL);
 }
 
 bool
