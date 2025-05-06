@@ -1158,31 +1158,6 @@ extract_dir (char *file_name, char typeflag)
 			  repair_delayed_set_stat (file_name, &st);
 			  return true;
 			}
-		      else if (old_files_option == NO_OVERWRITE_DIR_OLD_FILES)
-			{
-			  /* Temporarily change the directory mode to a safe
-			     value, to be able to create files in it, should
-			     the need be.
-			  */
-			  mode = safe_dir_mode (&st);
-			  status = fd_chmod (-1, file_name, mode,
-					     AT_SYMLINK_NOFOLLOW, DIRTYPE);
-			  if (status == 0)
-			    {
-			      /* Store the actual directory mode, to be restored
-				 later.
-			      */
-			      current_stat_info.stat = st;
-			      current_mode = mode & ~ current_umask;
-			      current_mode_mask = MODE_RWX;
-			      atflag = AT_SYMLINK_NOFOLLOW;
-			      break;
-			    }
-			  else
-			    {
-			      chmod_error_details (file_name, mode);
-			    }
-			}
 		      break;
 		    }
 		}
