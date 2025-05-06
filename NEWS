@@ -1,4 +1,4 @@
-GNU tar NEWS - User visible changes. 2024-11-02
+GNU tar NEWS - User visible changes. 2025-05-06
 Please send GNU tar bug reports to <bug-tar@gnu.org>
 
 version TBD
@@ -23,6 +23,15 @@ as argument to --mtime option (see GNU tar manual, chapter 4
 
 Defines output format for the COMMAND set by the above option.  If
 used, command output will be parsed using strptime(3).
+
+* Skip file or archive member if transformed name is empty
+
+If applying file name transformations (--transform and
+--strip-component options) to a file or member name results in an
+empty string that file or member is skipped and a warning is printed.
+
+The warning can be suppressed using the --warning=empty-transform
+option.
 
 * Bug fixes
 

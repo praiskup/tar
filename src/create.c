@@ -1478,7 +1478,11 @@ file_count_links (struct tar_stat_info *st)
 
       assign_string (&linkname, safer_name_suffix (st->orig_file_name, true,
 						   absolute_names_option));
-      transform_name (&linkname, XFORM_LINK);
+      if (!transform_name (&linkname, XFORM_LINK))
+	{
+	  free (linkname);
+	  return;
+	}
 
       lp = xmalloc (FLEXNSIZEOF (struct link, name, strlen (linkname) + 1));
       lp->ino = st->stat.st_ino;
@@ -1612,7 +1616,8 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
   assign_string (&st->file_name,
                  safer_name_suffix (p, false, absolute_names_option));
 
-  transform_name (&st->file_name, XFORM_REGFILE);
+  if (!transform_name (&st->file_name, XFORM_REGFILE))
+    return NULL;
 
   if (parentfd < 0 && ! top_level)
     {
@@ -1797,7 +1802,8 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
 
 	  if (!ok)
 	    {
-	      warnopt (WARN_FILE_CHANGED, 0, _("%s: file changed as we read it"),
+	      warnopt (WARN_FILE_CHANGED, 0,
+		       _("%s: file changed as we read it"),
 		       quotearg_colon (p));
 	      if (! ignore_failed_read_option)
 		set_exit_status (TAREXIT_DIFFERS);
@@ -1824,7 +1830,8 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
 	  file_removed_diag (p, top_level, readlink_diag);
 	  return allocated;
 	}
-      transform_name (&st->link_name, XFORM_SYMLINK);
+      if (!transform_name (&st->link_name, XFORM_SYMLINK))
+	return allocated;
       if (NAME_FIELD_SIZE - (archive_format == OLDGNU_FORMAT)
 	  < strlen (st->link_name))
 	write_long_link (st);

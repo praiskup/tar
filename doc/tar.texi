@@ -4639,7 +4639,7 @@ The subsections below discuss allowed values for @var{keyword} along with the
 warning messages they control.
 
 @menu
-* General Warnings::  Keywords applicable for @command{tar --create}.
+* General Warnings::  Keywords controlling @command{tar} operation.
 * Archive Creation Warnings:: Keywords applicable for @command{tar --create}.
 * Archive Extraction Warnings:: Keywords applicable for @command{tar --extract}.
 * Incremental Extraction Warnings:: Keywords controlling incremental extraction.
@@ -4668,6 +4668,11 @@ operation mode:
 @samp{A lone zero block at %s}.  Notice, that this warning is
 suppressed if @option{--ignore-zeros} is in effect (@pxref{Ignore
 Zeros}).
+@end defvr
+
+@defvr {warning} empty-transform
+@cindex @samp{transforms to empty name}, warning message.
+@samp{transforms to empty name}.  @xref{transform}.
 @end defvr
 
 @defvr {warning} missing-zero-blocks
@@ -8906,7 +8911,9 @@ $ @kbd{tar -xf usr.tar --strip=2 usr/include/stdlib.h}
 
 The option @option{--strip=2} instructs @command{tar} to strip the
 two leading components (@file{usr/} and @file{include/}) off the file
-name.
+name, before extracting it.  Notice, that archive members to extract are
+searched before that modification, hence the file name is specified in
+full.
 
 If you add the @option{--verbose} (@option{-v}) option to the invocation
 above, you will note that the verbose listing still contains the
@@ -9022,7 +9029,6 @@ follows the GNU @command{sed} implementation in this regard, so
 the interaction is defined to be: ignore matches before the
 @var{number}th, and then match and replace all matches from the
 @var{number}th on.
-
 @end table
 
 In addition, several @dfn{transformation scope} flags are supported,
@@ -9161,6 +9167,42 @@ $ @kbd{tar -cf arch.tar --transform='s,/usr/var,/var/' \
 $ @kbd{tar -cf arch.tar \
                --transform='s,/usr/var,/var/;s,/usr/local,/usr/,'}
 @end smallexample
+
+Applying transformations to some file names may produce empty
+strings.  This may indicate errors in regular expressions, but it may
+as well happen during normal operation, for instance, when using
+@option{--strip-components} option with a value which is greater then
+or equal to the number of directory components in the topmost
+directory stored in the archive.  Consider the following example.  Let
+the archive @file{usr.tar} contain:
+
+@example
+@group
+$ @kbd{tar tf usr.tar}
+usr/
+usr/local/
+...
+@end group
+@end example
+
+Extracting from this archive with the @option{--strip=1} option will
+transform the name of its first entry (@samp{usr/}) to an empty
+string.  When this happens, @GNUTAR{} prints a warning and skips this
+member:
+
+@example
+@group
+$ @kbd{tar --strip=1 -xf usr.tar}
+tar: usr: transforms to empty name
+@end group
+@end example
+
+If an empty name results from transformations applied when creating or
+updating the archive, the warning is output and the file is not
+archived.
+
+If this is intended, you can suppress the warning using the
+@option{--warning=no-empty-transform} option (@pxref{warnings}).
 
 @node after
 @section Operating Only on New Files

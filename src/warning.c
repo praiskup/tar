@@ -50,6 +50,7 @@ static char const *const warning_args[] = {
   "failed-read",
   "missing-zero-blocks",
   "verbose",
+  "empty-transform",
   NULL
 };
 
@@ -81,6 +82,7 @@ static int warning_types[] = {
   WARN_FAILED_READ,
   WARN_MISSING_ZERO_BLOCKS,
   WARN_VERBOSE_WARNINGS,
+  WARN_EMPTY_TRANSFORM
 };
 
 ARGMATCH_VERIFY (warning_args, warning_types);

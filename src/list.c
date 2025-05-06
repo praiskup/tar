@@ -75,8 +75,8 @@ static char const base64_map[UCHAR_MAX + 1] = {
   ['+'] = 62 + 1, ['/'] = 63 + 1,
 };
 
-static char *
-decode_xform (char *file_name, int type)
+static char const *
+decode_xform (char const *file_name, int type)
 {
   switch (type)
     {
@@ -111,7 +111,7 @@ decode_xform (char *file_name, int type)
 static bool
 transform_member_name (char **pinput, int type)
 {
-  return transform_name_fp (pinput, type, decode_xform, type);
+  return transform_name_fp (pinput, type, decode_xform);
 }
 
 static void
@@ -140,26 +140,31 @@ enforce_one_top_level (char **pfile_name)
   free (file_name);
 }
 
-void
+bool
 transform_stat_info (char typeflag, struct tar_stat_info *stat_info)
 {
   if (typeflag == GNUTYPE_VOLHDR)
     /* Name transformations don't apply to volume headers. */
-    return;
+    return true;
 
-  transform_member_name (&stat_info->file_name, XFORM_REGFILE);
+  if (!transform_member_name (&stat_info->file_name, XFORM_REGFILE))
+    return false;
   switch (typeflag)
     {
     case SYMTYPE:
-      transform_member_name (&stat_info->link_name, XFORM_SYMLINK);
+      if (!transform_member_name (&stat_info->link_name, XFORM_SYMLINK))
+	return false;
       break;
 
     case LNKTYPE:
-      transform_member_name (&stat_info->link_name, XFORM_LINK);
+      if (!transform_member_name (&stat_info->link_name, XFORM_LINK))
+	return false;
+      break;
     }
 
   if (one_top_level_option)
     enforce_one_top_level (&stat_info->file_name);
+  return true;
 }
 
 /* Main loop for reading an archive.  */
@@ -223,9 +228,11 @@ read_and (void (*do_something) (void))
 		}
 	    }
 
-	  transform_stat_info (current_header->header.typeflag,
-			       &current_stat_info);
-	  (*do_something) ();
+	  if (transform_stat_info (current_header->header.typeflag,
+				   &current_stat_info))
+	    (*do_something) ();
+	  else
+	    skip_member ();
 	  continue;
 
 	case HEADER_ZERO_BLOCK:
