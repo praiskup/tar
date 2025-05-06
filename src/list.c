@@ -159,7 +159,7 @@ transform_stat_info (char typeflag, struct tar_stat_info *stat_info)
     }
 
   if (one_top_level_option)
-    enforce_one_top_level (&current_stat_info.file_name);
+    enforce_one_top_level (&stat_info->file_name);
 }
 
 /* Main loop for reading an archive.  */
