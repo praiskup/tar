@@ -341,7 +341,7 @@ set_mode (char const *file_name,
 {
   if (((current_mode ^ mode) | ~ current_mode_mask) & mode_mask)
     {
-      if (MODE_ALL & ~ mode_mask & ~ current_mode_mask)
+      if (MODE_ALL & ~ (mode_mask & current_mode_mask))
 	{
 	  struct stat st;
 	  if (fd_stat (fd, file_name, &st, atflag) < 0)

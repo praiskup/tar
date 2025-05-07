@@ -9162,10 +9162,10 @@ order of their appearance.  For example, the following two invocations
 are equivalent:
 
 @smallexample
-$ @kbd{tar -cf arch.tar --transform='s,/usr/var,/var/' \
+$ @kbd{tar -cf arch.tar --transform='s,/usr/var,/var/,' \
                         --transform='s,/usr/local,/usr/,'}
 $ @kbd{tar -cf arch.tar \
-               --transform='s,/usr/var,/var/;s,/usr/local,/usr/,'}
+               --transform='s,/usr/var,/var/,;s,/usr/local,/usr/,'}
 @end smallexample
 
 Applying transformations to some file names may produce empty
