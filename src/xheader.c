@@ -670,7 +670,7 @@ run_override_list (struct keyword_list *kp, struct tar_stat_info *st)
     {
       struct xhdr_tab const *t = locate_handler (kp->pattern);
       if (t)
-	t->decoder (st, t->keyword, kp->value, strlen (kp->value));
+	t->decoder (st, kp->pattern, kp->value, strlen (kp->value));
     }
 }
 
