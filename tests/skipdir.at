@@ -1,0 +1,56 @@
+# Process this file with autom4te to create testsuite. -*- Autotest -*-
+
+# Test suite for GNU tar.
+# Copyright 2025 Free Software Foundation, Inc.
+
+# This file is part of GNU tar.
+
+# GNU tar is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+
+# GNU tar is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# Description: determining member type when listing and extracting
+# should follow the same principles.
+#
+# Until version 1.35 the same archive member could have been processed
+# as a directory when extracting and as a regular file when being
+# skipped during listing.
+#
+# References: https://savannah.gnu.org/patch/index.php?10100
+
+AT_SETUP([skip directory members])
+AT_KEYWORDS([skipdir])
+AT_DATA([archive.in],
+[/Td6WFoAAATm1rRGAgAhARwAAAAQz1jM4Cf/AG1dADedyh4ubnxHHIi7Cen6orusgKqY3paKeQwp
+3//HS9EIT7Hm+MsndXfRntXVt8mu8oDpLOfC+AB9VldyCtp2jqOfTwa455qfGAcONPn6WWDgsaAh
+O2Y6ptXuaF/vdaNkub7SkOBME8jHYITT5QAAAAAAHtdcflb5Zw8AAYkBgFAAAPYgb0axxGf7AgAA
+AAAEWVo=
+])
+AT_CHECK([base64 --help >/dev/null 2>&1 || AT_SKIP_TEST
+xz --help >/dev/null 2>&1 || AT_SKIP_TEST
+base64 -d < archive.in | xz -c -d > archive.tar
+])
+AT_CHECK([tar tf archive.tar],
+[0],
+[owo1/
+owo2/
+])
+AT_CHECK([tar vxf archive.tar],
+[0],
+[owo1/
+owo2/
+])
+AT_CHECK([tar -xvf archive.tar --exclude owo1],
+[0],
+[owo2/
+])
+AT_CLEANUP

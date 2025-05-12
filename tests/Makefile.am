@@ -245,6 +245,7 @@ TESTSUITE_AT = \
  shortrec.at\
  shortupd.at\
  sigpipe.at\
+ skipdir.at\
  sparse01.at\
  sparse02.at\
  sparse03.at\
