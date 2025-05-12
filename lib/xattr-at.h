@@ -51,7 +51,7 @@ int lsetxattrat (int dir_fd, const char *path, const char *name,
                  const void *value, size_t size, int flags);
 
 /* dir-fd-relative getxattr.  Operation gets the VALUE of the extended
-   attribute idenfified by NAME and associated with the given PATH in the
+   attribute identified by NAME and associated with the given PATH in the
    filesystem relatively to directory identified by DIR_FD.  For more info
    about all parameters see the getxattr(2) manpage. */
 ssize_t getxattrat (int dir_fd, const char *path, const char *name,

@@ -4973,7 +4973,7 @@ Books, ISBN 1-56884-203-1.}.  The two most common errors are:
 
 @enumerate
 @item
-Mistakingly using @code{create} instead of @code{extract}, when the
+Mistakenly using @code{create} instead of @code{extract}, when the
 intent was to extract the full contents of an archive.  This error
 is likely: keys @kbd{c} and @kbd{x} are right next to each other on
 the QWERTY keyboard.  Instead of being unpacked, the archive then
