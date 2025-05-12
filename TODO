@@ -25,7 +25,7 @@ Suggestions for improving GNU tar.
   It would be useful to be able to use '--remove-files' with '--diff',
   to remove all files that compare successfully, when verifying a backup.
 
-* Add tests for the new functonality.
+* Add tests for the new functionality.
 
 * Consider this:
 

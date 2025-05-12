@@ -472,7 +472,7 @@ The version control may be set with --backup or VERSION_CONTROL, values are:\n\n
    -n may become available in the future.
 */
 
-/* Option group idenitfiers help in sorting options by category: */
+/* Option group identifiers help in sorting options by category: */
 enum
   {
     GRH_COMMAND,
