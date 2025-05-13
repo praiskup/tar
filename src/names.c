@@ -1198,7 +1198,7 @@ name_gather (void)
 	  namelist = nametail = buffer;
 	}
       else if (change_dir)
-	addname (0, change_dir, false, NULL);
+	addname (NULL, change_dir, false, NULL);
     }
   else
     {
