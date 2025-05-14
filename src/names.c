@@ -1198,7 +1198,7 @@ name_gather (void)
 	  namelist = nametail = buffer;
 	}
       else if (change_dir)
-	addname (0, change_dir, false, NULL);
+	addname (NULL, change_dir, false, NULL);
     }
   else
     {
@@ -1280,11 +1280,9 @@ add_starting_file (char const *file_name)
 /* Find a match for FILE_NAME in the name list.  If EXACT is true,
    look for exact match (no wildcards). */
 static struct name *
-namelist_match (char const *file_name, bool exact)
+namelist_match_from (struct name *p, char const *file_name, bool exact)
 {
-  struct name *p;
-
-  for (p = namelist; p; p = p->next)
+  for (; p; p = p->next)
     {
       if (p->name[0]
 	  && (exact ? !p->is_wildcard : true)
@@ -1293,6 +1291,12 @@ namelist_match (char const *file_name, bool exact)
     }
 
   return NULL;
+}
+
+static COMMON_INLINE struct name *
+namelist_match (char const *file_name, bool exact)
+{
+  return namelist_match_from (namelist, file_name, exact);
 }
 
 void
@@ -1309,6 +1313,15 @@ remname (struct name *name)
     p->prev = name->prev;
   else
     nametail = name->prev;
+}
+
+/* Update CURSOR to remember that it matched FILE_NAME. */
+static COMMON_INLINE void
+register_match (struct name *cursor, const char *file_name)
+{
+  if (!(ISSLASH (file_name[cursor->length]) && recursion_option)
+      || cursor->found_count == 0)
+    cursor->found_count++;
 }
 
 /* Return true if and only if name FILE_NAME (from an archive) matches any
@@ -1344,12 +1357,33 @@ name_match (const char *file_name)
 	}
       if (cursor)
 	{
-	  if (!(ISSLASH (file_name[cursor->length]) && recursion_option)
-	      || cursor->found_count == 0)
-	    cursor->found_count++; /* remember it matched */
-	  chdir_do (cursor->change_dir);
-	  /* We got a match.  */
-	  return isfound (cursor);
+	  /*
+	   * Found the first match.  It is still possible that the namelist
+	   * contains other entries that also match that filename.  Find all
+	   * such entries and update their found_count to avoid spurious
+	   * "Not found in archive" errors at the end of the run.
+	   *
+	   * FIXME: name matching logic should be rewritten to avoid O(N^2)
+	   * time complexity.
+	   *
+	   * On the first entry to the loop below, the first match itself is
+	   * updated.
+	   */
+	  struct name *found = NULL;
+	  while (cursor)
+	    {
+	      register_match (cursor, file_name);
+	      if (!found && isfound (cursor))
+		found = cursor;
+	      cursor = namelist_match_from (cursor->next, file_name, false);
+	    }
+
+	  if (!found)
+	    return false;
+
+	  /* We got a match. */
+	  chdir_do (found->change_dir);
+	  return true;
 	}
 
       /* Filename from archive not found in namelist.  If we have the whole

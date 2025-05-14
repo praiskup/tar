@@ -809,16 +809,16 @@ COMMON_INLINE bool
 isfound (struct name const *c)
 {
   return (occurrence_option == 0
-	  ? (c)->found_count != 0
-	  : (c)->found_count == occurrence_option);
+	  ? c->found_count != 0
+	  : c->found_count == occurrence_option);
 }
 
 COMMON_INLINE bool
 wasfound (struct name const *c)
 {
   return (occurrence_option == 0
-	  ? (c)->found_count != 0
-	  : occurrence_option <= (c)->found_count);
+	  ? c->found_count != 0
+	  : occurrence_option <= c->found_count);
 }
 
 /* Module tar.c.  */

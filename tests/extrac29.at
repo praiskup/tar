@@ -1,0 +1,44 @@
+# Test suite for GNU tar.                             -*- autotest -*-
+# Copyright 2025 Free Software Foundation, Inc.
+#
+# This file is part of GNU tar.
+#
+# GNU tar is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# GNU tar is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# Description: When listing or extracting from an archive a given subset
+# of members, only the first matching argument was counted.  This led
+# to spurious "Not found in archive" errors.  For example, tar 1.35
+# when used in the test below, outputs
+#
+#  tar: dir/a1: Not found in archive
+#  tar: dir/b1: Not found in archive
+#
+# References: https://savannah.gnu.org/bugs/?67114
+
+AT_SETUP([Keeping track of matched names])
+AT_KEYWORDS([extract extrac29])
+AT_TAR_CHECK([
+AT_SORT_PREREQ
+mkdir dir
+touch dir/a1 dir/b1
+tar cf a.tar dir
+rm -rf dir
+tar -xvf a.tar dir dir/a1 dir/b1 | sort
+],
+[0],
+[dir/
+dir/a1
+dir/b1
+])
+AT_CLEANUP

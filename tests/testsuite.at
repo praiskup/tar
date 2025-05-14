@@ -94,7 +94,7 @@ m4_define([AT_SORT_PREREQ],[
 test -z "`sort < /dev/null 2>&1`" || AT_SKIP_TEST
 ])
 
-dnl AT_UNPRIVILEGED_PREREQ - Skip test if running at root privileges
+dnl AT_UNPRIVILEGED_PREREQ - Skip test if running with root privileges
 m4_define([AT_UNPRIVILEGED_PREREQ],[
 echo "test" > $[]$
 chmod 0 $[]$
@@ -355,6 +355,7 @@ m4_include([extrac25.at])
 m4_include([extrac26.at])
 m4_include([extrac27.at])
 m4_include([extrac28.at])
+m4_include([extrac29.at])
 
 m4_include([backup01.at])
 
