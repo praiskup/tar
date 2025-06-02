@@ -1407,8 +1407,9 @@ name_match (const char *file_name)
    The decision is postponed until the next entry is read if:
 
    1) P ended with a slash (i.e. it was a directory)
-   2) P matches any entry from the namelist *and* represents a subdirectory
-   or a file lying under this entry (in the terms of directory structure).
+   2) P matches a non-wildcard entry from the namelist *and* represents a
+   subdirectory or a file lying under this entry (in the terms of directory
+   structure).
 
    This is necessary to handle contents of directories. */
 bool
@@ -1420,7 +1421,8 @@ all_names_found (struct tar_stat_info *p)
   for (struct name const *cursor = namelist; cursor; cursor = cursor->next)
     {
       if ((cursor->name[0] && !wasfound (cursor))
-	  || (len >= cursor->length && ISSLASH (p->file_name[cursor->length])))
+	  || (!cursor->is_wildcard &&
+	      len >= cursor->length && ISSLASH (p->file_name[cursor->length])))
 	return false;
     }
   return true;
