@@ -959,11 +959,8 @@ archive_is_dev (void)
 static void
 short_read (idx_t status)
 {
-  idx_t left;			/* bytes left */
-  char *more;                   /* pointer to next byte to read */
-
-  more = record_start->buffer + status;
-  left = record_size - status;
+  idx_t left = record_size - status;		/* bytes left to read */
+  char *more = (char *) record_start + status;	/* address of next read */
 
   if (left && left % BLOCKSIZE == 0
       && (warning_option & WARN_RECORD_SIZE)
