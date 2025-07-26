@@ -140,7 +140,7 @@ sys_truncate (int fd)
 idx_t
 sys_write_archive_buffer (void)
 {
-  return full_write (archive, record_start->buffer, record_size);
+  return full_write (archive, charptr (record_start), record_size);
 }
 
 /* Set ARCHIVE for writing, then compressing an archive.  */
@@ -309,7 +309,7 @@ is_regular_file (const char *name)
 idx_t
 sys_write_archive_buffer (void)
 {
-  return rmtwrite (archive, record_start->buffer, record_size);
+  return rmtwrite (archive, charptr (record_start), record_size);
 }
 
 /* Read and write file descriptors from a pipe(pipefd) call.  */
@@ -458,7 +458,7 @@ sys_child_open_for_compress (void)
 
       /* Assemble a record.  */
 
-      for (length = 0, cursor = record_start->buffer;
+      for (length = 0, cursor = charptr (record_start);
 	   length < record_size;
 	   length += status, cursor += status)
 	{
@@ -481,7 +481,7 @@ sys_child_open_for_compress (void)
 
 	  if (length > 0)
 	    {
-	      memset (record_start->buffer + length, 0, record_size - length);
+	      memset (charptr (record_start) + length, 0, record_size - length);
 	      status = sys_write_archive_buffer ();
 	      if (status != record_size)
 		archive_write_error (status);
@@ -622,12 +622,12 @@ sys_child_open_for_uncompress (void)
       clear_read_error_count ();
 
       ptrdiff_t n;
-      while ((n = rmtread (archive, record_start->buffer, record_size)) < 0)
+      while ((n = rmtread (archive, charptr (record_start), record_size)) < 0)
 	archive_read_error ();
       if (n == 0)
 	break;
 
-      char *cursor = record_start->buffer;
+      char *cursor = charptr (record_start);
       do
 	{
 	  idx_t count = min (n, BLOCKSIZE);

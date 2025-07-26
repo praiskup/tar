@@ -473,7 +473,7 @@ write_eot (void)
   memset (pointer->buffer, 0, BLOCKSIZE);
   set_next_block_after (pointer);
   pointer = find_next_block ();
-  memset (pointer->buffer, 0, available_space_after (pointer));
+  memset (charptr (pointer), 0, available_space_after (pointer));
   set_next_block_after (pointer);
 }
 
@@ -540,16 +540,16 @@ write_gnu_long_link (struct tar_stat_info *st, const char *p, char type)
 
   while (bufsize < size)
     {
-      memcpy (header->buffer, p, bufsize);
+      memcpy (charptr (header), p, bufsize);
       p += bufsize;
       size -= bufsize;
-      set_next_block_after (header + ((bufsize - 1) >> LG_BLOCKSIZE));
+      set_next_block_after (charptr (header) + bufsize - 1);
       header = find_next_block ();
       bufsize = available_space_after (header);
     }
-  memcpy (header->buffer, p, size);
-  memset (header->buffer + size, 0, bufsize - size);
-  set_next_block_after (header + ((size - 1) >> LG_BLOCKSIZE));
+  memcpy (charptr (header), p, size);
+  memset (charptr (header) + size, 0, bufsize - size);
+  set_next_block_after (charptr (header) + size - 1);
 }
 
 static int
@@ -1047,16 +1047,16 @@ dump_regular_file (int fd, struct tar_stat_info *st)
 	}
 
       idx_t count = (fd <= 0 ? bufsize
-		     : blocking_read (fd, blk->buffer, bufsize));
+		     : blocking_read (fd, charptr (blk), bufsize));
       size_left -= count;
-      set_next_block_after (blk + ((bufsize - 1) >> LG_BLOCKSIZE));
+      set_next_block_after (charptr (blk) + bufsize - 1);
 
       if (count != bufsize)
 	{
 	  if (errno)
 	    read_diag_details (st->orig_file_name,
 			       st->stat.st_size - size_left, bufsize);
-	  memset (blk->buffer + count, 0, bufsize - count);
+	  memset (charptr (blk) + count, 0, bufsize - count);
 	  warnopt (WARN_FILE_SHRANK, 0,
 		   ngettext (("%s: File shrank by %jd byte;"
 			      " padding with zeros"),
@@ -1134,10 +1134,10 @@ dump_dir0 (struct tar_stat_info *st, char const *directory)
 		  if (count)
 		    memset (blk->buffer + size_left, 0, BLOCKSIZE - count);
 		}
-	      memcpy (blk->buffer, p_buffer, bufsize);
+	      memcpy (charptr (blk), p_buffer, bufsize);
 	      size_left -= bufsize;
 	      p_buffer += bufsize;
-	      set_next_block_after (blk + ((bufsize - 1) >> LG_BLOCKSIZE));
+	      set_next_block_after (charptr (blk) + bufsize - 1);
 	    }
 	}
       return;

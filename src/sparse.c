@@ -417,7 +417,7 @@ sparse_dump_region (struct tar_sparse_file *file, idx_t i)
       union block *blk = find_next_block ();
       idx_t avail = available_space_after (blk);
       idx_t bufsize = min (bytes_left, avail);
-      idx_t bytes_read = full_read (file->fd, blk->buffer, bufsize);
+      idx_t bytes_read = full_read (file->fd, charptr (blk), bufsize);
       if (bytes_read < BLOCKSIZE)
 	memset (blk->buffer + bytes_read, 0, BLOCKSIZE - bytes_read);
       bytes_left -= bytes_read;
@@ -450,7 +450,7 @@ sparse_dump_region (struct tar_sparse_file *file, idx_t i)
 	  return false;
 	}
 
-      set_next_block_after (blk + ((bufsize - 1) >> LG_BLOCKSIZE));
+      set_next_block_after (charptr (blk) + bufsize - 1);
     }
 
   return true;
@@ -482,9 +482,9 @@ sparse_extract_region (struct tar_sparse_file *file, idx_t i)
 	}
       idx_t avail = available_space_after (blk);
       idx_t wrbytes = min (write_size, avail);
-      set_next_block_after (blk + ((wrbytes - 1) >> LG_BLOCKSIZE));
+      set_next_block_after (charptr (blk) + wrbytes - 1);
       file->dumped_size += avail;
-      idx_t count = blocking_write (file->fd, blk->buffer, wrbytes);
+      idx_t count = blocking_write (file->fd, charptr (blk), wrbytes);
       write_size -= count;
       mv_size_left (file->stat_info->archive_file_size - file->dumped_size);
       file->offset += count;

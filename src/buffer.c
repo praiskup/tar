@@ -626,12 +626,16 @@ find_next_block (void)
   return current_block;
 }
 
-/* Indicate that we have used all blocks up thru BLOCK. */
+/* Indicate that we have used all blocks up thru the block addressed by PTR,
+   which may point to any of the bytes in the addressed block.
+   This does nothing if PTR points before the current block.  */
 void
-set_next_block_after (union block *block)
+set_next_block_after (void *ptr)
 {
-  while (block >= current_block)
-    current_block++;
+  char *p = ptr;
+  ptrdiff_t offset = p - charptr (current_block);
+  if (0 <= offset)
+    current_block += (offset >> LG_BLOCKSIZE) + 1;
 
   /* Do *not* flush the archive here.  If we do, the same argument to
      set_next_block_after could mean the next block (if the input record
@@ -648,7 +652,7 @@ set_next_block_after (union block *block)
 idx_t
 available_space_after (union block *pointer)
 {
-  return record_end->buffer - pointer->buffer;
+  return charptr (record_end) - charptr (pointer);
 }
 
 /* Close file having descriptor FD, and abort if close unsuccessful.  */
@@ -960,7 +964,7 @@ static void
 short_read (idx_t status)
 {
   idx_t left = record_size - status;		/* bytes left to read */
-  char *more = (char *) record_start + status;	/* address of next read */
+  char *more = charptr (record_start) + status; /* address of next read */
 
   if (left && left % BLOCKSIZE == 0
       && (warning_option & WARN_RECORD_SIZE)
@@ -1029,7 +1033,7 @@ flush_archive (void)
 	}
     }
 
-  buffer_level = current_block->buffer - record_start->buffer;
+  buffer_level = charptr (current_block) - charptr (record_start);
   record_start_block += record_end - record_start;
   current_block = record_start;
   record_end = record_start + blocking_factor;
@@ -1063,7 +1067,7 @@ backspace_output (void)
 
     /* Seek back to the beginning of this record and start writing there.  */
 
-    position -= record_end->buffer - record_start->buffer;
+    position -= charptr (record_end) - charptr (record_start);
     if (position < 0)
       position = 0;
     if (rmtlseek (archive, position, SEEK_SET) != position)
@@ -1076,8 +1080,7 @@ backspace_output (void)
         /* Replace the first part of the record with NULs.  */
 
         if (record_start->buffer != output_start)
-          memset (record_start->buffer, 0,
-                  output_start - record_start->buffer);
+          memset (record_start, 0, output_start - charptr (record_start));
       }
   }
 }
@@ -1444,7 +1447,7 @@ try_new_volume (void)
   if (!new_volume (acc))
     return true;
 
-  while ((status = rmtread (archive, record_start->buffer, record_size))
+  while ((status = rmtread (archive, charptr (record_start), record_size))
          < 0)
     archive_read_error ();
 
@@ -1809,7 +1812,7 @@ simple_flush_read (void)
     }
 
   ptrdiff_t nread;
-  while ((nread = rmtread (archive, record_start->buffer, record_size)) < 0)
+  while ((nread = rmtread (archive, charptr (record_start), record_size)) < 0)
     archive_read_error ();
   short_read_slop = 0;
   if (nread == record_size)
@@ -1856,7 +1859,7 @@ _gnu_flush_read (void)
     }
 
   ptrdiff_t nread;
-  while ((nread = rmtread (archive, record_start->buffer, record_size)) < 0
+  while ((nread = rmtread (archive, charptr (record_start), record_size)) < 0
 	 && ! (errno == ENOSPC && multi_volume_option))
     archive_read_error ();
   /* The condition below used to include
@@ -1934,7 +1937,7 @@ _gnu_flush_write (idx_t buffer_level)
   prev_written += bytes_written;
   bytes_written = 0;
 
-  copy_ptr = record_start->buffer + status;
+  copy_ptr = charptr (record_start) + status;
   copy_size = buffer_level - status;
 
   /* Switch to the next buffer */
@@ -1960,16 +1963,16 @@ _gnu_flush_write (idx_t buffer_level)
   inhibit_map = false;
   while (bufsize < copy_size)
     {
-      memcpy (header->buffer, copy_ptr, bufsize);
+      memcpy (header, copy_ptr, bufsize);
       copy_ptr += bufsize;
       copy_size -= bufsize;
-      set_next_block_after (header + ((bufsize - 1) >> LG_BLOCKSIZE));
+      set_next_block_after (charptr (header) + bufsize - 1);
       header = find_next_block ();
       bufsize = available_space_after (header);
     }
-  memcpy (header->buffer, copy_ptr, copy_size);
-  memset (header->buffer + copy_size, 0, bufsize - copy_size);
-  set_next_block_after (header + ((copy_size - 1) >> LG_BLOCKSIZE));
+  memcpy (header, copy_ptr, copy_size);
+  memset (charptr (header) + copy_size, 0, bufsize - copy_size);
+  set_next_block_after (charptr (header) + copy_size - 1);
   find_next_block ();
 }
 

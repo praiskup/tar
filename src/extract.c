@@ -1377,11 +1377,10 @@ extract_file (char *file_name, char typeflag)
 	if (written > size)
 	  written = size;
 	errno = 0;
-	idx_t count = blocking_write (fd, data_block->buffer, written);
+	idx_t count = blocking_write (fd, charptr (data_block), written);
 	size -= written;
 
-	set_next_block_after ((union block *)
-			      (data_block->buffer + written - 1));
+	set_next_block_after (charptr (data_block) + written - 1);
 	if (count != written)
 	  {
 	    if (!to_command_option)

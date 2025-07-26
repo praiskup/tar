@@ -1521,10 +1521,9 @@ get_gnu_dumpdir (struct tar_stat_info *stat_info)
       copied = available_space_after (data_block);
       if (copied > size)
 	copied = size;
-      memcpy (to, data_block->buffer, copied);
+      memcpy (to, charptr (data_block), copied);
       to += copied;
-      set_next_block_after ((union block *)
-			    (data_block->buffer + copied - 1));
+      set_next_block_after (charptr (data_block) + copied - 1);
     }
 
   mv_end ();
