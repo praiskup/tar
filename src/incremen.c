@@ -19,6 +19,7 @@
 
 #include <system.h>
 #include <c-ctype.h>
+#include <flexmember.h>
 #include <hash.h>
 #include <quotearg.h>
 #include "common.h"
@@ -61,10 +62,10 @@ enum
 
 struct dumpdir                 /* Dump directory listing */
 {
-  char *contents;              /* Actual contents */
   idx_t total;		       /* Total number of elements */
   idx_t elc;		       /* Number of D/N/Y elements. */
   char **elv;                  /* Array of D/N/Y elements */
+  char contents[FLEXIBLE_ARRAY_MEMBER]; /* Actual contents */
 };
 
 /* Directory attributes.  */
@@ -141,8 +142,7 @@ dumpdir_create0 (const char *contents, const char *cmask)
       if (!cmask || strchr (cmask, *q))
 	i++;
     }
-  dump = xmalloc (sizeof (*dump) + ctsize);
-  dump->contents = (char *) (dump + 1);
+  dump = xmalloc (FLEXNSIZEOF (struct dumpdir, contents, ctsize));
   memcpy (dump->contents, contents, ctsize);
   dump->total = total;
   dump->elc = i;
