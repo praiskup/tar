@@ -419,10 +419,11 @@ check_compressed_archive (bool *pshort)
   read_full_records = sfr;
 
   if (record_start != record_end /* no files smaller than BLOCKSIZE */
-      && (strcmp (record_start->header.magic, TMAGIC) == 0
-          || strcmp (record_start->buffer + offsetof (struct posix_header,
-                                                      magic),
-                     OLDGNU_MAGIC) == 0)
+      && (memcmp (record_start->header.magic, TMAGIC, sizeof TMAGIC) == 0
+          || (memcmp (record_start->buffer + offsetof (struct posix_header,
+						       magic),
+		      OLDGNU_MAGIC, sizeof OLDGNU_MAGIC)
+	      == 0))
       && tar_checksum (record_start, true) == HEADER_SUCCESS)
     /* Probably a valid header */
     return ct_tar;
