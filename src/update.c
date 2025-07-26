@@ -57,15 +57,15 @@ append_file (char *file_name)
     {
       union block *start = find_next_block ();
       idx_t bufsize = available_space_after (start);
-      idx_t status = full_read (handle, start->buffer, bufsize);
+      idx_t status = full_read (handle, charptr (start), bufsize);
       if (status < bufsize && errno)
 	read_fatal (file_name);
       if (status == 0)
 	break;
       idx_t rem = status % BLOCKSIZE;
       if (rem)
-	memset (start->buffer + (status - rem), 0, BLOCKSIZE - rem);
-      set_next_block_after (start + ((status - 1) >> LG_BLOCKSIZE));
+	memset (charptr (start) + (status - rem), 0, BLOCKSIZE - rem);
+      set_next_block_after (charptr (start) + status - 1);
     }
 
   if (close (handle) < 0)
@@ -206,7 +206,7 @@ update_archive (void)
 
   reset_eof ();
   time_to_start_writing = true;
-  output_start = current_block->buffer;
+  output_start = charptr (current_block);
 
   {
     struct name const *p;

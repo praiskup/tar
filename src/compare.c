@@ -136,10 +136,9 @@ read_and_process (struct tar_stat_info *st, bool (*processor) (idx_t, char *))
       idx_t data_size = available_space_after (data_block);
       if (data_size > size)
 	data_size = size;
-      if (!processor (data_size, data_block->buffer))
+      if (!processor (data_size, charptr (data_block)))
 	processor = process_noop;
-      set_next_block_after ((union block *)
-			    (data_block->buffer + data_size - 1));
+      set_next_block_after (charptr (data_block) + data_size - 1);
       size -= data_size;
       mv_size_left (size);
     }

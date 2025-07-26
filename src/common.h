@@ -412,6 +412,22 @@ extern enum access_mode access_mode;
 
 /* Module buffer.c.  */
 
+/* Return BLOCK, but as a char * pointer that can be used to address
+   any byte in the array of blocks containing *BLOCK, as opposed to
+   BLOCK->buffer which can address only the bytes in *BLOCK itself.
+   The distinction can matter in strict debugging environments.
+
+   Callers should use this function only when possibly needing access
+   to storage outside of *BLOCK, or when the resulting pointer needs
+   to be compared to other pointers that point outside of *BLOCK.
+   Code not needing such access should use BLOCK->buffer instead, as
+   some debugging environments can catch some subscript errors that way.  */
+COMMON_INLINE char *
+charptr (union block *block)
+{
+  return (char *) block;
+}
+
 /* File descriptor for archive file.  */
 extern int archive;
 
@@ -456,7 +472,7 @@ void init_volume_number (void);
 void open_archive (enum access_mode mode);
 void print_total_stats (void);
 void reset_eof (void);
-void set_next_block_after (union block *block);
+void set_next_block_after (void *);
 void clear_read_error_count (void);
 void xclose (int fd);
 _Noreturn void archive_write_error (ssize_t status);

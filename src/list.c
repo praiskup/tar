@@ -393,7 +393,7 @@ tar_checksum (union block *header, bool silent)
      read_header_x_global    when a POSIX global header is read,
                              decode it and return HEADER_SUCCESS_EXTENDED.
 
-   You must always set_next_block_after(*return_block) to skip past
+   You must always set_next_block_after (*return_block) to skip past
    the header which this routine reads.  */
 
 enum read_header
@@ -473,7 +473,7 @@ read_header (union block **return_block, struct tar_stat_info *info,
 
 	      set_next_block_after (header);
 	      *header_copy = *header;
-	      bp = header_copy->buffer + BLOCKSIZE;
+	      bp = charptr (header_copy + 1);
 
 	      for (size -= BLOCKSIZE; size > 0; size -= written)
 		{
@@ -487,10 +487,9 @@ read_header (union block **return_block, struct tar_stat_info *info,
 		  if (written > size)
 		    written = size;
 
-		  memcpy (bp, data_block->buffer, written);
+		  memcpy (bp, charptr (data_block), written);
 		  bp += written;
-		  set_next_block_after ((union block *)
-					(data_block->buffer + written - 1));
+		  set_next_block_after (charptr (data_block) + written - 1);
 		}
 
 	      *bp = '\0';
@@ -532,7 +531,7 @@ read_header (union block **return_block, struct tar_stat_info *info,
 
 	  if (next_long_name)
 	    {
-	      name = next_long_name->buffer + BLOCKSIZE;
+	      name = charptr (next_long_name + 1);
 	      recent_long_name = next_long_name;
 	      recent_long_name_blocks = next_long_name_blocks;
 	      next_long_name = NULL;
@@ -543,7 +542,7 @@ read_header (union block **return_block, struct tar_stat_info *info,
                  section 10.1.1.  */
 	      char *np = namebuf;
 
-	      if (h->prefix[0] && strcmp (h->magic, TMAGIC) == 0)
+	      if (h->prefix[0] && memcmp (h->magic, TMAGIC, sizeof TMAGIC) == 0)
 		{
 		  memcpy (np, h->prefix, sizeof h->prefix);
 		  np[sizeof h->prefix] = '\0';
@@ -564,7 +563,7 @@ read_header (union block **return_block, struct tar_stat_info *info,
 
 	  if (next_long_link)
 	    {
-	      name = next_long_link->buffer + BLOCKSIZE;
+	      name = charptr (next_long_link + 1);
 	      recent_long_link = next_long_link;
 	      recent_long_link_blocks = next_long_link_blocks;
 	      next_long_link = NULL;
@@ -614,7 +613,7 @@ decode_header (union block *header, struct tar_stat_info *stat_info,
   bool hbits;
   mode_t mode = MODE_FROM_HEADER (header->header.mode, &hbits);
 
-  if (strcmp (header->header.magic, TMAGIC) == 0)
+  if (memcmp (header->header.magic, TMAGIC, sizeof TMAGIC) == 0)
     {
       if (header->star_header.prefix[130] == 0
 	  && is_octal_digit (header->star_header.atime[0])
@@ -627,8 +626,8 @@ decode_header (union block *header, struct tar_stat_info *stat_info,
       else
 	format = USTAR_FORMAT;
     }
-  else if (strcmp (header->buffer + offsetof (struct posix_header, magic),
-		   OLDGNU_MAGIC)
+  else if (memcmp (header->buffer + offsetof (struct posix_header, magic),
+		   OLDGNU_MAGIC, sizeof OLDGNU_MAGIC)
 	   == 0)
     format = hbits ? OLDGNU_FORMAT : GNU_FORMAT;
   else
