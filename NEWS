@@ -1,4 +1,4 @@
-GNU tar NEWS - User visible changes. 2025-07-25
+GNU tar NEWS - User visible changes. 2025-07-26
 Please send GNU tar bug reports to <bug-tar@gnu.org>
 
 version TBD
@@ -44,6 +44,10 @@ option.
 
 ** Transformations that change case (e.g., --transform='s/.*/\L&/')
    now work correctly with multi-byte characters.
+
+** --no-overwrite-dir no longer changes permissions of existing directories,
+   not even temporarily.  This matches the documentation better and avoids
+   some permissions glitches.
 
 ** tar now works better in strict debugging environments that do not
    allow pointer arithmetic to escape from a sub-element of an array.

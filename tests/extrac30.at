@@ -15,30 +15,33 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-AT_SETUP([--no-overwrite-dir on empty directory])
-AT_KEYWORDS([extract extrac23 no-overwrite-dir])
+AT_SETUP([--no-overwrite-dir on unwritable directory])
+AT_KEYWORDS([extract extrac30 no-overwrite-dir])
 
-# Description: Implementation of the --no-overwrite-dir option was flawed in
-# tar versions up to 1.32.90.  This option is intended to preserve metadata
-# of existing directories.  In fact it worked only for non-empty directories.
-#
-# Reported by: Michael Kaufmann <mail@michael-kaufmann.ch>
-# References: <20200207112934.Horde.anXzYhAj2CHiwUrw5CuT0G-@webmail.michael-kaufmann.ch>,
-#   https://lists.gnu.org/archive/html/bug-tar/2020-02/msg00003.html
+# Make sure that tar does not change permissions on directories if
+# --no-overwrite-dir tells it not to, not even temporarily.
 
 AT_TAR_CHECK([
-# Test if the directory permissions are restored properly.
+AT_UNPRIVILEGED_PREREQ
+
+# Test that the user cannot write to a unwritable directory
+# if --no-overwrite-dir is used.
 mkdir dir
 chmod 755 dir
+genfile --file dir/file
 tar cf a.tar dir
-chmod 777 dir
+rm dir/file
+chmod 555 dir
 tar -xf a.tar --no-overwrite-dir
 genfile --stat=mode.777 dir
-
+chmod 755 dir
 find dir
 ],
 [0],
-[777
+[555
 dir
+],
+[tar: dir/file: Cannot open: Permission denied
+tar: Exiting with failure status due to previous errors
 ])
 AT_CLEANUP
