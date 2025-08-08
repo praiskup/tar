@@ -7869,7 +7869,7 @@ files smaller than 400 blocks in length@footnote{A file system block
 is usually 512 bytes, so this amounts to 200K.  Use the @samp{c}
 suffix to specify size in @emph{bytes}.  Also, when using
 GNU find, you can specify other size units, such as @samp{k},
-@samp{m}, etc.  @xref{Size,,,find.info,GNU Findutils}, for details.} and put that list into a file
+@samp{m}, etc.  @xref{Size,,,find,GNU Findutils}, for details.} and put that list into a file
 called @file{small-files}.  You can then use the @option{-T} option to
 @command{tar} to specify the files from that file, @file{small-files}, to
 create the archive @file{little.tgz}.  (The @option{-z} option to
