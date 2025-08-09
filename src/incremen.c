@@ -284,8 +284,8 @@ static size_t
 hash_directory_meta (void const *entry, size_t n_buckets)
 {
   struct directory const *directory = entry;
-  /* FIXME: Work out a better algorytm */
-  return (directory->st_dev + directory->st_ino) % n_buckets;
+  /* FIXME: Work out a better algorithm.  */
+  return (directory->st_dev ^ directory->st_ino) % n_buckets;
 }
 
 /* Compare two directories for equality of their device and inode numbers. */
