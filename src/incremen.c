@@ -22,6 +22,7 @@
 #include <flexmember.h>
 #include <hash.h>
 #include <quotearg.h>
+#include <same-inode.h>
 #include "common.h"
 
 /* Incremental dump specialities.  */
@@ -73,8 +74,8 @@ struct directory
   {
     struct directory *next;
     struct timespec mtime;      /* Modification time */
-    dev_t device_number;	/* device number for directory */
-    ino_t inode_number;		/* inode number for directory */
+    dev_t st_dev;		/* device number for directory */
+    ino_t st_ino;		/* inode number for directory */
     struct dumpdir *dump;       /* Directory contents */
     struct dumpdir *idump;      /* Initial contents if the directory was
 				   rescanned */
@@ -284,7 +285,7 @@ hash_directory_meta (void const *entry, size_t n_buckets)
 {
   struct directory const *directory = entry;
   /* FIXME: Work out a better algorytm */
-  return (directory->device_number + directory->inode_number) % n_buckets;
+  return (directory->st_dev + directory->st_ino) % n_buckets;
 }
 
 /* Compare two directories for equality of their device and inode numbers. */
@@ -293,8 +294,7 @@ compare_directory_meta (void const *entry1, void const *entry2)
 {
   struct directory const *directory1 = entry1;
   struct directory const *directory2 = entry2;
-  return directory1->device_number == directory2->device_number
-            && directory1->inode_number == directory2->inode_number;
+  return PSAME_INODE (directory1, directory2);
 }
 
 /* Make a directory entry for given relative NAME and canonical name CANAME.
@@ -375,8 +375,8 @@ note_directory (char const *name, struct timespec mtime,
   struct directory *directory = attach_directory (name);
 
   directory->mtime = mtime;
-  directory->device_number = dev;
-  directory->inode_number = ino;
+  directory->st_dev = dev;
+  directory->st_ino = ino;
   directory->children = CHANGED_CHILDREN;
   if (nfs)
     dir_set_flag (directory, DIRF_NFS);
@@ -457,8 +457,8 @@ find_directory_meta (dev_t dev, ino_t ino)
     {
       struct directory *dir = make_directory ("", NULL);
       struct directory *ret;
-      dir->device_number = dev;
-      dir->inode_number = ino;
+      dir->st_dev = dev;
+      dir->st_ino = ino;
       ret = hash_lookup (directory_meta_table, dir);
       free_directory (dir);
       return ret;
@@ -528,10 +528,9 @@ procdir (const char *name_buffer, struct tar_stat_info *st,
 	 directories, consider all NFS devices as equal,
 	 relying on the i-node to establish differences.  */
 
-      if (! ((!check_device_option
-	      || (dir_is_nfs (directory) && nfs)
-	      || directory->device_number == stat_data->st_dev)
-	     && directory->inode_number == stat_data->st_ino))
+      if (! (!check_device_option || (dir_is_nfs (directory) && nfs)
+	     ? directory->st_ino == stat_data->st_ino
+	     : PSAME_INODE (directory, stat_data)))
 	{
 	  /* FIXME: find_directory_meta ignores nfs */
 	  struct directory *d = find_directory_meta (stat_data->st_dev,
@@ -555,8 +554,8 @@ procdir (const char *name_buffer, struct tar_stat_info *st,
 	    {
 	      perhaps_renamed = true;
 	      directory->children = ALL_CHILDREN;
-	      directory->device_number = stat_data->st_dev;
-	      directory->inode_number = stat_data->st_ino;
+	      directory->st_dev = stat_data->st_dev;
+	      directory->st_ino = stat_data->st_ino;
 	    }
 	  if (nfs)
 	    dir_set_flag (directory, DIRF_NFS);
@@ -1439,10 +1438,10 @@ write_directory_file_entry (void *entry, void *data)
       fwrite (s, strlen (s) + 1, 1, fp);
       int ns = directory->mtime.tv_nsec;
       fprintf (fp, "%d%c", ns, 0);
-      s = sysinttostr (directory->device_number,
+      s = sysinttostr (directory->st_dev,
 		       TYPE_MINIMUM (dev_t), TYPE_MAXIMUM (dev_t), buf);
       fwrite (s, strlen (s) + 1, 1, fp);
-      s = sysinttostr (directory->inode_number,
+      s = sysinttostr (directory->st_ino,
 		       TYPE_MINIMUM (ino_t), TYPE_MAXIMUM (ino_t), buf);
       fwrite (s, strlen (s) + 1, 1, fp);
 

@@ -34,6 +34,7 @@
 #include <alignalloc.h>
 #include <quotearg.h>
 #include <rmt.h>
+#include <same-inode.h>
 #include <stdarg.h>
 
 /* Nonzero if we are verifying at the moment.  */
@@ -251,7 +252,7 @@ diff_link (void)
 
   if (get_stat_data (current_stat_info.file_name, &file_data)
       && get_stat_data (current_stat_info.link_name, &link_data)
-      && !sys_compare_links (&file_data, &link_data))
+      && !psame_inode (&file_data, &link_data))
     report_difference (&current_stat_info,
 		       _("Not linked to %s"),
 		       quote_n_colon (QUOTE_ARG,

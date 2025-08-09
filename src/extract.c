@@ -26,6 +26,7 @@
 #include <hash.h>
 #include <priv-set.h>
 #include <root-uid.h>
+#include <same-inode.h>
 #include <utimens.h>
 
 #include "common.h"
@@ -85,8 +86,8 @@ struct delayed_set_stat
     struct delayed_set_stat *next;
 
     /* Metadata for this directory.  */
-    dev_t dev;
-    ino_t ino;
+    dev_t st_dev;
+    ino_t st_ino;
     mode_t mode; /* The desired mode is MODE & ~ current_umask.  */
     uid_t uid;
     gid_t gid;
@@ -147,8 +148,8 @@ struct delayed_link
        other process removes the placeholder.  Don't use ctime as
        this would cause race conditions and other screwups, e.g.,
        when restoring hard-linked symlinks.  */
-    dev_t dev;
-    ino_t ino;
+    dev_t st_dev;
+    ino_t st_ino;
 #if HAVE_BIRTHTIME
     struct timespec birthtime;
 #endif
@@ -203,11 +204,11 @@ static size_t
 dl_hash (void const *entry, size_t table_size)
 {
   struct delayed_link const *dl = entry;
-  uintmax_t n = dl->dev;
-  int nshift = TYPE_WIDTH (n) - TYPE_WIDTH (dl->dev);
+  uintmax_t n = dl->st_dev;
+  int nshift = TYPE_WIDTH (n) - TYPE_WIDTH (dl->st_dev);
   if (0 < nshift)
     n <<= nshift;
-  n ^= dl->ino;
+  n ^= dl->st_ino;
   return n % table_size;
 }
 
@@ -215,7 +216,7 @@ static bool
 dl_compare (void const *a, void const *b)
 {
   struct delayed_link const *da = a, *db = b;
-  return (da->dev == db->dev) & (da->ino == db->ino);
+  return PSAME_INODE (da, db);
 }
 
 static size_t
@@ -496,8 +497,8 @@ mark_after_links (struct delayed_set_stat *head)
 	stat_error (h->file_name);
       else
 	{
-	  h->dev = st.st_dev;
-	  h->ino = st.st_ino;
+	  h->st_dev = st.st_dev;
+	  h->st_ino = st.st_ino;
 	}
     }
   while ((h = h->next) && ! h->after_links);
@@ -551,8 +552,8 @@ delay_set_stat (char const *file_name, struct tar_stat_info const *st,
 	    }
 	  else
 	    {
-	      data->dev = real_st.st_dev;
-	      data->ino = real_st.st_ino;
+	      data->st_dev = real_st.st_dev;
+	      data->st_ino = real_st.st_ino;
 	    }
 	}
     }
@@ -568,8 +569,8 @@ delay_set_stat (char const *file_name, struct tar_stat_info const *st,
       data->after_links = false;
       if (st)
 	{
-	  data->dev = st->stat.st_dev;
-	  data->ino = st->stat.st_ino;
+	  data->st_dev = st->stat.st_dev;
+	  data->st_ino = st->stat.st_ino;
 	}
       xattr_map_init (&data->xattr_map);
     }
@@ -631,8 +632,8 @@ update_interdir_set_stat (char const *dir)
       data = hash_lookup (delayed_set_stat_table, &key);
       if (data && data->interdir)
 	{
-	  data->dev = current_stat_info.stat.st_dev;
-	  data->ino = current_stat_info.stat.st_ino;
+	  data->st_dev = current_stat_info.stat.st_dev;
+	  data->st_ino = current_stat_info.stat.st_ino;
 	  data->mode = current_stat_info.stat.st_mode;
 	  data->uid = current_stat_info.stat.st_uid;
 	  data->gid = current_stat_info.stat.st_gid;
@@ -663,11 +664,10 @@ repair_delayed_set_stat (char const *dir,
 	  return;
 	}
 
-      if (st.st_dev == dir_stat_info->st_dev
-	  && st.st_ino == dir_stat_info->st_ino)
+      if (psame_inode (&st, dir_stat_info))
 	{
-	  data->dev = current_stat_info.stat.st_dev;
-	  data->ino = current_stat_info.stat.st_ino;
+	  data->st_dev = current_stat_info.stat.st_dev;
+	  data->st_ino = current_stat_info.stat.st_ino;
 	  data->mode = current_stat_info.stat.st_mode;
 	  data->uid = current_stat_info.stat.st_uid;
 	  data->gid = current_stat_info.stat.st_gid;
@@ -1022,7 +1022,7 @@ apply_nonancestor_delayed_set_stat (char const *file_name, bool after_links)
 	    {
 	      current_mode = st.st_mode;
 	      current_mode_mask = all_mode_bits;
-	      if (! (st.st_dev == data->dev && st.st_ino == data->ino))
+	      if (!SAME_INODE (st, *data))
 		{
 		  paxerror (0,
 			    _("%s: Directory renamed before its status"
@@ -1416,8 +1416,8 @@ find_delayed_link_source (char const *name)
     }
 
   struct delayed_link dl;
-  dl.dev = st.st_dev;
-  dl.ino = st.st_ino;
+  dl.st_dev = st.st_dev;
+  dl.st_ino = st.st_ino;
   return hash_lookup (delayed_link_table, &dl) != NULL;
 }
 
@@ -1473,8 +1473,8 @@ create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made)
 	xmalloc (FLEXNSIZEOF (struct delayed_link, target,
 			      strlen (current_stat_info.link_name) + 1));
       p->next = NULL;
-      p->dev = st.st_dev;
-      p->ino = st.st_ino;
+      p->st_dev = st.st_dev;
+      p->st_ino = st.st_ino;
 #if HAVE_BIRTHTIME
       p->birthtime = get_stat_birthtime (&st);
 #endif
@@ -1545,8 +1545,8 @@ extract_link (char *file_name, MAYBE_UNUSED char typeflag)
 	      && fstatat (chdir_fd, link_name, &st1, AT_SYMLINK_NOFOLLOW) == 0)
 	    {
 	      struct delayed_link dl1;
-	      dl1.ino = st1.st_ino;
-	      dl1.dev = st1.st_dev;
+	      dl1.st_ino = st1.st_ino;
+	      dl1.st_dev = st1.st_dev;
 	      struct delayed_link *ds = hash_lookup (delayed_link_table, &dl1);
 	      if (ds && ds->change_dir == chdir_current
 		  && BIRTHTIME_EQ (ds->birthtime, get_stat_birthtime (&st1)))
@@ -1567,8 +1567,7 @@ extract_link (char *file_name, MAYBE_UNUSED char typeflag)
 		    == 0)
 		   && (fstatat (chdir_fd, file_name, &st2, AT_SYMLINK_NOFOLLOW)
 		       == 0)
-		   && st1.st_dev == st2.st_dev
-		   && st1.st_ino == st2.st_ino))
+		   && psame_inode (&st1, &st2)))
 	return true;
 
       errno = e;
@@ -1894,8 +1893,7 @@ apply_delayed_link (struct delayed_link *ds)
 	 don't create a link, as the placeholder was probably
 	 removed by a later extraction.  */
       if (fstatat (chdir_fd, source, &st, AT_SYMLINK_NOFOLLOW) == 0
-	  && st.st_dev == ds->dev
-	  && st.st_ino == ds->ino
+	  && SAME_INODE (st, *ds)
 	  && BIRTHTIME_EQ (get_stat_birthtime (&st), ds->birthtime))
 	{
 	  /* Unlink the placeholder, then create a hard link if possible,

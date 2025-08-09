@@ -25,6 +25,7 @@
 #include "common.h"
 #include <priv-set.h>
 #include <rmt.h>
+#include <same-inode.h>
 #include <signal.h>
 #include <wordsplit.h>
 #include <poll.h>
@@ -125,12 +126,6 @@ sys_compare_gid (struct stat *a, struct stat *b)
   return true;
 }
 
-void
-sys_compare_links (struct stat *link_data, struct stat *stat_data)
-{
-  return true;
-}
-
 int
 sys_truncate (int fd)
 {
@@ -194,8 +189,7 @@ bool
 sys_file_is_archive (struct tar_stat_info *p)
 {
   return (!dev_null_output && !_isrmt (archive)
-	  && p->stat.st_dev == archive_stat.st_dev
-	  && p->stat.st_ino == archive_stat.st_ino);
+	  && psame_inode (&p->stat, &archive_stat));
 }
 
 static char const dev_null[] = "/dev/null";
@@ -211,8 +205,7 @@ sys_detect_dev_null_output (void)
 			 && S_ISCHR (archive_stat.st_mode)
 			 && (dev_null_stat.st_ino != 0
 			     || stat (dev_null, &dev_null_stat) == 0)
-			 && archive_stat.st_ino == dev_null_stat.st_ino
-			 && archive_stat.st_dev == dev_null_stat.st_dev));
+			 && psame_inode (&archive_stat, &dev_null_stat)));
 }
 
 void
@@ -277,13 +270,6 @@ bool
 sys_compare_gid (struct stat *a, struct stat *b)
 {
   return a->st_gid == b->st_gid;
-}
-
-bool
-sys_compare_links (struct stat *link_data, struct stat *stat_data)
-{
-  return stat_data->st_dev == link_data->st_dev
-         && stat_data->st_ino == link_data->st_ino;
 }
 
 int

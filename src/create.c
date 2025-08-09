@@ -24,6 +24,7 @@
 #include <areadlink.h>
 #include <flexmember.h>
 #include <quotearg.h>
+#include <same-inode.h>
 
 #include "common.h"
 #include <hash.h>
@@ -34,8 +35,8 @@ enum { IMPOSTOR_ERRNO = ENOENT };
 
 struct link
   {
-    dev_t dev;
-    ino_t ino;
+    dev_t st_dev;
+    ino_t st_ino;
     nlink_t nlink;
     char name[FLEXIBLE_ARRAY_MEMBER];
   };
@@ -1387,7 +1388,7 @@ static size_t
 hash_link (void const *entry, size_t n_buckets)
 {
   struct link const *l = entry;
-  uintmax_t num = l->dev ^ l->ino;
+  uintmax_t num = l->st_dev ^ l->st_ino;
   return num % n_buckets;
 }
 
@@ -1397,7 +1398,7 @@ compare_links (void const *entry1, void const *entry2)
 {
   struct link const *link1 = entry1;
   struct link const *link2 = entry2;
-  return ((link1->dev ^ link2->dev) | (link1->ino ^ link2->ino)) == 0;
+  return PSAME_INODE (link1, link2);
 }
 
 static void
@@ -1430,8 +1431,8 @@ dump_hard_link (struct tar_stat_info *st)
       off_t block_ordinal;
       union block *blk;
 
-      lp.ino = st->stat.st_ino;
-      lp.dev = st->stat.st_dev;
+      lp.st_dev = st->stat.st_dev;
+      lp.st_ino = st->stat.st_ino;
 
       if ((duplicate = hash_lookup (link_table, &lp)))
 	{
@@ -1485,8 +1486,8 @@ file_count_links (struct tar_stat_info *st)
 	}
 
       lp = xmalloc (FLEXNSIZEOF (struct link, name, strlen (linkname) + 1));
-      lp->ino = st->stat.st_ino;
-      lp->dev = st->stat.st_dev;
+      lp->st_dev = st->stat.st_dev;
+      lp->st_ino = st->stat.st_ino;
       lp->nlink = st->stat.st_nlink;
       strcpy (lp->name, linkname);
       free (linkname);
@@ -1560,8 +1561,7 @@ restore_parent_fd (struct tar_stat_info const *st)
       if (parentfd < 0)
 	parentfd = - errno;
       else if (fstat (parentfd, &parentstat) < 0
-	       || parent->stat.st_ino != parentstat.st_ino
-	       || parent->stat.st_dev != parentstat.st_dev)
+	       || !psame_inode (&parent->stat, &parentstat))
 	{
 	  close (parentfd);
 	  parentfd = IMPOSTOR_ERRNO;
@@ -1574,8 +1574,7 @@ restore_parent_fd (struct tar_stat_info const *st)
 	  if (0 <= origfd)
 	    {
 	      if (fstat (parentfd, &parentstat) < 0
-		  || parent->stat.st_ino != parentstat.st_ino
-		  || parent->stat.st_dev != parentstat.st_dev)
+		  || !psame_inode (&parent->stat, &parentstat))
 		close (origfd);
 	      else
 		parentfd = origfd;
