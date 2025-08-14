@@ -94,6 +94,7 @@ root-uid
 rpmatch
 full-read
 safe-read
+same-inode
 savedir
 selinux-at
 setenv

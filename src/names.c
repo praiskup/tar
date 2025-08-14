@@ -21,6 +21,7 @@
 #include <fnmatch.h>
 #include <hash.h>
 #include <quotearg.h>
+#include <same-inode.h>
 #include <wordsplit.h>
 #include <argp.h>
 
@@ -881,8 +882,8 @@ name_init (void)
 struct file_id_list
 {
   struct file_id_list *next;
-  ino_t ino;
-  dev_t dev;
+  dev_t st_dev;
+  ino_t st_ino;
   const char *from_file;
 };
 
@@ -913,7 +914,7 @@ add_file_id (const char *filename)
     stat_fatal (filename);
   reading_from = file_list_name ();
   for (p = file_id_list; p; p = p->next)
-    if (p->ino == st.st_ino && p->dev == st.st_dev)
+    if (SAME_INODE (*p, st))
       {
 	int oldc = set_char_quoting (NULL, ':', 1);
 	paxerror (0, _("%s: file list requested from %s already read from %s"),
@@ -924,8 +925,8 @@ add_file_id (const char *filename)
       }
   p = xmalloc (sizeof *p);
   p->next = file_id_list;
-  p->ino = st.st_ino;
-  p->dev = st.st_dev;
+  p->st_dev = st.st_dev;
+  p->st_ino = st.st_ino;
   p->from_file = reading_from;
   file_id_list = p;
   return true;

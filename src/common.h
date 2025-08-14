@@ -942,7 +942,6 @@ void sys_spawn_shell (void);
 bool sys_compare_uid (struct stat *a, struct stat *b);
 bool sys_compare_gid (struct stat *a, struct stat *b);
 bool sys_file_is_archive (struct tar_stat_info *p);
-bool sys_compare_links (struct stat *link_data, struct stat *stat_data);
 int sys_truncate (int fd);
 pid_t sys_child_open_for_compress (void);
 pid_t sys_child_open_for_uncompress (void);
