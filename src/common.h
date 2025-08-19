@@ -715,7 +715,7 @@ char *timetostr (time_t, char buf[SYSINT_BUFSIZE]);
 void code_ns_fraction (int ns, char *p);
 enum { BILLION = 1000000000, LOG10_BILLION = 9 };
 enum { TIMESPEC_STRSIZE_BOUND =
-         SYSINT_BUFSIZE + LOG10_BILLION + sizeof "." - 1 };
+         sizeof "-." - 1 + SYSINT_BUFSIZE + LOG10_BILLION };
 char const *code_timespec (struct timespec ts,
 			   char tsbuf[TIMESPEC_STRSIZE_BOUND]);
 struct timespec decode_timespec (char const *, char **, bool);
