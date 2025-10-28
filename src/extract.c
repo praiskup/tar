@@ -1106,12 +1106,14 @@ extract_dir (char *file_name, char typeflag)
   /* Save 'root device' to avoid purging mount points. */
   if (one_file_system_option && root_device == 0)
     {
-      struct stat st;
-
-      if (fstatat (chdir_fd, ".", &st, 0) < 0)
-	stat_diag (".");
+      struct chdir_id id = chdir_id ();
+      if (id.err)
+	{
+	  errno = id.err;
+	  stat_diag (".");
+	}
       else
-	root_device = st.st_dev;
+	root_device = id.st_dev;
     }
 
   if (incremental_option)

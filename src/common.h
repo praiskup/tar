@@ -756,6 +756,7 @@ extern idx_t chdir_current;
 extern int chdir_fd;
 idx_t chdir_arg (char const *dir);
 void chdir_do (idx_t dir);
+struct chdir_id { int err; dev_t st_dev; ino_t st_ino; } chdir_id (void);
 idx_t chdir_count (void);
 
 void close_diag (char const *name);

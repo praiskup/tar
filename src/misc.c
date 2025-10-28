@@ -913,6 +913,11 @@ struct wd
      the working directory.  If zero, the directory needs to be opened
      to be used.  */
   int fd;
+
+  /* If ID.err is zero, the directory's identity;
+     if positive, a failure indication with errno = ID.err;
+     if negative, no attempt has been made yet to get the identity.  */
+  struct chdir_id id;
 };
 
 /* A vector of chdir targets.  wd[0] is the initial working directory.  */
@@ -943,23 +948,29 @@ chdir_count (void)
   return wd_count - !!wd_count;
 }
 
+/* Grow the WD table by at least one entry.  */
+static void
+grow_wd (void)
+{
+  wd = xpalloc (wd, &wd_alloc, wd_alloc ? 1 : 2, -1, sizeof *wd);
+
+  if (! wd_count)
+    {
+      wd[wd_count].name = ".";
+      wd[wd_count].abspath = NULL;
+      wd[wd_count].fd = AT_FDCWD;
+      wd[wd_count].id.err = -1;
+      wd_count++;
+    }
+}
+
 /* DIR is the operand of a -C option; add it to vector of chdir targets,
    and return the index of its location.  */
 idx_t
 chdir_arg (char const *dir)
 {
   if (wd_count == wd_alloc)
-    {
-      wd = xpalloc (wd, &wd_alloc, wd_alloc ? 1 : 2, -1, sizeof *wd);
-
-      if (! wd_count)
-	{
-	  wd[wd_count].name = ".";
-	  wd[wd_count].abspath = NULL;
-	  wd[wd_count].fd = AT_FDCWD;
-	  wd_count++;
-	}
-    }
+    grow_wd ();
 
   /* Optimize the common special case of the working directory,
      or the working directory as a prefix.  */
@@ -975,6 +986,7 @@ chdir_arg (char const *dir)
   wd[wd_count].name = dir;
   wd[wd_count].abspath = NULL;
   wd[wd_count].fd = 0;
+  wd[wd_count].id.err = -1;
   return wd_count++;
 }
 
@@ -1045,6 +1057,25 @@ chdir_do (idx_t i)
       chdir_current = i;
       chdir_fd = fd;
     }
+}
+
+/* Return the identity of the current directory.  */
+struct chdir_id
+chdir_id (void)
+{
+  if (!wd)
+    grow_wd ();
+
+  struct wd *curr = &wd[chdir_current];
+  if (curr->id.err < 0)
+    {
+      struct stat st;
+      curr->id = ((chdir_fd < 0 ? stat (".", &st) : fstat (chdir_fd, &st)) < 0
+		  ? (struct chdir_id) { .err = errno }
+		  : (struct chdir_id) { .st_dev = st.st_dev,
+		                        .st_ino = st.st_ino });
+    }
+  return curr->id;
 }
 
 const char *
