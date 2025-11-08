@@ -62,7 +62,7 @@ ABSPATH/subdir/dir2/
 
 AT_CHECK([
 DIR=`pwd`/gnu/tartest
-sed "/tar: Removing leading \`\/*\/' from/d;s|$DIR|ABSPATH|" stderr],
+sed "/tar: Removing leading '\/*\/' from/d;s|$DIR|ABSPATH|" stderr],
 [0],
 [A
 B
