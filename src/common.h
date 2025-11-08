@@ -661,6 +661,7 @@ void assign_string_n (char **string, const char *value, idx_t n);
 #define ASSIGN_STRING_N(s,v) assign_string_n (s, v, sizeof (v))
 void unquote_string (char *str);
 char *zap_slashes (char *name);
+idx_t dotslashlen (char const *);
 char *normalize_filename (idx_t, char const *);
 void normalize_filename_x (char *name);
 void replace_prefix (char **pname, const char *samp, idx_t slen,

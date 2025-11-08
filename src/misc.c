@@ -265,6 +265,30 @@ zap_slashes (char *name)
   return name;
 }
 
+/* The number of file name slashes at the start of the string F.  */
+static idx_t
+slashlen (char const *f)
+{
+  idx_t i = 0;
+  while (ISSLASH (f[i]))
+    i++;
+  return i;
+}
+
+/* The length of the longest initial prefix of F that consists
+   entirely of a sequence of '.'s each followed by one or more slashes.
+   This prefix acts like the working directory, i.e., the file name F
+   acts like "." if 0 < dotslashlen (F) == strlen (F), and acts like
+   &F[dotslashlen (F)] otherwise.  */
+idx_t
+dotslashlen (char const *f)
+{
+  idx_t i = 0;
+  while (f[i] == '.' && ISSLASH (f[i + 1]))
+    i += 2 + slashlen (&f[i + 2]);
+  return i;
+}
+
 /* Normalize FILE_NAME by removing redundant slashes and "."
    components, including redundant trailing slashes.
    Leave ".." alone, as it may be significant in the presence
@@ -275,8 +299,6 @@ void
 normalize_filename_x (char *file_name)
 {
   char *name = file_name + FILE_SYSTEM_PREFIX_LEN (file_name);
-  char *p;
-  char const *q;
   char c;
 
   /* Don't squeeze leading "//" to "/", on hosts where they're distinct.  */
@@ -284,16 +306,20 @@ normalize_filename_x (char *file_name)
 	   && ISSLASH (*name) && ISSLASH (name[1]) && ! ISSLASH (name[2]));
 
   /* Omit redundant leading "." components.  */
-  for (q = p = name; (*p = *q) == '.' && ISSLASH (q[1]); p += !*q)
-    for (q += 2; ISSLASH (*q); q++)
-      continue;
+  char *p = name;
+  char const *q = name + dotslashlen (name);
+
+  if (p < q && !*q)
+    q = ".";  /* NAME is nonempty and equivalent to ".".  */
 
   /* Copy components from Q to P, omitting redundant slashes and
      internal "."  components.  */
   while ((*p++ = c = *q++) != '\0')
     if (ISSLASH (c))
-      while (ISSLASH (q[*q == '.']))
-	q += (*q == '.') + 1;
+      {
+	q += slashlen (q);
+	q += dotslashlen (q);
+      }
 
   /* Omit redundant trailing "." component and slash.  */
   if (2 < p - name)
@@ -602,7 +628,8 @@ decode_timespec (char const *arg, char **arg_lim, bool parse_fraction)
 static char *before_backup_name;
 static char *after_backup_name;
 
-/* Return 1 if FILE_NAME is obviously "." or "/".  */
+/* Return 1 if FILE_NAME must identify a working or root directory.
+   FILE_NAME should not be empty.  */
 bool
 must_be_dot_or_slash (char const *file_name)
 {
@@ -610,6 +637,7 @@ must_be_dot_or_slash (char const *file_name)
 
   if (ISSLASH (file_name[0]))
     {
+      /* It must be a root directory if all components are "." or "..".  */
       for (;;)
 	if (ISSLASH (file_name[1]))
 	  file_name++;
@@ -621,26 +649,23 @@ must_be_dot_or_slash (char const *file_name)
     }
   else
     {
-      while (file_name[0] == '.' && ISSLASH (file_name[1]))
-	{
-	  file_name += 2;
-	  while (ISSLASH (*file_name))
-	    file_name++;
-	}
-
-      return ! file_name[0] || (file_name[0] == '.' && ! file_name[1]);
+      /* It must be a working directory if it is "." or "",
+	 after skipping ^(\./+)* ERE.  */
+      file_name += dotslashlen (file_name);
+      return ! file_name[file_name[0] == '.'];
     }
 }
 
-/* Some implementations of rmdir let you remove '.' or '/'.
-   Report an error with errno set to zero for obvious cases of this;
-   otherwise call rmdir.  */
+/* Act like rmdir (FILE_NAME) relative to CHDIR_FD.
+   However, reject attempts to remove a root directory
+   even on systems that allow such a thing.
+   Also, do not try to change the removed directory's status later.  */
 static int
 safer_rmdir (const char *file_name)
 {
-  if (must_be_dot_or_slash (file_name))
+  if (!file_name[slashlen (file_name)])
     {
-      errno = 0;
+      errno = file_name[0] ? EBUSY : ENOENT;
       return -1;
     }
 
@@ -976,9 +1001,7 @@ chdir_arg (char const *dir)
      or the working directory as a prefix.  */
   if (dir[0])
     {
-      while (dir[0] == '.' && ISSLASH (dir[1]))
-	for (dir += 2;  ISSLASH (*dir);  dir++)
-	  continue;
+      dir += dotslashlen (dir);
       if (! dir[dir[0] == '.'])
 	return wd_count - 1;
     }

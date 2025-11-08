@@ -170,12 +170,7 @@ excluded_name (char const *name, struct tar_stat_info *st)
 	    break;
 
 	  if (!rname)
-	    {
-	      rname = name;
-	      /* Skip leading ./ */
-	      while (*rname == '.' && ISSLASH (rname[1]))
-		rname += 2;
-	    }
+	    rname = name + dotslashlen (name);
 	  if ((result = excluded_file_name (ep->excluded, rname)))
 	    break;
 
