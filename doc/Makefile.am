@@ -138,7 +138,7 @@ check-docs:
 clean-local:
 	rm -rf manual
 
-GENDOCS=$(srcdir)/gendocs.sh
+GENDOCS=$(top_srcdir)/build-aux/gendocs.sh
 
 TEXI2DVI=texi2dvi -E
 
@@ -152,4 +152,3 @@ manual:
 	$(GENDOCS) --texi2html tar 'GNU tar manual'
 
 manual-rebuild: clean-local manual
-

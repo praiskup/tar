@@ -55,6 +55,7 @@ fseeko
 fstatat
 full-write
 futimens
+gendocs
 getline
 getopt-gnu
 getpagesize
