@@ -1,4 +1,4 @@
-GNU tar NEWS - User visible changes. 2025-10-19
+GNU tar NEWS - User visible changes. 2025-11-09
 Please send GNU tar bug reports to <bug-tar@gnu.org>
 
 version 1.35.90 (git)
@@ -48,6 +48,9 @@ option.
 ** --no-overwrite-dir no longer changes permissions of existing directories,
    not even temporarily.  This matches the documentation better and avoids
    some permissions glitches.
+
+** tar no longer fails merely if an extraction directory is unreadable
+   on Linux kernels.
 
 ** tar now works better in strict debugging environments that do not
    allow pointer arithmetic to escape from a sub-element of an array.

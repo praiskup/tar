@@ -2701,7 +2701,12 @@ decode_options (int argc, char **argv)
        | (dereference_option ? 0 : O_NOFOLLOW)
        | (atime_preserve_option == system_atime_preserve ? O_NOATIME : 0));
     open_read_flags = O_RDONLY | base_open_flags;
-    open_searchdir_flags = O_SEARCH | O_DIRECTORY | base_open_flags;
+#if defined O_PATH && O_SEARCH == O_RDONLY
+    int open_search_flag = O_PATH;
+#else
+    int open_search_flag = O_SEARCH;
+#endif
+    open_searchdir_flags = open_search_flag | O_DIRECTORY | base_open_flags;
   }
   fstatat_flags = dereference_option ? 0 : AT_SYMLINK_NOFOLLOW;
 
