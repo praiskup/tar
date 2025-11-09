@@ -655,14 +655,6 @@ available_space_after (union block *pointer)
   return charptr (record_end) - charptr (pointer);
 }
 
-/* Close file having descriptor FD, and abort if close unsuccessful.  */
-void
-xclose (int fd)
-{
-  if (close (fd) < 0)
-    close_error (_("(pipe)"));
-}
-
 static void
 init_buffer (void)
 {

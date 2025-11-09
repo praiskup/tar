@@ -474,7 +474,6 @@ void print_total_stats (void);
 void reset_eof (void);
 void set_next_block_after (void *);
 void clear_read_error_count (void);
-void xclose (int fd);
 _Noreturn void archive_write_error (ssize_t status);
 void archive_read_error (void);
 off_t seek_archive (off_t size);

@@ -306,6 +306,14 @@ enum { PREAD, PWRITE };
 # pragma GCC diagnostic ignored "-Wanalyzer-fd-leak"
 #endif
 
+/* Close file having descriptor FD, and abort if close unsuccessful.  */
+static void
+xclose (int fd)
+{
+  if (close (fd) < 0)
+    close_error (_("(pipe)"));
+}
+
 /* Duplicate file descriptor FROM into becoming INTO.
    INTO is closed first and has to be the next available slot.  */
 static void
