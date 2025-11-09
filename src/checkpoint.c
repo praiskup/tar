@@ -97,11 +97,11 @@ checkpoint_compile_action (const char *str)
       checkpoint_state = CHKP_COMPILE;
     }
 
-  if (strcmp (str, ".") == 0 || strcmp (str, "dot") == 0)
+  if (streq (str, ".") || streq (str, "dot"))
     alloc_action (cop_dot, NULL);
-  else if (strcmp (str, "bell") == 0)
+  else if (streq (str, "bell"))
     alloc_action (cop_bell, NULL);
-  else if (strcmp (str, "echo") == 0)
+  else if (streq (str, "echo"))
     alloc_action (cop_echo, NULL)->v.command = NULL;
   else if (strncmp (str, "echo=", 5) == 0)
     alloc_action (cop_echo, str + 5);
@@ -118,7 +118,7 @@ checkpoint_compile_action (const char *str)
       if ((p == arg) | *p)
 	paxfatal (0, _("%s: not a valid timeout"), str);
     }
-  else if (strcmp (str, "totals") == 0)
+  else if (streq (str, "totals"))
     alloc_action (cop_totals, NULL);
   else if (strncmp (str, "wait=", 5) == 0)
     {

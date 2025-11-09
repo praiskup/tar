@@ -102,7 +102,7 @@ update_archive (void)
 
   name_gather ();
   open_archive (ACCESS_UPDATE);
-  acting_as_filter = strcmp (archive_name_array[0], "-") == 0;
+  acting_as_filter = streq (archive_name_array[0], "-");
   xheader_forbid_global ();
 
   while (!found_end)

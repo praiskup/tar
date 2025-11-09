@@ -107,6 +107,7 @@ stpcpy
 stdopen
 strdup-posix
 strerror
+stringeq
 strnlen
 symlinkat
 sys_stat-h

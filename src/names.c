@@ -541,12 +541,12 @@ uname_to_uid (char const *uname, uid_t *uidp)
   struct passwd *passwd;
 
   if (cached_no_such_uname
-      && strcmp (uname, cached_no_such_uname) == 0)
+      && streq (uname, cached_no_such_uname))
     return false;
 
-  if (!cached_uname
-      || uname[0] != cached_uname[0]
-      || strcmp (uname, cached_uname) != 0)
+  if (! (cached_uname
+	 && uname[0] == cached_uname[0]
+	 && streq (uname, cached_uname)))
     {
       passwd = getpwnam (uname);
       if (passwd)
@@ -572,12 +572,12 @@ gname_to_gid (char const *gname, gid_t *gidp)
   struct group *group;
 
   if (cached_no_such_gname
-      && strcmp (gname, cached_no_such_gname) == 0)
+      && streq (gname, cached_no_such_gname))
     return false;
 
-  if (!cached_gname
-      || gname[0] != cached_gname[0]
-      || strcmp (gname, cached_gname) != 0)
+  if (! (cached_gname
+	 && gname[0] == cached_gname[0]
+	 && streq (gname, cached_gname)))
     {
       group = getgrnam (gname);
       if (group)
@@ -1016,7 +1016,7 @@ read_next_name (struct name_elt *ent, struct name_elt *ret)
 {
   if (!ent->v.file.fp)
     {
-      if (strcmp (ent->v.file.name, "-") == 0)
+      if (streq (ent->v.file.name, "-"))
 	{
 	  request_stdin ("-T");
 	  ent->v.file.fp = stdin;
@@ -1067,7 +1067,7 @@ read_next_name (struct name_elt *ent, struct name_elt *ret)
 	  return true;
 
 	case file_list_end:
-	  if (strcmp (ent->v.file.name, "-"))
+	  if (!streq (ent->v.file.name, "-"))
 	    fclose (ent->v.file.fp);
 	  ent->v.file.fp = NULL;
 	  name_list_advance ();
@@ -1707,7 +1707,7 @@ name_compare (void const *entry1, void const *entry2)
 {
   struct name const *name1 = entry1;
   struct name const *name2 = entry2;
-  return strcmp (name1->caname, name2->caname) == 0;
+  return streq (name1->caname, name2->caname);
 }
 
 

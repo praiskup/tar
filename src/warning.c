@@ -95,12 +95,12 @@ set_warning_option (const char *arg)
   bool negate = false;
   int option;
 
-  if (strcmp (arg, "none") == 0)
+  if (streq (arg, "none"))
     {
       warning_option = 0;
       return;
     }
-  if (strlen (arg) > 2 && memcmp (arg, "no-", 3) == 0)
+  if (strncmp (arg, "no-", 3) == 0)
     {
       negate = true;
       arg += 3;

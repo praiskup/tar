@@ -106,7 +106,7 @@ process_rawdata (idx_t bytes, char *buffer)
       return false;
     }
 
-  if (memcmp (buffer, diff_buffer, bytes) != 0)
+  if (!memeq (buffer, diff_buffer, bytes))
     {
       report_difference (&current_stat_info, _("Contents differ"));
       return false;
@@ -278,7 +278,7 @@ diff_symlink (void)
       report_difference (&current_stat_info, NULL);
     }
   else if (status != len
-	   || memcmp (current_stat_info.link_name, linkbuf, len) != 0)
+	   || !memeq (current_stat_info.link_name, linkbuf, len))
     report_difference (&current_stat_info, _("Symlink differs"));
 
   if (linkbuf != buf)

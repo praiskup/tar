@@ -257,7 +257,7 @@ static bool
 nfs_file_stat (struct stat const *st)
 {
 #if HAVE_ST_FSTYPE_STRING
-  return strcmp (st->st_fstype, "nfs") == 0;
+  return streq (st->st_fstype, "nfs");
 #else
   return (st->st_dev >> (TYPE_WIDTH (st->st_dev) - 1)) & 1;
 #endif
@@ -277,7 +277,7 @@ compare_directory_canonical_names (void const *entry1, void const *entry2)
 {
   struct directory const *directory1 = entry1;
   struct directory const *directory2 = entry2;
-  return strcmp (directory1->caname, directory2->caname) == 0;
+  return streq (directory1->caname, directory2->caname);
 }
 
 static size_t
@@ -515,7 +515,7 @@ procdir (const char *name_buffer, struct tar_stat_info *st,
 	    }
 	}
 
-      if (strcmp (directory->name, name_buffer))
+      if (!streq (directory->name, name_buffer))
 	{
 	  *entry = 'N';
 	  return directory;
@@ -537,7 +537,7 @@ procdir (const char *name_buffer, struct tar_stat_info *st,
 						     stat_data->st_ino);
 	  if (d)
 	    {
-	      if (strcmp (d->name, name_buffer))
+	      if (!streq (d->name, name_buffer))
 		{
 		  warnopt (WARN_RENAME_DIRECTORY, 0,
 			   _("%s: Directory has been renamed from %s"),
@@ -580,7 +580,7 @@ procdir (const char *name_buffer, struct tar_stat_info *st,
 
       if (d)
 	{
-	  if (strcmp (d->name, name_buffer))
+	  if (!streq (d->name, name_buffer))
 	    {
 	      warnopt (WARN_RENAME_DIRECTORY, 0,
 		       _("%s: Directory has been renamed from %s"),

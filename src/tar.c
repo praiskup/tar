@@ -240,7 +240,7 @@ set_archive_format (char const *name)
 {
   struct fmttab const *p;
 
-  for (p = fmttab; strcmp (p->name, name) != 0; )
+  for (p = fmttab; !streq (p->name, name); )
     if (! (++p)->name)
       paxusage (_("%s: Invalid archive format"),
 		quotearg_colon (name));
@@ -336,7 +336,7 @@ static void
 tar_set_quoting_style (char *arg)
 {
   for (idx_t i = 0; quoting_style_args[i]; i++)
-    if (strcmp (arg, quoting_style_args[i]) == 0)
+    if (streq (arg, quoting_style_args[i]))
       {
 	set_quoting_style (NULL, i);
 	return;
@@ -1039,7 +1039,7 @@ optloc_eq (struct option_locus *a, struct option_locus *b)
   if (a->source == OPTS_COMMAND_LINE)
     return true;
   assume (a->name);
-  return strcmp (a->name, b->name) == 0;
+  return streq (a->name, b->name);
 }
 
 static void
@@ -1058,7 +1058,7 @@ set_use_compress_program_option (const char *string, struct option_locus *loc)
 {
   struct option_locus *p = optloc_save (OC_COMPRESS, loc);
   if (use_compress_program_option
-      && strcmp (use_compress_program_option, string) != 0
+      && !streq (use_compress_program_option, string)
       && p->source == OPTS_COMMAND_LINE)
     paxusage (_("Conflicting compression options"));
 
@@ -1112,7 +1112,7 @@ decode_signal (const char *name)
   if (strncmp (s, "SIG", 3) == 0)
     s += 3;
   for (struct sigtab const *p = sigtab; p < sigtab + nsigtab; p++)
-    if (strcmp (p->name, s) == 0)
+    if (streq (p->name, s))
       return p->signo;
   paxfatal (0, _("Unknown signal name: %s"), name);
 }
@@ -1180,7 +1180,7 @@ report_textual_dates (struct tar_args *args)
       if (verbose_option)
 	{
 	  char const *treated_as = tartime (p->ts, true);
-	  if (strcmp (p->date, treated_as) != 0)
+	  if (!streq (p->date, treated_as))
 	    paxwarn (0, _("Option %s: Treating date '%s' as %s"),
 		     p->option, p->date, treated_as);
 	}
@@ -2741,7 +2741,7 @@ decode_options (int argc, char **argv)
       if (!name_more_files ())
 	paxusage (_("Cowardly refusing to create an empty archive"));
       if (args.compress_autodetect && archive_names
-	  && strcmp (archive_name_array[0], "-"))
+	  && !streq (archive_name_array[0], "-"))
 	set_compression_program_by_suffix (archive_name_array[0],
 					   use_compress_program_option,
 					   true);
@@ -2754,7 +2754,7 @@ decode_options (int argc, char **argv)
       for (archive_name_cursor = archive_name_array;
 	   archive_name_cursor < archive_name_array + archive_names;
 	   archive_name_cursor++)
-	if (strcmp (*archive_name_cursor, "-") == 0)
+	if (streq (*archive_name_cursor, "-"))
 	  request_stdin ("-f");
       break;
 
@@ -2764,7 +2764,7 @@ decode_options (int argc, char **argv)
       for (archive_name_cursor = archive_name_array;
 	   archive_name_cursor < archive_name_array + archive_names;
 	   archive_name_cursor++)
-	if (strcmp (*archive_name_cursor, "-") == 0)
+	if (streq (*archive_name_cursor, "-"))
 	  paxusage (_("Options '-Aru' are incompatible with '-f -'"));
 
     default:

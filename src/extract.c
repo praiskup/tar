@@ -230,7 +230,7 @@ static bool
 ds_compare (void const *a, void const *b)
 {
   struct delayed_set_stat const *dsa = a, *dsb = b;
-  return strcmp (dsa->file_name, dsb->file_name) == 0;
+  return streq (dsa->file_name, dsb->file_name);
 }
 
 /*  Set up to extract files.  */
@@ -704,7 +704,7 @@ remove_delayed_set_stat (const char *fname)
     {
       next = data->next;
       if (chdir_current == data->change_dir
-	  && strcmp (data->file_name, fname) == 0)
+	  && streq (data->file_name, fname))
 	{
 	  hash_remove (delayed_set_stat_table, data);
 	  free_delayed_set_stat (data);
@@ -726,7 +726,7 @@ fixup_delayed_set_stat (char const *src, char const *dst)
   for (data = delayed_set_stat_head; data; data = data->next)
     {
       if (chdir_current == data->change_dir
-	  && strcmp (data->file_name, src) == 0)
+	  && streq (data->file_name, src))
 	{
 	  free (data->file_name);
 	  data->file_name = xstrdup (dst);
@@ -1009,7 +1009,7 @@ apply_nonancestor_delayed_set_stat (char const *file_name, bool after_links)
 	      && file_name[data->file_name_len]
 	      && (ISSLASH (file_name[data->file_name_len])
 		  || ISSLASH (file_name[data->file_name_len - 1]))
-	      && memcmp (file_name, data->file_name, data->file_name_len) == 0))
+	      && memeq (file_name, data->file_name, data->file_name_len)))
 	break;
 
       chdir_do (data->change_dir);
@@ -1567,7 +1567,7 @@ extract_link (char *file_name, MAYBE_UNUSED char typeflag)
 
 	  return true;
 	}
-      else if ((e == EEXIST && strcmp (link_name, file_name) == 0)
+      else if ((e == EEXIST && streq (link_name, file_name))
 	       || ((fstatat (chdir_fd, link_name, &st1, AT_SYMLINK_NOFOLLOW)
 		    == 0)
 		   && (fstatat (chdir_fd, file_name, &st2, AT_SYMLINK_NOFOLLOW)

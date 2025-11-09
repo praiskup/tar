@@ -263,10 +263,10 @@ hg_addfn (struct exclude *ex, char const *pattern, int options, void *data)
     {
       for (pattern += 7; c_isspace (*pattern); ++pattern)
 	;
-      if (strcmp (pattern, "regexp") == 0)
+      if (streq (pattern, "regexp"))
 	/* FIXME: Regexps must be perl-style */
 	*hgopt = EXCLUDE_REGEX;
-      else if (strcmp (pattern, "glob") == 0)
+      else if (streq (pattern, "glob"))
 	*hgopt = EXCLUDE_WILDCARDS;
       /* Ignore unknown syntax */
       return;
@@ -306,7 +306,7 @@ get_vcs_ignore_file (const char *name)
   struct vcs_ignore_file *p;
 
   for (p = vcs_ignore_files; p->filename; p++)
-    if (strcmp (p->filename, name) == 0)
+    if (streq (p->filename, name))
       break;
 
   return p;

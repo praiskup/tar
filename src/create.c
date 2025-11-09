@@ -115,7 +115,7 @@ cachedir_file_p (int fd)
     = "Signature: 8a477f597d28d172789f06886806bc55";
   char tagbuf[sizeof sig];
   return (read (fd, tagbuf, sizeof sig) == sizeof sig
-	  && memcmp (tagbuf, sig, sizeof sig) == 0);
+	  && memeq (tagbuf, sig, sizeof sig));
 }
 
 

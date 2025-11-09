@@ -377,7 +377,7 @@ replace_prefix (char **pname, const char *samp, idx_t slen,
 {
   char *name = *pname;
   idx_t nlen = strlen (name);
-  if (nlen > slen && memcmp (name, samp, slen) == 0 && ISSLASH (name[slen]))
+  if (slen < nlen && memeq (name, samp, slen) && ISSLASH (name[slen]))
     {
       if (rlen > slen)
 	{

@@ -751,7 +751,7 @@ xattrs_xattrs_set (MAYBE_UNUSED struct tar_stat_info const *st,
              the first run except 'security.capability' which is restored in
              'later_run == 1'.  */
           if (typeflag == REGTYPE
-              && later_run == (strcmp (keyword, "security.capability") != 0))
+	      && streq (keyword, "security.capability") != later_run)
             continue;
 
           if (xattrs_masked_out (keyword, false /* extracting */ ))
