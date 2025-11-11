@@ -69,6 +69,7 @@ idx
 intprops
 inttostr
 inttypes-h
+issymlinkat
 largefile
 lchown
 limits-h

@@ -24,6 +24,7 @@
 #include <errno.h>
 #include <flexmember.h>
 #include <hash.h>
+#include <issymlink.h>
 #include <priv-set.h>
 #include <root-uid.h>
 #include <same-inode.h>
@@ -1065,8 +1066,7 @@ apply_nonancestor_delayed_set_stat (char const *file_name, bool after_links)
 static bool
 is_directory_link (char const *file_name, struct stat *st)
 {
-  char buf[1];
-  return (0 <= readlinkat (chdir_fd, file_name, buf, sizeof buf)
+  return (issymlinkat (chdir_fd, file_name)
 	  && fstatat (chdir_fd, file_name, st, 0) == 0
 	  && S_ISDIR (st->st_mode));
 }
@@ -1239,14 +1239,11 @@ open_output_file (char const *file_name, char typeflag, mode_t mode,
      separately.  There's a race condition, but that cannot be avoided
      on hosts lacking O_NOFOLLOW.  */
   if (! HAVE_WORKING_O_NOFOLLOW
-      && overwriting_old_files && ! dereference_option)
+      && overwriting_old_files && ! dereference_option
+      && issymlinkat (chdir_fd, file_name))
     {
-      char buf[1];
-      if (0 <= readlinkat (chdir_fd, file_name, buf, sizeof buf))
-	{
-	  errno = ELOOP;
-	  return -1;
-	}
+      errno = ELOOP;
+      return -1;
     }
 
   fd = openat (chdir_fd, file_name, openflag, mode);
