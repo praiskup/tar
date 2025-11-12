@@ -370,7 +370,7 @@ check_time (char const *file_name, struct timespec t)
 {
   if (t.tv_sec < 0)
     warnopt (WARN_TIMESTAMP, 0, _("%s: implausibly old time stamp %s"),
-	     file_name, tartime (t, true));
+	     quotearg_colon (file_name), tartime (t, true));
   else if (timespec_cmp (volume_start_time, t) < 0)
     {
       struct timespec now;
@@ -387,7 +387,8 @@ check_time (char const *file_name, struct timespec t)
 	      diff.tv_sec--;
 	    }
 	  warnopt (WARN_TIMESTAMP, 0, _("%s: time stamp %s is %s s in the future"),
-		   file_name, tartime (t, true), code_timespec (diff, buf));
+		   quotearg_colon (file_name), tartime (t, true),
+		   code_timespec (diff, buf));
 	}
     }
 }
@@ -916,7 +917,8 @@ maybe_recoverable (char *file_name, bool regular, bool *interdir_made)
       switch (old_files_option)
 	{
 	case SKIP_OLD_FILES:
-	  warnopt (WARN_EXISTING_FILE, 0, _("%s: skipping existing file"), file_name);
+	  warnopt (WARN_EXISTING_FILE, 0, _("%s: skipping existing file"),
+		   quotearg_colon (file_name));
 	  return RECOVER_SKIP;
 
 	case KEEP_OLD_FILES:
