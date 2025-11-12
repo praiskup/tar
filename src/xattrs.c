@@ -297,7 +297,7 @@ xattrs__acls_set (struct tar_stat_info const *st,
 	warnopt (WARN_XATTR_WRITE, errno,
                  _("acl_delete_def_file_at: Cannot drop default POSIX ACLs "
                    "for file '%s'"),
-		 file_name);
+		 quote (file_name));
       return;
     }
   else
@@ -313,7 +313,7 @@ xattrs__acls_set (struct tar_stat_info const *st,
     /* warn even if filesystem does not support acls */
     warnopt (WARN_XATTR_WRITE, errno,
 	     _ ("acl_set_file_at: Cannot set POSIX ACLs for file '%s'"),
-	     file_name);
+	     quote (file_name));
 
   acl_free (acl);
 }
@@ -610,7 +610,7 @@ xattrs__fd_set (char const *file_name, char typeflag,
       if (ret < 0)
 	warnopt (WARN_XATTR_WRITE, errno,
 		 _("%s: Cannot set '%s' extended attribute for file '%s'"),
-		 sysname, attr, file_name);
+		 sysname, attr, quote (file_name));
     }
 }
 #endif
@@ -675,7 +675,7 @@ xattrs_selinux_set (MAYBE_UNUSED struct tar_stat_info const *st,
       if (ret < 0)
 	warnopt (WARN_XATTR_WRITE, errno,
 		 _("%s: Cannot set SELinux context for file '%s'"),
-		 sysname, file_name);
+		 sysname, quote (file_name));
 #endif
     }
 }

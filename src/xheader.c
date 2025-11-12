@@ -973,7 +973,7 @@ out_of_range_header (char const *keyword, char const *value,
   /* TRANSLATORS: The first %s is the pax extended header keyword
      (atime, gid, etc.).  */
   paxerror (0, _("Extended header %s=%s is out of range %jd..%ju"),
-	    keyword, value, minval, maxval);
+	    keyword, quote (value), minval, maxval);
 }
 
 static void
@@ -1024,13 +1024,13 @@ decode_time (struct timespec *ts, char const *arg, char const *keyword)
 			     TYPE_MAXIMUM (time_t));
       else
 	paxerror (0, _("Malformed extended header: invalid %s=%s"),
-		  keyword, arg);
+		  keyword, quote (arg));
       return false;
     }
   if (*arg_lim)
     {
       paxerror (0, _("Malformed extended header: invalid %s=%s"),
-		keyword, arg);
+		keyword, quote (arg));
       return false;
     }
 
@@ -1064,7 +1064,7 @@ decode_signed_num (intmax_t *num, char const *arg,
   if ((arg_lim == arg) | *arg_lim)
     {
       paxerror (0, _("Malformed extended header: invalid %s=%s"),
-		keyword, arg);
+		keyword, quote (arg));
       return false;
     }
 
@@ -1417,7 +1417,7 @@ sparse_map_decoder (struct tar_stat_info *st,
       if (delim == arg)
 	{
 	  paxerror (0, _("Malformed extended header: invalid %s=%s"),
-		    keyword, arg);
+		    keyword, quote (arg));
 	  return;
 	}
 
@@ -1443,7 +1443,7 @@ sparse_map_decoder (struct tar_stat_info *st,
 	  else
 	    {
 	      paxerror (0, _("Malformed extended header: excess %s=%s"),
-			keyword, arg);
+			keyword, quote (arg));
 	      return;
 	    }
 	}
