@@ -752,11 +752,17 @@ int deref_stat (char const *name, struct stat *buf);
 idx_t blocking_read (int fd, void *buf, idx_t count);
 idx_t blocking_write (int fd, void const *buf, idx_t count);
 
+/* Not valid as the first argument to openat.
+   It is a negative integer not equal to AT_FDCWD.  */
+enum { BADFD = AT_FDCWD == -1 ? -2 : -1 };
+
 extern idx_t chdir_current;
-extern int chdir_fd;
 idx_t chdir_arg (char const *dir);
 void chdir_do (idx_t dir);
 struct chdir_id { int err; dev_t st_dev; ino_t st_ino; } chdir_id (void);
+struct fdbase { int fd; char const *base; } fdbase (char const *);
+struct fdbase fdbase1 (char const *);
+void fdbase_clear (void);
 idx_t chdir_count (void);
 
 void close_diag (char const *name);

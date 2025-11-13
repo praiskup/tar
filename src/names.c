@@ -1799,8 +1799,9 @@ collect_and_sort_names (void)
 	}
       if (S_ISDIR (st.stat.st_mode))
 	{
-	  int dir_fd = openat (chdir_fd, name->name,
-			       open_read_flags | O_DIRECTORY);
+	  struct fdbase f = fdbase (name->name);
+	  int dir_fd = (f.fd == BADFD ? -1
+			: openat (f.fd, f.base, open_read_flags | O_DIRECTORY));
 	  if (dir_fd < 0)
 	    open_diag (name->name);
 	  else

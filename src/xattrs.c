@@ -293,7 +293,8 @@ xattrs__acls_set (struct tar_stat_info const *st,
       /* No "default" IEEE 1003.1e ACL set for directory.  At this moment,
          FILE_NAME may already have inherited default acls from parent
          directory;  clean them up. */
-      if (acl_delete_def_file_at (chdir_fd, file_name) < 0)
+      struct fdbase f1 = fdbase (file_name);
+      if (f1.fd == BADFD || acl_delete_def_file_at (f1.fd, f1.base) < 0)
 	warnopt (WARN_XATTR_WRITE, errno,
                  _("acl_delete_def_file_at: Cannot drop default POSIX ACLs "
                    "for file '%s'"),
@@ -309,7 +310,8 @@ xattrs__acls_set (struct tar_stat_info const *st,
       return;
     }
 
-  if (acl_set_file_at (chdir_fd, file_name, type, acl) < 0)
+  struct fdbase f = fdbase (file_name);
+  if (f.fd == BADFD || acl_set_file_at (f.fd, f.base, type, acl) < 0)
     /* warn even if filesystem does not support acls */
     warnopt (WARN_XATTR_WRITE, errno,
 	     _ ("acl_set_file_at: Cannot set POSIX ACLs for file '%s'"),
@@ -599,13 +601,16 @@ xattrs__fd_set (char const *file_name, char typeflag,
     {
       const char *sysname = "setxattrat";
       int ret;
+      struct fdbase f = fdbase (file_name);
 
-      if (typeflag != SYMTYPE)
-        ret = setxattrat (chdir_fd, file_name, attr, ptr, len, 0);
+      if (f.fd == BADFD)
+	ret = -1;
+      else if (typeflag != SYMTYPE)
+	ret = setxattrat (f.fd, f.base, attr, ptr, len, 0);
       else
         {
           sysname = "lsetxattr";
-          ret = lsetxattrat (chdir_fd, file_name, attr, ptr, len, 0);
+	  ret = lsetxattrat (f.fd, f.base, attr, ptr, len, 0);
         }
 
       if (ret < 0)
@@ -662,14 +667,17 @@ xattrs_selinux_set (MAYBE_UNUSED struct tar_stat_info const *st,
       if (!st->cntx_name)
         return;
 
-      if (typeflag != SYMTYPE)
+      struct fdbase f = fdbase (file_name);
+      if (f.fd == BADFD)
+	ret = -1;
+      else if (typeflag != SYMTYPE)
         {
-          ret = setfileconat (chdir_fd, file_name, st->cntx_name);
+	  ret = setfileconat (f.fd, f.base, st->cntx_name);
           sysname = "setfileconat";
         }
       else
         {
-          ret = lsetfileconat (chdir_fd, file_name, st->cntx_name);
+	  ret = lsetfileconat (f.fd, f.base, st->cntx_name);
           sysname = "lsetfileconat";
         }
 

@@ -213,7 +213,9 @@ diff_file (void)
 	}
       else
 	{
-	  diff_handle = openat (chdir_fd, file_name, open_read_flags);
+	  struct fdbase f = fdbase (file_name);
+	  diff_handle = (f.fd == BADFD ? -1
+			 : openat (f.fd, f.base, open_read_flags));
 
 	  if (diff_handle < 0)
 	    {
@@ -232,8 +234,7 @@ diff_file (void)
 		  && stat_data.st_size != 0)
 		{
 		  struct timespec atime = get_stat_atime (&stat_data);
-		  if (set_file_atime (diff_handle, chdir_fd, file_name, atime)
-		      < 0)
+		  if (set_file_atime (diff_handle, f.fd, f.base, atime) < 0)
 		    utime_error (file_name);
 		}
 
@@ -265,9 +266,9 @@ diff_symlink (void)
   char buf[1024];
   idx_t len = strlen (current_stat_info.link_name);
   char *linkbuf = len < sizeof buf ? buf : xmalloc (len + 1);
-
-  ssize_t status = readlinkat (chdir_fd, current_stat_info.file_name,
-			       linkbuf, len + 1);
+  struct fdbase f = fdbase (current_stat_info.file_name);
+  ssize_t status = (f.fd == BADFD ? -1
+		    : readlinkat (f.fd, f.base, linkbuf, len + 1));
 
   if (status < 0)
     {
@@ -426,7 +427,8 @@ diff_multivol (void)
     }
 
 
-  int fd = openat (chdir_fd, current_stat_info.file_name, open_read_flags);
+  struct fdbase f = fdbase (current_stat_info.file_name);
+  int fd = f.fd == BADFD ? -1 : openat (f.fd, f.base, open_read_flags);
 
   if (fd < 0)
     {

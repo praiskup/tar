@@ -266,7 +266,8 @@ fd_i_chmod (int fd, char const *file, mode_t mode, int atflag)
       if (result == 0 || implemented (errno))
 	return result;
     }
-  return fchmodat (chdir_fd, file, mode, atflag);
+  struct fdbase f = fdbase (file);
+  return f.fd == BADFD ? -1 : fchmodat (f.fd, f.base, mode, atflag);
 }
 
 /* A version of fd_i_chmod which gracefully handles several common error
@@ -315,16 +316,18 @@ fd_chown (int fd, char const *file, uid_t uid, gid_t gid, int atflag)
       if (result == 0 || implemented (errno))
 	return result;
     }
-  return fchownat (chdir_fd, file, uid, gid, atflag);
+  struct fdbase f = fdbase (file);
+  return f.fd == BADFD ? -1 : fchownat (f.fd, f.base, uid, gid, atflag);
 }
 
 /* Use fstat if possible, fstatat otherwise.  */
 static int
 fd_stat (int fd, char const *file, struct stat *st, int atflag)
 {
-  return (0 <= fd
-	  ? fstat (fd, st)
-	  : fstatat (chdir_fd, file, st, atflag));
+  if (0 <= fd)
+    return fstat (fd, st);
+  struct fdbase f = fdbase (file);
+  return f.fd == BADFD ? -1 : fstatat (f.fd, f.base, st, atflag);
 }
 
 /* Set the mode for FILE_NAME to MODE.
@@ -421,7 +424,15 @@ set_stat (char const *file_name,
 	ts[0].tv_nsec = UTIME_OMIT;
       ts[1] = st->mtime;
 
-      if (fdutimensat (fd, chdir_fd, file_name, ts, atflag) == 0)
+      int r;
+      if (0 <= fd)
+	r = futimens (fd, ts);
+      if (fd < 0 || (r < 0 && errno == ENOSYS))
+	{
+	  struct fdbase f = fdbase (file_name);
+	  r = f.fd == BADFD ? -1 : utimensat (f.fd, f.base, ts, atflag);
+	}
+      if (r == 0)
 	{
 	  if (incremental_option)
 	    check_time (file_name, ts[0]);
@@ -546,9 +557,9 @@ delay_set_stat (char const *file_name, struct tar_stat_info const *st,
       if (data->interdir)
 	{
 	  struct stat real_st;
-	  if (fstatat (chdir_fd, data->file_name,
-		       &real_st, data->atflag)
-	      < 0)
+	  struct fdbase f = fdbase (data->file_name);
+	  if (f.fd == BADFD
+	      || fstatat (f.fd, f.base, &real_st, data->atflag) < 0)
 	    {
 	      stat_error (data->file_name);
 	    }
@@ -660,7 +671,8 @@ repair_delayed_set_stat (char const *dir,
   for (data = delayed_set_stat_head; data; data = data->next)
     {
       struct stat st;
-      if (fstatat (chdir_fd, data->file_name, &st, data->atflag) < 0)
+      struct fdbase f = fdbase (data->file_name);
+      if (f.fd == BADFD || fstatat (f.fd, f.base, &st, data->atflag) < 0)
 	{
 	  stat_error (data->file_name);
 	  return;
@@ -774,7 +786,8 @@ make_directories (char *file_name, bool *interdir_made)
       *cursor = '\0';		/* truncate the name there */
       desired_mode = MODE_RWX & ~ newdir_umask;
       mode = desired_mode | (we_are_root ? 0 : MODE_WXUSR);
-      status = mkdirat (chdir_fd, file_name, mode);
+      struct fdbase f = fdbase (file_name);
+      status = f.fd == BADFD ? -1 : mkdirat (f.fd, f.base, mode);
 
       if (status == 0)
 	{
@@ -817,7 +830,8 @@ make_directories (char *file_name, bool *interdir_made)
      process may have created it, so check whether it exists now.  */
   *parent_end = '\0';
   struct stat st;
-  int stat_status = fstatat (chdir_fd, file_name, &st, 0);
+  struct fdbase f = fdbase (file_name);
+  int stat_status = f.fd == BADFD ? -1 : fstatat (f.fd, f.base, &st, 0);
   if (! (stat_status < 0 || S_ISDIR (st.st_mode)))
     stat_status = -1;
   if (stat_status < 0)
@@ -973,7 +987,8 @@ set_xattr (MAYBE_UNUSED char const *file_name,
 #ifdef HAVE_XATTRS
   if (xattrs_option && st->xattr_map.xm_size)
     {
-      int r = mknodat (chdir_fd, file_name, mode | S_IFREG, 0);
+      struct fdbase f = fdbase (file_name);
+      int r = f.fd == BADFD ? -1 : mknodat (f.fd, f.base, mode | S_IFREG, 0);
       if (r < 0)
 	return r;
       xattrs_xattrs_set (st, file_name, typeflag, false);
@@ -1017,7 +1032,8 @@ apply_nonancestor_delayed_set_stat (char const *file_name, bool after_links)
 
       if (check_for_renamed_directories)
 	{
-	  if (fstatat (chdir_fd, data->file_name, &st, data->atflag) < 0)
+	  struct fdbase f = fdbase (data->file_name);
+	  if (f.fd == BADFD || fstatat (f.fd, f.base, &st, data->atflag) < 0)
 	    {
 	      stat_error (data->file_name);
 	      skip_this_one = 1;
@@ -1066,8 +1082,9 @@ apply_nonancestor_delayed_set_stat (char const *file_name, bool after_links)
 static bool
 is_directory_link (char const *file_name, struct stat *st)
 {
-  return (issymlinkat (chdir_fd, file_name)
-	  && fstatat (chdir_fd, file_name, st, 0) == 0
+  struct fdbase f = fdbase (file_name);
+  return (f.fd != BADFD && issymlinkat (f.fd, f.base)
+	  && fstatat (f.fd, f.base, st, 0) == 0
 	  && S_ISDIR (st->st_mode));
 }
 
@@ -1126,7 +1143,8 @@ extract_dir (char *file_name, char typeflag)
 
   for (;;)
     {
-      status = mkdirat (chdir_fd, file_name, mode);
+      struct fdbase f = fdbase (file_name);
+      status = f.fd == BADFD ? -1 : mkdirat (f.fd, f.base, mode);
       if (status == 0)
 	{
 	  current_mode = mode & ~ current_umask;
@@ -1235,18 +1253,20 @@ open_output_file (char const *file_name, char typeflag, mode_t mode,
 	}
     }
 
+  struct fdbase f = fdbase (file_name);
+
   /* If O_NOFOLLOW is needed but does not work, check for a symlink
      separately.  There's a race condition, but that cannot be avoided
      on hosts lacking O_NOFOLLOW.  */
   if (! HAVE_WORKING_O_NOFOLLOW
       && overwriting_old_files && ! dereference_option
-      && issymlinkat (chdir_fd, file_name))
+      && f.fd != BADFD && issymlinkat (f.fd, f.base))
     {
       errno = ELOOP;
       return -1;
     }
 
-  fd = openat (chdir_fd, file_name, openflag, mode);
+  fd = f.fd == BADFD ? -1 : openat (f.fd, f.base, openflag, mode);
   if (0 <= fd)
     {
       if (openflag & O_EXCL)
@@ -1410,7 +1430,8 @@ find_delayed_link_source (char const *name)
   if (!delayed_link_table)
     return false;
 
-  if (fstatat (chdir_fd, name, &st, AT_SYMLINK_NOFOLLOW) < 0)
+  struct fdbase f = fdbase (name);
+  if (f.fd == BADFD || fstatat (f.fd, f.base, &st, AT_SYMLINK_NOFOLLOW) < 0)
     {
       if (errno != ENOENT)
 	stat_error (name);
@@ -1436,8 +1457,16 @@ create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made)
   int fd;
   struct stat st;
 
-  while ((fd = openat (chdir_fd, file_name, O_WRONLY | O_CREAT | O_EXCL, 0)) < 0)
+  for (;;)
     {
+      struct fdbase f = fdbase (file_name);
+      if (f.fd != BADFD)
+	{
+	  fd = openat (f.fd, f.base, O_WRONLY | O_CREAT | O_EXCL, 0);
+	  if (0 <= fd)
+	    break;
+	}
+
       if (errno == EEXIST && find_delayed_link_source (file_name))
 	{
 	  /* The placeholder file has already been created.  This means
@@ -1459,7 +1488,7 @@ create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made)
 	  open_error (file_name);
 	  return false;
 	}
-      }
+    }
 
   if (fstat (fd, &st) < 0)
     {
@@ -1536,15 +1565,23 @@ extract_link (char *file_name, MAYBE_UNUSED char typeflag)
 
   do
     {
-      struct stat st1, st2;
-      int e;
-      int status = linkat (chdir_fd, link_name, chdir_fd, file_name, 0);
-      e = errno;
+      struct stat st, st1;
+      int status;
+
+      struct fdbase f = fdbase (file_name), f1;
+      if (f.fd == BADFD)
+	status = -1;
+      else
+	{
+	  f1 = fdbase1 (link_name);
+	  status = (f1.fd == BADFD ? -1
+		    : linkat (f1.fd, f1.base, f.fd, f.base, 0));
+	}
 
       if (status == 0)
 	{
 	  if (delayed_link_table
-	      && fstatat (chdir_fd, link_name, &st1, AT_SYMLINK_NOFOLLOW) == 0)
+	      && fstatat (f1.fd, f1.base, &st1, AT_SYMLINK_NOFOLLOW) == 0)
 	    {
 	      struct delayed_link dl1;
 	      dl1.st_ino = st1.st_ino;
@@ -1564,14 +1601,14 @@ extract_link (char *file_name, MAYBE_UNUSED char typeflag)
 
 	  return true;
 	}
-      else if ((e == EEXIST && streq (link_name, file_name))
-	       || ((fstatat (chdir_fd, link_name, &st1, AT_SYMLINK_NOFOLLOW)
-		    == 0)
-		   && (fstatat (chdir_fd, file_name, &st2, AT_SYMLINK_NOFOLLOW)
-		       == 0)
-		   && psame_inode (&st1, &st2)))
-	return true;
 
+      int e = errno;
+      if ((e == EEXIST && streq (link_name, file_name))
+	  || (f.fd != BADFD && f1.fd != BADFD
+	      && fstatat (f1.fd, f1.base, &st1, AT_SYMLINK_NOFOLLOW) == 0
+	      && fstatat (f.fd, f.base, &st, AT_SYMLINK_NOFOLLOW) == 0
+	      && psame_inode (&st1, &st)))
+	return true;
       errno = e;
     }
   while ((rc = maybe_recoverable (file_name, false, &interdir_made))
@@ -1597,7 +1634,10 @@ extract_symlink (char *file_name, MAYBE_UNUSED char typeflag)
 	  || contains_dot_dot (current_stat_info.link_name)))
     return create_placeholder_file (file_name, true, &interdir_made);
 
-  while (symlinkat (current_stat_info.link_name, chdir_fd, file_name) < 0)
+  for (struct fdbase f;
+       ((f = fdbase (file_name)).fd == BADFD
+	|| symlinkat (current_stat_info.link_name, f.fd, f.base) < 0);
+       )
     switch (maybe_recoverable (file_name, false, &interdir_made))
       {
       case RECOVER_OK:
@@ -1636,8 +1676,10 @@ extract_node (char *file_name, char typeflag)
   mode_t mode = (current_stat_info.stat.st_mode & (MODE_RWX | S_IFBLK | S_IFCHR)
 		 & ~ (0 < same_owner_option ? S_IRWXG | S_IRWXO : 0));
 
-  while (mknodat (chdir_fd, file_name, mode, current_stat_info.stat.st_rdev)
-	 < 0)
+  for (struct fdbase f;
+       ((f = fdbase (file_name)).fd == BADFD
+	|| mknodat (f.fd, f.base, mode, current_stat_info.stat.st_rdev) < 0);
+       )
     switch (maybe_recoverable (file_name, false, &interdir_made))
       {
       case RECOVER_OK:
@@ -1666,7 +1708,10 @@ extract_fifo (char *file_name, char typeflag)
   mode_t mode = (current_stat_info.stat.st_mode & MODE_RWX
 		 & ~ (0 < same_owner_option ? S_IRWXG | S_IRWXO : 0));
 
-  while (mkfifoat (chdir_fd, file_name, mode) < 0)
+  for (struct fdbase f;
+       ((f = fdbase (file_name)).fd == BADFD
+	|| mkfifoat (f.fd, f.base, mode) < 0);
+       )
     switch (maybe_recoverable (file_name, false, &interdir_made))
       {
       case RECOVER_OK:
@@ -1882,7 +1927,7 @@ static void
 apply_delayed_link (struct delayed_link *ds)
 {
   struct string_list *sources = ds->sources;
-  char const *valid_source = 0;
+  char const *valid_source = NULL;
 
   chdir_do (ds->change_dir);
 
@@ -1894,24 +1939,29 @@ apply_delayed_link (struct delayed_link *ds)
       /* Make sure the placeholder file is still there.  If not,
 	 don't create a link, as the placeholder was probably
 	 removed by a later extraction.  */
-      if (fstatat (chdir_fd, source, &st, AT_SYMLINK_NOFOLLOW) == 0
+      struct fdbase f = fdbase (source);
+      if (f.fd != BADFD && fstatat (f.fd, f.base, &st, AT_SYMLINK_NOFOLLOW) == 0
 	  && SAME_INODE (st, *ds)
 	  && BIRTHTIME_EQ (get_stat_birthtime (&st), ds->birthtime))
 	{
 	  /* Unlink the placeholder, then create a hard link if possible,
 	     a symbolic link otherwise.  */
-	  if (unlinkat (chdir_fd, source, 0) < 0)
+	  struct fdbase f1;
+	  if (unlinkat (f.fd, f.base, 0) < 0)
 	    unlink_error (source);
 	  else if (valid_source
-		   && (linkat (chdir_fd, valid_source, chdir_fd, source, 0)
-		       == 0))
+		   && ((f1 = f.fd == BADFD ? f : fdbase1 (valid_source)).fd
+		       != BADFD)
+		   && linkat (f1.fd, f1.base, f.fd, f.base, 0) == 0)
 	    ;
 	  else if (!ds->is_symlink)
 	    {
-	      if (linkat (chdir_fd, ds->target, chdir_fd, source, 0) < 0)
+	      f1 = f.fd == BADFD ? f : fdbase1 (ds->target);
+	      if (f1.fd == BADFD
+		  || linkat (f1.fd, f1.base, f.fd, f.base, 0) < 0)
 		link_error (ds->target, source);
 	    }
-	  else if (symlinkat (ds->target, chdir_fd, source) < 0)
+	  else if (symlinkat (ds->target, f.fd, f.base) < 0)
 	    symlink_error (ds->target, source);
 	  else
 	    {
@@ -1996,9 +2046,14 @@ extract_finish (void)
 bool
 rename_directory (char *src, char *dst)
 {
-  if (renameat (chdir_fd, src, chdir_fd, dst) == 0)
-    fixup_delayed_set_stat (src, dst);
-  else
+  struct fdbase f1 = fdbase1 (src);
+  struct fdbase f = f1.fd == BADFD ? f1 : fdbase (dst);
+  if (f.fd != BADFD && renameat (f1.fd, f1.base, f.fd, f.base) == 0)
+    {
+      fdbase_clear ();
+      fixup_delayed_set_stat (src, dst);
+    }
+  else if (f1.fd != BADFD)
     {
       int e = errno;
 
@@ -2007,8 +2062,13 @@ rename_directory (char *src, char *dst)
 	case ENOENT:
 	  if (make_directories (dst, NULL) == 0)
 	    {
-	      if (renameat (chdir_fd, src, chdir_fd, dst) == 0)
-		return true;
+	      f = fdbase (dst);
+	      if (f.fd != BADFD
+		  && renameat (f1.fd, f1.base, f.fd, f.base) == 0)
+		{
+		  fdbase_clear ();
+		  return true;
+		}
 	      e = errno;
 	    }
 	  break;

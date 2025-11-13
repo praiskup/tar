@@ -45,7 +45,8 @@ static bool acting_as_filter;
 static void
 append_file (char *file_name)
 {
-  int handle = openat (chdir_fd, file_name, O_RDONLY | O_BINARY);
+  struct fdbase f = fdbase (file_name);
+  int handle = f.fd == BADFD ? -1 : openat (f.fd, f.base, O_RDONLY | O_BINARY);
 
   if (handle < 0)
     {
