@@ -2692,21 +2692,25 @@ decode_options (int argc, char **argv)
   if (recursive_unlink_option)
     old_files_option = UNLINK_FIRST_OLD_FILES;
 
-  /* Flags for accessing files to be read from or copied into.  POSIX says
-     O_NONBLOCK has unspecified effect on most types of files, but in
-     practice it never harms and sometimes helps.  */
+  /* Flags for accessing files to be read from, searched, or statted.  */
   {
-    int base_open_flags =
-      (O_BINARY | O_CLOEXEC | O_NOCTTY | O_NONBLOCK
-       | (dereference_option ? 0 : O_NOFOLLOW)
-       | (atime_preserve_option == system_atime_preserve ? O_NOATIME : 0));
-    open_read_flags = O_RDONLY | base_open_flags;
+    int noatime_flag = (atime_preserve_option == system_atime_preserve
+			? O_NOATIME : 0);
+    int nofollow_flag = dereference_option ? 0 : O_NOFOLLOW;
+
+    /* POSIX says O_NONBLOCK has unspecified effect on most types of
+       files, but in practice it harms only with O_PATH and sometimes
+       helps otherwise.  */
+    open_read_flags = (O_RDONLY | O_BINARY | O_CLOEXEC | O_NOCTTY | O_NONBLOCK
+		       | noatime_flag | nofollow_flag);
+
 #if defined O_PATH && O_SEARCH == O_RDONLY
-    int open_search_flag = O_PATH;
+    int search_flags = O_PATH; /* openat2 rejects O_PATH | O_NOATIME.  */
 #else
-    int open_search_flag = O_SEARCH;
+    int search_flags = O_SEARCH | noatime_flag;
 #endif
-    open_searchdir_flags = open_search_flag | O_DIRECTORY | base_open_flags;
+    open_searchdir_flags = (search_flags | O_BINARY | O_CLOEXEC | O_DIRECTORY
+			    | nofollow_flag);
   }
   fstatat_flags = dereference_option ? 0 : AT_SYMLINK_NOFOLLOW;
 
