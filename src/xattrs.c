@@ -76,7 +76,7 @@ xattr_map_add (struct xattr_map *map,
   map->xm_size++;
 }
 
-static void
+MAYBE_UNUSED static void
 xheader_xattr_add (struct tar_stat_info *st,
 		   const char *key, const char *val, idx_t len)
 {
@@ -521,8 +521,9 @@ static bool xattrs_masked_out (const char *kw, bool archiving);
    if no mask is given this includes all the user.*, security.*, system.*,
    etc. available domains */
 void
-xattrs_xattrs_get (int parentfd, char const *file_name,
-                   struct tar_stat_info *st, int fd)
+xattrs_xattrs_get (MAYBE_UNUSED int parentfd,
+		   MAYBE_UNUSED char const *file_name,
+		   MAYBE_UNUSED struct tar_stat_info *st, MAYBE_UNUSED int fd)
 {
   if (xattrs_option)
     {
@@ -722,8 +723,9 @@ xattrs_masked_out (const char *kw, bool archiving)
 }
 
 void
-xattrs_xattrs_set (struct tar_stat_info const *st,
-                   char const *file_name, char typeflag, bool later_run)
+xattrs_xattrs_set (MAYBE_UNUSED struct tar_stat_info const *st,
+		   MAYBE_UNUSED char const *file_name,
+		   MAYBE_UNUSED char typeflag, MAYBE_UNUSED bool later_run)
 {
   if (xattrs_option)
     {

@@ -965,8 +965,9 @@ maybe_recoverable (char *file_name, bool regular, bool *interdir_made)
    created (e.g., xattrs not available), and a positive number if FILE_NAME was
    created.  */
 static int
-set_xattr (char const *file_name, struct tar_stat_info const *st,
-           mode_t mode, char typeflag)
+set_xattr (MAYBE_UNUSED char const *file_name,
+	   MAYBE_UNUSED struct tar_stat_info const *st,
+	   MAYBE_UNUSED mode_t mode, MAYBE_UNUSED char typeflag)
 {
 #ifdef HAVE_XATTRS
   if (xattrs_option && st->xattr_map.xm_size)
