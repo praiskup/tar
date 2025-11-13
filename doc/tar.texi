@@ -13128,26 +13128,31 @@ when you later extract from the archive you will get incorrect data.
 When @command{tar} extracts from an archive, by default it writes into
 files relative to the working directory.  If the archive was generated
 by an untrusted user, that user therefore can write into any file
-under the working directory.  If the working directory contains a
-symbolic link to another directory, the untrusted user can also write
-into any file under the referenced directory.  When extracting from an
+under the working directory.  When extracting from an
 untrusted archive, it is therefore good practice to create an empty
-directory and run @command{tar} in that directory.
+directory and run @command{tar} in that directory.  You can use the
+@option{--directory} (@option{-C}) option to specify the working
+directory (@pxref{directory}).
 
-When extracting from two or more untrusted archives, each one should
-be extracted independently, into different empty directories.
-Otherwise, the first archive could create a symbolic link into an area
-outside the working directory, and the second one could follow the
-link and overwrite data that is not under the working directory.  For
-example, when restoring from a series of incremental dumps, the
-archives should have been created by a trusted process, as otherwise
-the incremental restores might alter data outside the working
-directory.
+When extracting from an archive, @command{tar} rejects attempts to
+modify files outside the working directory.
+For example, if a symbolic link points outside the working directory,
+@command{tar} refuses to follow the link, regardless of whether the
+symbolic link existed before @command{tar} was run.
+Therefore, when extracting from two or more untrusted archives,
+each one can be extracted in turn, into the same initially-empty directory.
+Even if an earlier archive creates a symbolic link that
+points outside the working directory,
+@command{tar} will reject any later attempts to follow that symbolic link.
+However, this safety mechanism applies only to @command{tar} itself:
+it does not apply to other programs you may run later, which will
+ordinarily follow symbolic links even if they escape the working directory.
 
 If you use the @option{--absolute-names} (@option{-P}) option when
 extracting, @command{tar} respects any file names in the archive, even
-file names that begin with @file{/} or contain @file{..}.  As this
-lets the archive overwrite any file in your system that you can write,
+file names that begin with @file{/}, contain @file{..}, or that follow
+a symbolic link to escape the extraction directory.  As this lets the
+archive overwrite any file in your system that you can write,
 the @option{--absolute-names} (@option{-P}) option should be used only
 for trusted archives.
 
@@ -13217,7 +13222,7 @@ Protect archives at least as much as you protect any of the files
 being archived.
 
 @item
-Extract from an untrusted archive only into an otherwise-empty
+Extract from untrusted archives only into an otherwise-empty
 directory.  This directory and its parent should be accessible only to
 trusted users.  For example:
 
@@ -13229,8 +13234,6 @@ $ @kbd{cd dir}
 $ @kbd{tar -xvf /archives/got-it-off-the-net.tar.gz}
 @end group
 @end example
-
-As a corollary, do not do an incremental restore from an untrusted archive.
 
 @item
 Do not let untrusted users access files extracted from untrusted

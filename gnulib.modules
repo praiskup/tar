@@ -84,6 +84,7 @@ mkfifoat
 modechange
 obstack
 openat
+openat2
 parse-datetime
 priv-set
 progname

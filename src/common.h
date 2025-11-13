@@ -376,7 +376,7 @@ struct name
 
 /* Flags for reading, searching, and fstatatting files.  */
 extern int open_read_flags;
-extern int open_searchdir_flags;
+extern struct open_how open_searchdir_how;
 extern int fstatat_flags;
 
 extern int seek_option;

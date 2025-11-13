@@ -1,4 +1,4 @@
-GNU tar NEWS - User visible changes. 2025-11-09
+GNU tar NEWS - User visible changes. 2025-11-13
 Please send GNU tar bug reports to <bug-tar@gnu.org>
 
 version 1.35.90 (git)
@@ -34,6 +34,9 @@ The warning can be suppressed using the --warning=empty-transform
 option.
 
 * Bug fixes
+
+** When extracting, tar no longer follows symbolic links to targets
+   outside the working directory.
 
 ** Fixed O(n^2) time complexity bug for large numbers of directories when
    extracting with --delay-directory-restore or reading incremental archives.

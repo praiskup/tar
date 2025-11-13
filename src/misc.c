@@ -1070,7 +1070,7 @@ chdir_do (idx_t i)
 	  if (! IS_ABSOLUTE_FILE_NAME (curr->name))
 	    chdir_do (i - 1);
 	  fd = openat (chdir_fd, curr->name,
-		       open_searchdir_flags & ~ O_NOFOLLOW);
+		       open_searchdir_how.flags & ~O_NOFOLLOW);
 	  if (fd < 0)
 	    open_fatal (curr->name);
 
@@ -1173,6 +1173,16 @@ fdbase_clear (void)
     }
 }
 
+/* Starting from the directory FD, open a subdirectory SUBDIR for search.
+   If extracting or diffing and --absolute-names (-P) is not in effect,
+   do not let the subdirectory escape FD, i.e., the subdirectory must
+   be at or under FD in the directory hierarchy.  */
+static int
+open_subdir (int fd, char const *subdir)
+{
+  return openat2 (fd, subdir, &open_searchdir_how, sizeof open_searchdir_how);
+}
+
 /* Return an fd open to FILE_NAME's parent directory,
    along with the base name of FILE_NAME.
    Use the alternate cache if ALTERNATE, the main cache otherwise.
@@ -1224,7 +1234,7 @@ fdbase_opendir (char const *file_name, bool alternate)
 	{
 	  /* The new directory is a subdirectory of the old,
 	     so open relative to FD rather than to chdir_fd.  */
-	  int subfd = openat (fd, &subdir[c->subdirlen], open_searchdir_flags);
+	  int subfd = open_subdir (fd, &subdir[c->subdirlen]);
 	  if (subfd < 0)
 	    {
 	      /* Keep the old directory cached and report open failure,
@@ -1251,7 +1261,7 @@ fdbase_opendir (char const *file_name, bool alternate)
 	 and add new info if the new directory can be opened.  */
       if (0 < c->subdirlen)
 	close (fd);
-      fd = openat (chdir_fd, c->subdir, open_searchdir_flags);
+      fd = open_subdir (chdir_fd, c->subdir);
       if (fd < 0)
 	{
 	  if (BADFD != -1 && fd < 0)

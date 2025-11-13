@@ -111,7 +111,7 @@ idx_t archive_names;
 const char **archive_name_cursor;
 char const *index_file_name;
 int open_read_flags;
-int open_searchdir_flags;
+struct open_how open_searchdir_how;
 int fstatat_flags;
 int seek_option;
 bool unquote_option;
@@ -2709,8 +2709,12 @@ decode_options (int argc, char **argv)
 #else
     int search_flags = O_SEARCH | noatime_flag;
 #endif
-    open_searchdir_flags = (search_flags | O_BINARY | O_CLOEXEC | O_DIRECTORY
-			    | nofollow_flag);
+    open_searchdir_how.flags = (search_flags | nofollow_flag
+				| O_BINARY | O_CLOEXEC | O_DIRECTORY);
+    if (!absolute_names_option
+	&& (subcommand_option == EXTRACT_SUBCOMMAND
+	    || subcommand_option == DIFF_SUBCOMMAND))
+      open_searchdir_how.resolve = RESOLVE_BENEATH;
   }
   fstatat_flags = dereference_option ? 0 : AT_SYMLINK_NOFOLLOW;
 

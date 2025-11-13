@@ -1344,7 +1344,7 @@ create_archive (void)
 			  struct fdbase f = fdbase (p->name);
 			  int fd = (f.fd == BADFD ? -1
 				    : openat (f.fd, f.base,
-					      open_searchdir_flags));
+					      open_searchdir_how.flags));
 			  if (fd < 0)
 			    {
 			      file_removed_diag (p->name, !p->parent,
@@ -1569,7 +1569,7 @@ restore_parent_fd (struct tar_stat_info const *st)
   struct tar_stat_info *parent = st->parent;
   if (parent && ! parent->fd)
     {
-      int parentfd = openat (st->fd, "..", open_searchdir_flags);
+      int parentfd = openat (st->fd, "..", open_searchdir_how.flags);
       struct stat parentstat;
 
       if (parentfd < 0)
@@ -1585,7 +1585,7 @@ restore_parent_fd (struct tar_stat_info const *st)
 	{
 	  struct fdbase f = fdbase (parent->orig_file_name);
 	  int origfd = (f.fd == BADFD ? -1
-			: openat (f.fd, f.base, open_searchdir_flags));
+			: openat (f.fd, f.base, open_searchdir_how.flags));
 	  if (0 <= origfd)
 	    {
 	      if (fstat (parentfd, &parentstat) < 0
