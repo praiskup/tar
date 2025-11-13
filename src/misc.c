@@ -1134,7 +1134,8 @@ chdir_id (void)
 /* Caches of recent calls to fdbase and fdbase1.  */
 static struct fdbase_cache
 {
-  /* Length of subdirectory name.  If zero, no subdir is cached here:
+  /* Length of subdirectory name, which need not be null-terminated.
+     If the length is zero, no subdir is cached here:
      SUBDIR (if nonnull) is merely a buffer available for use later,
      and CHDIR_CURRENT and FD are irrelevant.  */
   idx_t subdirlen;
@@ -1202,27 +1203,70 @@ fdbase_opendir (char const *file_name, bool alternate)
     return (struct fdbase) { .fd = chdir_fd, .base = name };
 
   struct fdbase_cache *c = &fdbase_cache[alternate];
+  int fd = c->fd;
+  bool submatch = (0 < c->subdirlen && c->subdirlen <= subdirlen
+		   && c->chdir_current == chdir_current
+		   && !ISSLASH (name[c->subdirlen])
+		   && memeq (c->subdir, name, c->subdirlen));
 
-  if (! (c->chdir_current == chdir_current
-	 && c->subdirlen == subdirlen
-	 && memeq (c->subdir, name, subdirlen)))
+  if (! (submatch && c->subdirlen == subdirlen))
     {
-      if (c->subdirlen && 0 <= c->fd)
-	close (c->fd);
-
-      c->chdir_current = chdir_current;
+      /* Copy the new directory's name into the cache.  */
+      char *subdir = c->subdir;
       if (c->subdiralloc <= subdirlen)
-	c->subdir = xpalloc (c->subdir, &c->subdiralloc,
-			     subdirlen - c->subdiralloc + 1, -1, 1);
-      char *p = mempcpy (c->subdir, name, subdirlen);
+	c->subdir = subdir = xpalloc (subdir, &c->subdiralloc,
+				      subdirlen - c->subdiralloc + 1, -1, 1);
+      char *p = mempcpy (subdir, name, subdirlen);
       *p = '\0';
-      c->fd = openat (chdir_fd, c->subdir, open_searchdir_flags);
-      c->subdirlen = c->fd < 0 ? 0 : subdirlen;
-      if (BADFD != -1 && c->fd < 0)
-	c->fd = BADFD;
+
+      if (submatch && c->subdirlen < subdirlen
+	  && !ISSLASH (subdir[c->subdirlen]))
+	{
+	  /* The new directory is a subdirectory of the old,
+	     so open relative to FD rather than to chdir_fd.  */
+	  int subfd = openat (fd, &subdir[c->subdirlen], open_searchdir_flags);
+	  if (subfd < 0)
+	    {
+	      /* Keep the old directory cached and report open failure,
+		 unless EMFILE means it's possible that falling
+		 through to close the old directory would mean we
+		 could successfully retry from the chdir_fd level.
+	         When reporting failure, there is no need to
+	         null-terminate the old directory, since the code does
+	         not assume null termination.  */
+	      if (errno != EMFILE)
+		return (struct fdbase) { .fd = BADFD, .base = base };
+	    }
+	  else
+	    {
+	      /* Replace the old directory with the new one.  */
+	      close (fd);
+	      c->fd = subfd;
+	      c->subdirlen = subdirlen;
+	      return (struct fdbase) { .fd = subfd, .base = base };
+	    }
+	}
+
+      /* Remove any old directory info,
+	 and add new info if the new directory can be opened.  */
+      if (0 < c->subdirlen)
+	close (fd);
+      fd = openat (chdir_fd, c->subdir, open_searchdir_flags);
+      if (fd < 0)
+	{
+	  if (BADFD != -1 && fd < 0)
+	    fd = BADFD;
+	  c->subdirlen = 0;
+	}
+      else
+	{
+	  c->chdir_current = chdir_current;
+	  c->fd = fd;
+	  c->subdirlen = subdirlen;
+	}
     }
 
-  return (struct fdbase) { .fd = c->fd, .base = base };
+  return (struct fdbase) { .fd = fd, .base = base };
 }
 
 struct fdbase
