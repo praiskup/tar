@@ -1632,8 +1632,17 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
   if (!transform_name (&st->file_name, XFORM_REGFILE))
     return NULL;
 
-  struct fdbase f = (top_level ? fdbase (name)
-		     : (struct fdbase) { .fd = parent->fd, .base = name });
+  struct fdbase f;
+  if (top_level)
+    f = fdbase (name);
+  else
+    {
+      /* Avoid a compound literal here, to work around a bug
+	 in Oracle Developer Studio 12.6 (sparc64).  */
+      f.fd = parent->fd;
+      f.base = name;
+    }
+
   if (!top_level && parent->fd < 0)
     {
       errno = - parent->fd;
@@ -1732,8 +1741,15 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
 	  ok = dump_dir (st);
 
 	  fd = st->fd;
-	  f = (top_level ? fdbase (name)
-	       : (struct fdbase) { .fd = parent->fd, .base = name });
+	  if (top_level)
+	    f = fdbase (name);
+	  else
+	    {
+	      /* Avoid a compound literal here, to work around a bug
+		 in Oracle Developer Studio 12.6 (sparc64).  */
+	      f.fd = parent->fd;
+	      f.base = name;
+	    }
 	}
       else
 	{
