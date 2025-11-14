@@ -1086,12 +1086,9 @@ read_incr_db_01 (bool version_1, char **pbuf, size_t *pbufsize)
 	  bool overflow;
 	  mtime.tv_nsec = stoint (strp, &ebuf, &overflow, 0, BILLION - 1);
 	  if ((ebuf == strp) | (*ebuf != ' ') | overflow)
-	    {
-	      paxfatal (0, "%s:%jd: %s",
-			quotearg_colon (listed_incremental_option), lineno,
-			_("Invalid modification time (nanoseconds)"));
-	      mtime.tv_nsec = -1;
-	    }
+	    paxfatal (0, "%s:%jd: %s",
+		      quotearg_colon (listed_incremental_option), lineno,
+		      _("Invalid modification time (nanoseconds)"));
 	  strp = ebuf;
 	}
       else
