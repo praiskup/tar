@@ -1989,22 +1989,3 @@ stripped_prefix_len (char const *file_name, idx_t num)
     }
   return -1;
 }
-
-/* Return nonzero if NAME contains ".." as a file name component.  */
-bool
-contains_dot_dot (char const *name)
-{
-  char const *p = name + FILE_SYSTEM_PREFIX_LEN (name);
-
-  for (;; p++)
-    {
-      if (p[0] == '.' && p[1] == '.' && (ISSLASH (p[2]) || !p[2]))
-	return 1;
-
-      while (! ISSLASH (*p))
-	{
-	  if (! *p++)
-	    return 0;
-	}
-    }
-}

@@ -826,8 +826,6 @@ bool all_names_found (struct tar_stat_info *st);
 void add_avoided_name (char const *name);
 bool is_avoided_name (char const *name);
 
-bool contains_dot_dot (char const *name);
-
 COMMON_INLINE bool
 isfound (struct name const *c)
 {

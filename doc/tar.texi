@@ -9549,7 +9549,8 @@ really @file{etc/passwd}.
 
 File names containing @file{..} can cause problems when extracting, so
 @command{tar} normally warns you about such files when creating an
-archive, and rejects attempts to extracts such files.
+archive, and prevents attempts to extract such files if that would
+affect files outside the working directory.
 
 Other @command{tar} programs do not do this.  As a result, if you
 create an archive whose member names start with a slash, they will be
@@ -9564,10 +9565,6 @@ is not, generally speaking, the same as the one you'd get running
 @kbd{tar --list} command.  This may be important if you use some
 scripts for comparing both outputs.  @xref{listing member and file names},
 for the information on how to handle this case.}.
-
-Symbolic links containing @file{..} or leading @samp{/} can also cause
-problems when extracting, so @command{tar} normally extracts them last;
-it may create empty files as placeholders during extraction.
 
 If you use the @option{--absolute-names} (@option{-P}) option,
 @command{tar} will do none of these transformations.
