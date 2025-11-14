@@ -21,7 +21,7 @@ AT_KEYWORDS([incremental extract incr07 chdir])
 # Tar 1.26 had problems extracting from incremental restores when given
 # the -C option.  The code in incremen.c:try_purge_directory and
 # misc.c:remove_any_file was using savedir(), which ignored eventual changes
-# in the current working directory and caused the malfunctioning.
+# in the working directory and caused the malfunctioning.
 #
 # The problem was reported by Piotr Rotter on 2013-03-22.
 #
@@ -29,7 +29,7 @@ AT_KEYWORDS([incremental extract incr07 chdir])
 # Stratton Treadway.
 #
 # References: <514C8F56.90900@active24.pl>,
-#             http://lists.gnu.org/archive/html/bug-tar/2013-03/msg00036.html, 
+#             http://lists.gnu.org/archive/html/bug-tar/2013-03/msg00036.html,
 #             <20130326181922.GZ3732@shire.ontko.com>,
 #             http://lists.gnu.org/archive/html/bug-tar/2013-03/msg00042.html,
 #             <20130327051828.GA3732@shire.ontko.com>,

@@ -1399,7 +1399,7 @@ practice/collection.tar
 @end smallexample
 
 Note that the archive thus created is not in the subdirectory
-@file{practice}, but rather in the current working directory---the
+@file{practice}, but rather in the working directory---the
 directory from which @command{tar} was invoked.  Before trying to archive a
 directory from its superior directory, you should make sure you have
 write access to the superior directory itself, not only the directory
@@ -1421,7 +1421,7 @@ $ @kbd{tar --create --file=foo.tar .}
 @noindent
 @command{tar} will report @samp{tar: ./foo.tar is the archive; not
 dumped}.  This happens because @command{tar} creates the archive
-@file{foo.tar} in the current directory before putting any files into
+@file{foo.tar} in the working directory before putting any files into
 it.  Then, when @command{tar} attempts to add all the files in the
 directory @file{.} to the archive, it notices that the file
 @file{./foo.tar} is the same as the archive @file{foo.tar}, and skips
@@ -1849,7 +1849,7 @@ $ @kbd{tar --extract --file=music.tar --strip-components=1 folk}
 @end smallexample
 
 @noindent
-will extract the file @file{folk} into the current working directory.
+will extract the file @file{folk} into the working directory.
 
 @node going further
 @section Going Further Ahead in this Manual
@@ -2668,7 +2668,7 @@ itself.  @xref{dereference}.
 @item --directory=@var{dir}
 @itemx -C @var{dir}
 
-When this option is specified, @command{tar} will change its current directory
+When this option is specified, @command{tar} will change its working directory
 to @var{dir} before performing any operations.  When this option is used
 during archive creation, it is order sensitive.  @xref{directory}.
 
@@ -3267,7 +3267,7 @@ Synonym for @option{--format=v7}.
 @opsummary{one-file-system}
 @item --one-file-system
 Used when creating an archive.  Prevents @command{tar} from recursing into
-directories that are on different file systems from the current
+directories that are on different file systems from the working
 directory.
 
 @opsummary{one-top-level}
@@ -3636,7 +3636,7 @@ $ @kbd{tar cf archive.tar --transform 's,^\./,usr/,' .}
 @end smallexample
 
 @noindent
-will add to @file{archive} files from the current working directory,
+will add to @file{archive} files from the working directory,
 replacing initial @samp{./} prefix with @samp{usr/}. For the detailed
 discussion, @xref{transform}.
 
@@ -3914,7 +3914,7 @@ and @command{tar} were invoked as follows:
 @end example
 
 @noindent
-then the file @file{README} would be looked up in the current working
+then the file @file{README} would be looked up in the working
 directory, and files @file{main.c} and @file{Makefile} would be looked
 up in the directory @file{src}.
 
@@ -7821,7 +7821,7 @@ If you specify either @option{--list} (@option{-t}) or
 operates on all the archive members in the archive.
 
 If run with @option{--diff} option, tar will compare the archive with
-the contents of the current working directory.
+the contents of the working directory.
 
 If you specify any other operation, @command{tar} does nothing.
 
@@ -8675,7 +8675,7 @@ a\backslash
 @end smallexample
 
 Here is how usual @command{ls} command would have listed them, if they
-had existed in the current working directory:
+had existed in the working directory:
 
 @smallexample
 @group
@@ -8903,7 +8903,7 @@ extraction.
 For example, suppose you have archived whole @file{/usr} hierarchy to
 a tar archive named @file{usr.tar}.  Among other files, this archive
 contains @file{usr/include/stdlib.h}, which you wish to extract to
-the current working directory.  To do so, you type:
+the working directory.  To do so, you type:
 
 @smallexample
 $ @kbd{tar -xf usr.tar --strip=2 usr/include/stdlib.h}
@@ -8942,7 +8942,7 @@ stdlib.h
 @end smallexample
 
 Notice that in both cases the file @file{stdlib.h} is extracted to the
-current working directory, @option{--show-transformed-names} affects
+working directory, @option{--show-transformed-names} affects
 only the way its name is displayed.
 
 This option is especially useful for verifying whether the invocation
@@ -9445,7 +9445,7 @@ $ @kbd{tar -c -f jams.tar grape prune -C food cherry}
 @end smallexample
 
 @noindent
-will place the files @file{grape} and @file{prune} from the current
+will place the files @file{grape} and @file{prune} from the working
 directory into the archive @file{jams.tar}, followed by the file
 @file{cherry} from the directory @file{food}.  This option is especially
 useful when you have several widely separated files that you want to
@@ -9455,7 +9455,7 @@ Note that the file @file{cherry} is recorded in the archive under the
 precise name @file{cherry}, @emph{not} @file{food/cherry}.  Thus, the
 archive will contain three files that all appear to have come from the
 same directory; if the archive is extracted with plain @samp{tar
---extract}, all three files will be written in the current directory.
+--extract}, all three files will be written in the working directory.
 
 Contrast this with the command,
 
@@ -9487,8 +9487,8 @@ directories where those files were located.
 
 Note that @option{--directory} options are interpreted consecutively.  If
 @option{--directory} specifies a relative file name, it is interpreted
-relative to the then current directory, which might not be the same as
-the original current working directory of @command{tar}, due to a previous
+relative to the then working directory, which might not be the same as
+the original working directory of @command{tar}, due to a previous
 @option{--directory} option.
 
 When using @option{--files-from} (@pxref{files}), you can put various
@@ -11683,7 +11683,7 @@ backup tapes.
 
 For example, if the archive contained a file @file{/usr/bin/computoy},
 @GNUTAR{} would extract the file to @file{usr/bin/computoy},
-relative to the current directory.  If you want to extract the files in
+relative to the working directory.  If you want to extract the files in
 an archive to the same absolute names that they had when the archive
 was created, you should do a @samp{cd /} before extracting the files
 from the archive, or you should either use the @option{--absolute-names}
