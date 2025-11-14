@@ -38,4 +38,3 @@ find t -type f
 ],
 [stderr])])
 AT_CLEANUP
-

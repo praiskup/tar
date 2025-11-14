@@ -158,7 +158,7 @@ message 20 "BACKUP_FILES=$BACKUP_FILES"
  if ! $MT_BEGIN "${TAPE_FILE}"; then
     echo >&2 "$0: tape initialization failed"
     exit 1
- fi 
+ fi
  rm -f "${VOLNO_FILE}"
 
  message 1 "processing backup directories"

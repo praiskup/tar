@@ -21,4 +21,3 @@ tar --checkpoint-action=dot --checkpoint=2 -c -f ../a.tar .
 [],
 [.....])
 AT_CLEANUP
-

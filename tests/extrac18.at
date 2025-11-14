@@ -26,7 +26,7 @@
 # Reported by: Doug McLaren <dougmc@frenzied.us>,
 #              Gary Partis <gary@partis.co.uk>,
 #              Jim Meyering <jim@meyering.net>
-#              
+#
 # References: <20111117045433.GA8245@algol.frenzied.us>,
 #             <4F3D824717847C4487F77228F83329A3514CBB@server.Partis.local>,
 #             <87wrar6zzz.fsf@rho.meyering.net>
@@ -59,4 +59,3 @@ tar: Exiting with failure status due to previous errors
 ])
 
 AT_CLEANUP
-

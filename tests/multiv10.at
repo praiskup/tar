@@ -27,7 +27,7 @@
 #
 # This test case also checks that GNUFileParts headers are not displayed in
 # verbose mode.
-# 
+#
 # Reported by: <russiangolem@gmail.com>
 # References:
 #     <CAE7Kiz_0oMqGdzkoh0FbOd=hUoPhtHHYhjZveM_4hEku081QFQ@mail.gmail.com>,

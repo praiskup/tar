@@ -58,4 +58,3 @@ tar: Exiting with failure status due to previous errors
 ],[],[],[gnu,posix])
 
 AT_CLEANUP
-

@@ -10,7 +10,7 @@
 kernel version, reconfiguring your hardware, loading kernel modules in a
 different order, using virtual volumes that are assembled dynamically
 (such as with @acronym{LVM} or @acronym{RAID}), hot-plugging drives
-(e.g. external USB or Firewire drives), etc.  In the majority of 
+(e.g. external USB or Firewire drives), etc.  In the majority of
 cases this change is unnoticed by the users.  However, it influences
 @command{tar} incremental backups: the device number is stored in tar
 snapshot files (@pxref{Snapshot Files}) and is used to determine whether
@@ -35,7 +35,7 @@ $ @kbd{tar-snapshot-edit @var{snapfile}}
 
 @noindent
 where @var{snapfile} is the name of the snapshot file (you can supply as many
-files as you wish in a single command line).  You can then compare the 
+files as you wish in a single command line).  You can then compare the
 numbers across snapshot files, or against those currently in use on the
 live filesystem (using @command{ls -l} or @command{stat}).
 
@@ -44,7 +44,7 @@ to simply tell @GNUTAR{} to ignore the device number when processing the
 incremental snapshot files for these backups, using the
 @option{--no-check-device} option (@pxref{device numbers}).
 
-  Alternatively, you can use the @command{tar-edit-snapshot} script's 
+  Alternatively, you can use the @command{tar-edit-snapshot} script's
 @option{-r} option to update all occurrences of the given device
 number in the snapshot file(s).  It takes a single argument
 of the form

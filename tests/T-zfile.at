@@ -37,7 +37,7 @@ b
 tar cf archive -T empty -T valid
 tar tf archive
 echo "=="
-tar cf archive -T valid -T empty 
+tar cf archive -T valid -T empty
 tar tf archive
 ],
 [0],

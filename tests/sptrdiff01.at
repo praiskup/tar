@@ -19,7 +19,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 # While fixing CVE-2018-20482 (see sptrcreat.at) it has been discovered
-# that similar bug exists in file checking code (tar d). 
+# that similar bug exists in file checking code (tar d).
 # This test case checks if tar correctly handles a short read condition
 # appearing in check_data_region.
 
@@ -35,7 +35,7 @@ echo creating
 tar --sparse -vcf bar foo baz
 echo comparing
 genfile --run --checkpoint 5 --length 221278210 --truncate foo -- \
- tar --sparse -vdf bar 
+ tar --sparse -vdf bar
 ],
 [1],
 [creating

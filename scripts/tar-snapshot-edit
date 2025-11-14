@@ -55,7 +55,7 @@
 #   * when printing the list of device ids found in the snapshot file
 #     (when run in the default mode), print the raw device id values
 #     instead of the hex-string version in those cases where they
-#     can't be converted successfully.  
+#     can't be converted successfully.
 
 use Getopt::Std;
 use Config;
@@ -236,13 +236,13 @@ sub show_device_counts ($) {
 	  # negative.  (If it's negative, the conversion to an unsigned
 	  # integer for the "%x" specifier will mean the result will
 	  # always trigger hex()'s warning on a 64-bit machine.)
-	  # 
+	  #
 	  # These situations don't seem to occur very often, so for now
 	  # when they do occur, we simply print the original text value
 	  # that was read from the snapshot file; it will look a bit
 	  # funny next to the values that do print in hex, but that's
 	  # preferable to printing values that aren't actually correct.
-	  $devstr = $dev; 
+	  $devstr = $dev;
 	}
 	printf "  Device %s occurs $devices{$dev} times.\n", $devstr;
     }
@@ -263,7 +263,7 @@ sub show_device_counts ($) {
 # array defined below should match those calculations.  (For tar v1.27
 # and later, the valid ranges for a particular tar binary can easily
 # be determined using the "tar --show-snapshot-field-ranges" command.)
- 
+
 sub choose_architecture ($) {
     my $opt_a = shift;
 
@@ -307,7 +307,7 @@ sub choose_architecture ($) {
 	print "Unrecognized architecture \"$arch\"; defaulting to \"iX86-linux\".\n";
 	print "(Use -a option to override.)\n" unless $opt_a;
 	print "\n";
-    } 
+    }
 
     if ( ref(1) ne "" ) {
 	print "(\"bignum\" mode is in effect; skipping 64-bit-integer check.)\n\n"
@@ -317,10 +317,10 @@ sub choose_architecture ($) {
 	for $v (values %snapshot_field_ranges ) {
 	  $maxmax = $v->[1] if ($v->[1] > $maxmax);
 	}
-       
+
 	# "~0" translates into a platform-native integer with all bits turned
 	# on -- that is, the largest value that can be represented as
-	# an integer.  We print a warning if our $maxmax value is greater 
+	# an integer.  We print a warning if our $maxmax value is greater
 	# than that largest integer, since in that case Perl will switch
 	# to using floats for those large max values.  The wording of
 	# the message assumes that the only way this situation can exist
@@ -342,11 +342,11 @@ Note: this version of Perl uses 32-bit integers, which means that it
 EOF
 	}
     }
-    
+
 
 }
 
-# returns a warning message if $field_value isn't a valid string 
+# returns a warning message if $field_value isn't a valid string
 # representation of an integer, or if the resulting integer is out of range
 # defined by the two-element array retrieved using up the $field_name key in
 # the global %snapshot_field_ranges hash.
@@ -382,8 +382,8 @@ sub validate_integer_field ($$) {
 # other two were introduced in v1.27.)
 #
 # The checks here are intended to match those found in the incremen.c
-# source file.  See the choose_architecture() function (above) for more 
-# information on how to configure the range of values considered valid 
+# source file.  See the choose_architecture() function (above) for more
+# information on how to configure the range of values considered valid
 # by this script.
 #
 # (Note: the checks here are taken from the code that processes
@@ -602,16 +602,16 @@ Usage:
      that would cause \"tar\" to abort with an error message such as
        Unexpected field value in snapshot file
        Numerical result out of range
-     or 
+     or
        Invalid argument
      as it processed the snapshot file.)
 
-     Normally the program automatically chooses the valid ranges for 
-     the fields based on the current system's architecture, but the 
-     -a option can be used to override the selection, e.g. in order 
+     Normally the program automatically chooses the valid ranges for
+     the fields based on the current system's architecture, but the
+     -a option can be used to override the selection, e.g. in order
      to validate a snapshot file generated on a some other system.
      (Currently only three architectures are supported, "iX86-linux",
-     "x86_64-linux", and "IA64.ARCHREV_0" [HP/UX running on Itanium/ia64], 
+     "x86_64-linux", and "IA64.ARCHREV_0" [HP/UX running on Itanium/ia64],
      and if the current system isn't recognized, then the iX86-linux
      values are used by default.)
 

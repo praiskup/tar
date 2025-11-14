@@ -11,7 +11,7 @@ used to determine which files were modified since the last backup.
 
   @GNUTAR{} version @value{VERSION} supports three snapshot file
 formats.  The first format, called @dfn{format 0}, is the one used by
-@GNUTAR{} versions up to and including 1.15.1. The second format, called 
+@GNUTAR{} versions up to and including 1.15.1. The second format, called
 @dfn{format 1} is an extended version of this format, that contains more
 metadata and allows for further extensions. It was used by alpha release
 version 1.15.90. For alpha version 1.15.91 and stable releases
@@ -42,7 +42,7 @@ where:
 @table @var
 @item nfs
 A single plus character (@samp{+}), if this directory is located on
-an @acronym{NFS}-mounted partition, otherwise empty.  
+an @acronym{NFS}-mounted partition, otherwise empty.
 
 (That is, for non-NFS directories, the first character on the
 description line contains the start of the @var{dev} field.)

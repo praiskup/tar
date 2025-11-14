@@ -31,10 +31,10 @@ mkdir in
 mkdir in/dir
 decho Level 0
 tar -cvf 1.tar -g snap -C in .
-rmdir in/dir 
+rmdir in/dir
 decho Level 1
 tar -cvf 2.tar -g snap -C in .
-cp 1.tar full.tar 
+cp 1.tar full.tar
 decho Concat
 tar -A 2.tar -f full.tar -g /dev/null
 decho Extract
