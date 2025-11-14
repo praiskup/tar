@@ -839,8 +839,6 @@ wasfound (struct name const *c)
 
 /* Module tar.c.  */
 
-_Noreturn void usage (int);
-
 bool confirm (const char *message_action, const char *name);
 
 void tar_stat_init (struct tar_stat_info *st);
