@@ -124,7 +124,7 @@ xheader_keyword_override_p (const char *keyword)
   struct keyword_list *kp;
 
   for (kp = keyword_override_list; kp; kp = kp->next)
-    if (strcmp (kp->pattern, keyword) == 0)
+    if (streq (kp->pattern, keyword))
       return true;
   return false;
 }
@@ -201,19 +201,19 @@ xheader_set_keyword_equal (char *kw, char *eq)
   for (p = eq + 1; *p && c_isspace (*p); p++)
     ;
 
-  if (strcmp (kw, "delete") == 0)
+  if (streq (kw, "delete"))
     {
       if (xheader_protected_pattern_p (p))
 	paxusage (_("Pattern %s cannot be used"), quote (p));
       xheader_list_append (&keyword_pattern_list, p, NULL);
     }
-  else if (strcmp (kw, "exthdr.name") == 0)
+  else if (streq (kw, "exthdr.name"))
     assign_string (&exthdr_name, p);
-  else if (strcmp (kw, "globexthdr.name") == 0)
+  else if (streq (kw, "globexthdr.name"))
     assign_string (&globexthdr_name, p);
-  else if (strcmp (kw, "exthdr.mtime") == 0)
+  else if (streq (kw, "exthdr.mtime"))
     assign_time_option (&exthdr_mtime_option, &exthdr_mtime, p);
-  else if (strcmp (kw, "globexthdr.mtime") == 0)
+  else if (streq (kw, "globexthdr.mtime"))
     assign_time_option (&globexthdr_mtime_option, &globexthdr_mtime, p);
   else
     {
@@ -561,7 +561,7 @@ locate_handler (char const *keyword)
       }
     else
       {
-        if (strcmp (p->keyword, keyword) == 0)
+        if (streq (p->keyword, keyword))
           return p;
       }
 
@@ -587,7 +587,7 @@ xheader_protected_keyword_p (const char *keyword)
 
   for (p = xhdr_tab; p->keyword; p++)
     if (!p->prefix && (p->flags & XHDR_PROTECTED)
-        && strcmp (p->keyword, keyword) == 0)
+        && streq (p->keyword, keyword))
       return true;
   return false;
 }

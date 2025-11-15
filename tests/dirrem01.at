@@ -64,4 +64,3 @@ tar: dir/sub: File removed before we read it
 ],[],[],[gnu,posix])
 
 AT_CLEANUP
-

@@ -1,4 +1,4 @@
-GNU tar NEWS - User visible changes. 2025-10-19
+GNU tar NEWS - User visible changes. 2025-11-13
 Please send GNU tar bug reports to <bug-tar@gnu.org>
 
 version 1.35.90 (git)
@@ -35,6 +35,9 @@ option.
 
 * Bug fixes
 
+** When extracting, tar no longer follows symbolic links to targets
+   outside the working directory.
+
 ** Fixed O(n^2) time complexity bug for large numbers of directories when
    extracting with --delay-directory-restore or reading incremental archives.
 
@@ -49,12 +52,20 @@ option.
    not even temporarily.  This matches the documentation better and avoids
    some permissions glitches.
 
+** tar no longer fails merely if an extraction directory is unreadable
+   on Linux kernels.
+
 ** tar now works better in strict debugging environments that do not
    allow pointer arithmetic to escape from a sub-element of an array.
 
 * Performance improvements
 
 ** Sparse files are now read and written with larger blocksizes.
+
+** When extracting, tar no longer creates empty placeholder files
+   that are later replaced by symbolic links.  The placeholders are no
+   longer needed now that tar no longer follows symbolic links to
+   targets outside the working directory.
 
 
 version 1.35 - Sergey Poznyakoff, 2023-07-18

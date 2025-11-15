@@ -21,9 +21,7 @@
 #include "common.h"
 
 #include <wordsplit.h>
-
 #include <flexmember.h>
-#include <fprintftime.h>
 
 #include <sys/ioctl.h>
 #include <termios.h>
@@ -97,11 +95,11 @@ checkpoint_compile_action (const char *str)
       checkpoint_state = CHKP_COMPILE;
     }
 
-  if (strcmp (str, ".") == 0 || strcmp (str, "dot") == 0)
+  if (streq (str, ".") || streq (str, "dot"))
     alloc_action (cop_dot, NULL);
-  else if (strcmp (str, "bell") == 0)
+  else if (streq (str, "bell"))
     alloc_action (cop_bell, NULL);
-  else if (strcmp (str, "echo") == 0)
+  else if (streq (str, "echo"))
     alloc_action (cop_echo, NULL)->v.command = NULL;
   else if (strncmp (str, "echo=", 5) == 0)
     alloc_action (cop_echo, str + 5);
@@ -118,7 +116,7 @@ checkpoint_compile_action (const char *str)
       if ((p == arg) | *p)
 	paxfatal (0, _("%s: not a valid timeout"), str);
     }
-  else if (strcmp (str, "totals") == 0)
+  else if (streq (str, "totals"))
     alloc_action (cop_totals, NULL);
   else if (strncmp (str, "wait=", 5) == 0)
     {
@@ -153,6 +151,9 @@ checkpoint_finish_compile (void)
     }
 }
 
+/* Get the number of columns in the FP output stream.
+   FIXME: The rest of the code counts bytes, not columns,
+   so columns don't line up if multi-byte characters are output.  */
 static intmax_t
 getwidth (FILE *fp)
 {
@@ -304,11 +305,23 @@ format_checkpoint_string (FILE *fp, intmax_t len,
 	    case 't':
 	      {
 		struct timespec ts = current_timespec ();
-		const char *fmt = arg ? arg : "%c";
 		struct tm *tm = localtime (&ts.tv_sec);
-		len = add_printf (len,
-				  (tm ? fprintftime (fp, fmt, tm, 0, ts.tv_nsec)
-				   : fprintf (fp, "????""-??""-?? ??:??:??")));
+		char const *tmstr = NULL;
+
+		/* Keep BUF relatively small, as any text timestamp
+		   not fitting into BUF is likely a DoS attack.  */
+		char buf[max (SYSINT_BUFSIZE, 256)];
+
+		if (tm)
+		  {
+		    buf[0] = '\0';
+		    char const *fmt = arg ? arg : "%c";
+		    if (strftime (buf, sizeof buf, fmt, tm) != 0 || !buf[0])
+		      tmstr = buf;
+		  }
+		if (!tmstr)
+		  tmstr = timetostr (ts.tv_sec, buf);
+		len = add_printf (len, fprintf (fp, "%s", tmstr));
 	      }
 	      break;
 

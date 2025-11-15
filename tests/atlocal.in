@@ -61,4 +61,3 @@ mkexcltest() {
   genfile --file=$1/subdir/excludeme
   genfile --file=$1/subdir/subdir-file
 }
-  

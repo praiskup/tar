@@ -1,0 +1,63 @@
+# Test suite for GNU tar.                             -*- Autotest -*-
+# Copyright 2025 Free Software Foundation, Inc.
+#
+# This file is part of GNU tar.
+#
+# GNU tar is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# GNU tar is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+AT_SETUP([extracting untrusted incremental])
+AT_KEYWORDS([extract extrac31 --absolute-names])
+
+
+AT_TAR_CHECK([
+
+# Extraction should not escape the extraction directory
+# even when extracting multiple times to the same directory.
+(umask 022 && mkdir -p dira/sub dirb/sym dirb/sub/sym ext victimdir victimexp)
+ln -s .. dira/sub/dotdot
+ln -s ../sub dira/sub/dot
+ln -s dotdot/sub dira/sub/anotherdot
+ln -s ../victimdir dira/sym
+ln -s dotdot/../victimdir dira/sub/sym
+echo b1 >dirb/sym/file1
+echo b2 >dirb/sub/sym/file2
+echo v >victimdir/expected
+echo v >victimdir/file1
+echo v >victimdir/file2
+cp victimdir/* victimexp
+tar -cf a.tar -C dira sub sym
+tar -cf b.tar -C dirb sym/file1 sub/sym/file2
+tar -xf a.tar -C ext
+echo status1=$?
+tar -xf b.tar -C ext 2>b.err
+echo status2=$?
+
+# FreeBSD 15 says "Capabilities insufficient".
+# Solaris 10 says just "Cross-device link".
+sed '
+  s/: Capabilities insufficient$/: Invalid cross-device link/
+  s/: Cross-device link$/: Invalid cross-device link/
+' b.err >&2
+
+diff victimdir victimexp
+],
+[],
+[status1=0
+status2=2
+],
+[tar: sym/file1: Cannot open: Invalid cross-device link
+tar: sub/sym/file2: Cannot open: Invalid cross-device link
+tar: Exiting with failure status due to previous errors
+])
+AT_CLEANUP

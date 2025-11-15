@@ -29,7 +29,7 @@
 # being confused with each other.
 #
 # The bug is triggered when dumping both relative paths after -C and
-# absolute paths that match the process' current working directory.
+# absolute paths that match the process' working directory.
 #
 # Reported by: Nathan Stratton Treadway <nathanst@ontko.com>
 # References: <20130922192135.GJ32256@shire.ontko.com>,
@@ -62,7 +62,7 @@ ABSPATH/subdir/dir2/
 
 AT_CHECK([
 DIR=`pwd`/gnu/tartest
-sed "/tar: Removing leading \`\/*\/' from/d;s|$DIR|ABSPATH|" stderr],
+sed "/tar: Removing leading '\/*\/' from/d;s|$DIR|ABSPATH|" stderr],
 [0],
 [A
 B

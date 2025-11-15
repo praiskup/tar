@@ -127,7 +127,7 @@ foo/bar/file
 @end example
 
 Supposing its name is @file{file.list} and the script is named
-@file{restore.sh}, you can invoke it as follows: 
+@file{restore.sh}, you can invoke it as follows:
 
 @example
 # @kbd{sh restore.sh A.tar file.list}

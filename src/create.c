@@ -115,7 +115,7 @@ cachedir_file_p (int fd)
     = "Signature: 8a477f597d28d172789f06886806bc55";
   char tagbuf[sizeof sig];
   return (read (fd, tagbuf, sizeof sig) == sizeof sig
-	  && memcmp (tagbuf, sig, sizeof sig) == 0);
+	  && memeq (tagbuf, sig, sizeof sig));
 }
 
 
@@ -815,12 +815,15 @@ start_header (struct tar_stat_info *st)
 	break;
 
       case COMMAND_MTIME:
-	if (!sys_exec_setmtime_script (set_mtime_command,
-				       chdir_fd,
-				       st->orig_file_name,
-				       set_mtime_format,
-				       &mtime))
-	  mtime = st->mtime;
+	{
+	  struct fdbase f = fdbase (st->orig_file_name);
+	  if (f.fd == BADFD
+	      || !sys_exec_setmtime_script (set_mtime_command,
+					    f.fd, f.base,
+					    set_mtime_format,
+					    &mtime))
+	    mtime = st->mtime;
+	}
 	break;
       }
 
@@ -1338,8 +1341,10 @@ create_archive (void)
 		    {
 		      if (! st.orig_file_name)
 			{
-			  int fd = openat (chdir_fd, p->name,
-					   open_searchdir_flags);
+			  struct fdbase f = fdbase (p->name);
+			  int fd = (f.fd == BADFD ? -1
+				    : openat (f.fd, f.base,
+					      open_searchdir_how.flags));
 			  if (fd < 0)
 			    {
 			      file_removed_diag (p->name, !p->parent,
@@ -1539,9 +1544,18 @@ subfile_open (struct tar_stat_info const *dir, char const *file, int flags)
       gettext ("");
     }
 
-  while ((fd = openat (dir ? dir->fd : chdir_fd, file, flags)) < 0
-	 && open_failure_recover (dir))
-    continue;
+  do
+    {
+      if (dir)
+	fd = openat (dir->fd, file, flags);
+      else
+	{
+	  struct fdbase f = fdbase (file);
+	  fd = f.fd == BADFD ? -1 : openat (f.fd, f.base, flags);
+	}
+    }
+  while (fd < 0 && open_failure_recover (dir));
+
   return fd;
 }
 
@@ -1555,7 +1569,7 @@ restore_parent_fd (struct tar_stat_info const *st)
   struct tar_stat_info *parent = st->parent;
   if (parent && ! parent->fd)
     {
-      int parentfd = openat (st->fd, "..", open_searchdir_flags);
+      int parentfd = openat (st->fd, "..", open_searchdir_how.flags);
       struct stat parentstat;
 
       if (parentfd < 0)
@@ -1569,8 +1583,9 @@ restore_parent_fd (struct tar_stat_info const *st)
 
       if (parentfd < 0)
 	{
-	  int origfd = openat (chdir_fd, parent->orig_file_name,
-			       open_searchdir_flags);
+	  struct fdbase f = fdbase (parent->orig_file_name);
+	  int origfd = (f.fd == BADFD ? -1
+			: openat (f.fd, f.base, open_searchdir_how.flags));
 	  if (0 <= origfd)
 	    {
 	      if (fstat (parentfd, &parentstat) < 0
@@ -1605,7 +1620,6 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
   bool is_dir;
   struct tar_stat_info const *parent = st->parent;
   bool top_level = ! parent;
-  int parentfd = top_level ? chdir_fd : parent->fd;
   void (*diag) (char const *) = 0;
 
   if (interactive_option && !confirm ("add", p))
@@ -1618,12 +1632,24 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
   if (!transform_name (&st->file_name, XFORM_REGFILE))
     return NULL;
 
-  if (parentfd < 0 && ! top_level)
+  struct fdbase f;
+  if (top_level)
+    f = fdbase (name);
+  else
     {
-      errno = - parentfd;
+      /* Avoid a compound literal here, to work around a bug
+	 in Oracle Developer Studio 12.6 (sparc64).  */
+      f.fd = parent->fd;
+      f.base = name;
+    }
+
+  if (!top_level && parent->fd < 0)
+    {
+      errno = - parent->fd;
       diag = open_diag;
     }
-  else if (fstatat (parentfd, name, &st->stat, fstatat_flags) < 0)
+  else if (f.fd == BADFD
+	   || fstatat (f.fd, f.base, &st->stat, fstatat_flags) < 0)
     diag = stat_diag;
   else if (file_dumpable_p (&st->stat))
     {
@@ -1695,9 +1721,9 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
       bool ok;
       struct stat st2;
 
-      xattrs_acls_get (parentfd, name, st, !is_dir);
-      xattrs_selinux_get (parentfd, name, st, fd);
-      xattrs_xattrs_get (parentfd, name, st, fd);
+      xattrs_acls_get (f.fd, f.base, st, !is_dir);
+      xattrs_selinux_get (f.fd, f.base, st, fd);
+      xattrs_xattrs_get (f.fd, f.base, st, fd);
 
       if (is_dir)
 	{
@@ -1715,7 +1741,15 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
 	  ok = dump_dir (st);
 
 	  fd = st->fd;
-	  parentfd = top_level ? chdir_fd : parent->fd;
+	  if (top_level)
+	    f = fdbase (name);
+	  else
+	    {
+	      /* Avoid a compound literal here, to work around a bug
+		 in Oracle Developer Studio 12.6 (sparc64).  */
+	      f.fd = parent->fd;
+	      f.base = name;
+	    }
 	}
       else
 	{
@@ -1756,9 +1790,9 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
 	    }
 	  else if (fd == 0)
 	    {
-	      if (parentfd < 0 && ! top_level)
+	      if (!top_level && parent->fd < 0)
 		{
-		  errno = - parentfd;
+		  errno = - parent->fd;
 		  ok = false;
 		}
 	    }
@@ -1809,7 +1843,7 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
 	    }
 	  else if (atime_preserve_option == replace_atime_preserve
 		   && timespec_cmp (st->atime, get_stat_atime (&st2)) != 0
-		   && set_file_atime (fd, parentfd, name, st->atime) < 0)
+		   && set_file_atime (fd, f.fd, f.base, st->atime) < 0)
 	    utime_error (p);
 	}
 
@@ -1821,7 +1855,7 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
     }
   else if (S_ISLNK (st->stat.st_mode))
     {
-      st->link_name = areadlinkat_with_size (parentfd, name, st->stat.st_size);
+      st->link_name = areadlinkat_with_size (f.fd, f.base, st->stat.st_size);
       if (!st->link_name)
 	{
 	  if (errno == ENOMEM)
@@ -1835,8 +1869,8 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
 	  < strlen (st->link_name))
 	write_long_link (st);
 
-      xattrs_selinux_get (parentfd, name, st, 0);
-      xattrs_xattrs_get (parentfd, name, st, 0);
+      xattrs_selinux_get (f.fd, f.base, st, 0);
+      xattrs_xattrs_get (f.fd, f.base, st, 0);
 
       block_ordinal = current_block_ordinal ();
       st->stat.st_size = 0;	/* force 0 size on symlink */
@@ -1857,23 +1891,23 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
   else if (S_ISCHR (st->stat.st_mode))
     {
       type = CHRTYPE;
-      xattrs_acls_get (parentfd, name, st, true);
-      xattrs_selinux_get (parentfd, name, st, 0);
-      xattrs_xattrs_get (parentfd, name, st, 0);
+      xattrs_acls_get (f.fd, f.base, st, true);
+      xattrs_selinux_get (f.fd, f.base, st, 0);
+      xattrs_xattrs_get (f.fd, f.base, st, 0);
     }
   else if (S_ISBLK (st->stat.st_mode))
     {
       type = BLKTYPE;
-      xattrs_acls_get (parentfd, name, st, true);
-      xattrs_selinux_get (parentfd, name, st, 0);
-      xattrs_xattrs_get (parentfd, name, st, 0);
+      xattrs_acls_get (f.fd, f.base, st, true);
+      xattrs_selinux_get (f.fd, f.base, st, 0);
+      xattrs_xattrs_get (f.fd, f.base, st, 0);
     }
   else if (S_ISFIFO (st->stat.st_mode))
     {
       type = FIFOTYPE;
-      xattrs_acls_get (parentfd, name, st, true);
-      xattrs_selinux_get (parentfd, name, st, 0);
-      xattrs_xattrs_get (parentfd, name, st, 0);
+      xattrs_acls_get (f.fd, f.base, st, true);
+      xattrs_selinux_get (f.fd, f.base, st, 0);
+      xattrs_xattrs_get (f.fd, f.base, st, 0);
     }
   else if (S_ISSOCK (st->stat.st_mode))
     {

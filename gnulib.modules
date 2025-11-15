@@ -49,12 +49,12 @@ file-has-acl
 fileblocks
 flexmember
 fnmatch-gnu
-fprintftime
 free-posix
 fseeko
 fstatat
 full-write
 futimens
+gendocs
 getline
 getopt-gnu
 getpagesize
@@ -68,6 +68,7 @@ idx
 intprops
 inttostr
 inttypes-h
+issymlinkat
 largefile
 lchown
 limits-h
@@ -82,6 +83,7 @@ mkfifoat
 modechange
 obstack
 openat
+openat2
 parse-datetime
 priv-set
 progname
@@ -106,6 +108,7 @@ stpcpy
 stdopen
 strdup-posix
 strerror
+stringeq
 strnlen
 symlinkat
 sys_stat-h

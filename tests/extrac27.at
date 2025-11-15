@@ -40,7 +40,3 @@ tar xv --keep-newer-files -f a.tar -C ext
 ./file
 ])
 AT_CLEANUP
-
-
-
-

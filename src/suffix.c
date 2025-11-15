@@ -75,7 +75,7 @@ find_compression_suffix (char const *name, idx_t *ret_len)
 	   p < (compression_suffixes
 		+ sizeof compression_suffixes / sizeof *compression_suffixes);
 	   p++)
-	if (strcmp (p->suffix, suf) == 0)
+	if (streq (p->suffix, suf))
 	  return p;
     }
   else if (ret_len)

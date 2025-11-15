@@ -23,7 +23,7 @@
 #
 # (This specific case failed during development of tar 1.26.90:
 # There was a leftover call to chdir in name_next_elt() in
-# tar 1.26.  After commit e3d28d84 this call would confuse the 
+# tar 1.26.  After commit e3d28d84 this call would confuse the
 # tar_getcwd function.
 #
 # Reported by: Nathan Stratton Treadway <nathanst@ontko.com>

@@ -61,6 +61,12 @@ To only fetch auxiliary files from the network, run './bootstrap --pull'.
 To only generate files such as 'configure', without accessing the
 network, run './bootstrap --gen'.
 
+* Testing
+
+GNU Tar uses Autoconf's Autotest framework for testing; see the tests/
+subdirectory, where the file testsuite.at contains the top level.
+Run './testsuite --help' to see how to run individual tests.
+
 
 * Copyright information
 

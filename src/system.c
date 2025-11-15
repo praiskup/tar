@@ -95,7 +95,7 @@ sys_detect_dev_null_output (void)
 {
   static char const dev_null[] = "nul";
 
-  dev_null_output = (strcmp (archive_name_array[0], dev_null) == 0
+  dev_null_output = (streq (archive_name_array[0], dev_null)
 		     || (! _isrmt (archive)));
 }
 
@@ -200,7 +200,7 @@ sys_detect_dev_null_output (void)
 {
   static struct stat dev_null_stat;
 
-  dev_null_output = (strcmp (archive_name_array[0], dev_null) == 0
+  dev_null_output = (streq (archive_name_array[0], dev_null)
 		     || (! _isrmt (archive)
 			 && S_ISCHR (archive_stat.st_mode)
 			 && (dev_null_stat.st_ino != 0
@@ -306,6 +306,14 @@ enum { PREAD, PWRITE };
 # pragma GCC diagnostic ignored "-Wanalyzer-fd-leak"
 #endif
 
+/* Close file having descriptor FD, and abort if close unsuccessful.  */
+static void
+xclose (int fd)
+{
+  if (close (fd) < 0)
+    close_error (_("(pipe)"));
+}
+
 /* Duplicate file descriptor FROM into becoming INTO.
    INTO is closed first and has to be the next available slot.  */
 static void
@@ -383,7 +391,7 @@ sys_child_open_for_compress (void)
 
       /* We don't need a grandchild tar.  Open the archive and launch the
 	 compressor.  */
-      if (strcmp (archive_name_array[0], "-"))
+      if (!streq (archive_name_array[0], "-"))
 	{
 	  archive = creat (archive_name_array[0], MODE_RW);
 	  if (archive < 0)
@@ -425,7 +433,7 @@ sys_child_open_for_compress (void)
   xdup2 (child_pipe[PREAD], STDIN_FILENO);
   xclose (child_pipe[PWRITE]);
 
-  if (strcmp (archive_name_array[0], "-") == 0)
+  if (streq (archive_name_array[0], "-"))
     archive = STDOUT_FILENO;
   else
     {
@@ -553,7 +561,7 @@ sys_child_open_for_uncompress (void)
      b) the file is to be accessed by rmt: compressor doesn't know how;
      c) the file is not a plain file.  */
 
-  if (strcmp (archive_name_array[0], "-") != 0
+  if (!streq (archive_name_array[0], "-")
       && !_remdev (archive_name_array[0])
       && is_regular_file (archive_name_array[0]))
     {
@@ -593,7 +601,7 @@ sys_child_open_for_uncompress (void)
   xdup2 (child_pipe[PWRITE], STDOUT_FILENO);
   xclose (child_pipe[PREAD]);
 
-  if (strcmp (archive_name_array[0], "-") == 0)
+  if (streq (archive_name_array[0], "-"))
     archive = STDIN_FILENO;
   else
     archive = rmtopen (archive_name_array[0], O_RDONLY | O_BINARY,

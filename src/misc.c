@@ -265,6 +265,30 @@ zap_slashes (char *name)
   return name;
 }
 
+/* The number of file name slashes at the start of the string F.  */
+static idx_t
+slashlen (char const *f)
+{
+  idx_t i = 0;
+  while (ISSLASH (f[i]))
+    i++;
+  return i;
+}
+
+/* The length of the longest initial prefix of F that consists
+   entirely of a sequence of '.'s each followed by one or more slashes.
+   This prefix acts like the working directory, i.e., the file name F
+   acts like "." if 0 < dotslashlen (F) == strlen (F), and acts like
+   &F[dotslashlen (F)] otherwise.  */
+idx_t
+dotslashlen (char const *f)
+{
+  idx_t i = 0;
+  while (f[i] == '.' && ISSLASH (f[i + 1]))
+    i += 2 + slashlen (&f[i + 2]);
+  return i;
+}
+
 /* Normalize FILE_NAME by removing redundant slashes and "."
    components, including redundant trailing slashes.
    Leave ".." alone, as it may be significant in the presence
@@ -275,8 +299,6 @@ void
 normalize_filename_x (char *file_name)
 {
   char *name = file_name + FILE_SYSTEM_PREFIX_LEN (file_name);
-  char *p;
-  char const *q;
   char c;
 
   /* Don't squeeze leading "//" to "/", on hosts where they're distinct.  */
@@ -284,16 +306,20 @@ normalize_filename_x (char *file_name)
 	   && ISSLASH (*name) && ISSLASH (name[1]) && ! ISSLASH (name[2]));
 
   /* Omit redundant leading "." components.  */
-  for (q = p = name; (*p = *q) == '.' && ISSLASH (q[1]); p += !*q)
-    for (q += 2; ISSLASH (*q); q++)
-      continue;
+  char *p = name;
+  char const *q = name + dotslashlen (name);
+
+  if (p < q && !*q)
+    q = ".";  /* NAME is nonempty and equivalent to ".".  */
 
   /* Copy components from Q to P, omitting redundant slashes and
      internal "."  components.  */
   while ((*p++ = c = *q++) != '\0')
     if (ISSLASH (c))
-      while (ISSLASH (q[*q == '.']))
-	q += (*q == '.') + 1;
+      {
+	q += slashlen (q);
+	q += dotslashlen (q);
+      }
 
   /* Omit redundant trailing "." component and slash.  */
   if (2 < p - name)
@@ -351,7 +377,7 @@ replace_prefix (char **pname, const char *samp, idx_t slen,
 {
   char *name = *pname;
   idx_t nlen = strlen (name);
-  if (nlen > slen && memcmp (name, samp, slen) == 0 && ISSLASH (name[slen]))
+  if (slen < nlen && memeq (name, samp, slen) && ISSLASH (name[slen]))
     {
       if (rlen > slen)
 	{
@@ -602,7 +628,8 @@ decode_timespec (char const *arg, char **arg_lim, bool parse_fraction)
 static char *before_backup_name;
 static char *after_backup_name;
 
-/* Return 1 if FILE_NAME is obviously "." or "/".  */
+/* Return 1 if FILE_NAME must identify a working or root directory.
+   FILE_NAME should not be empty.  */
 bool
 must_be_dot_or_slash (char const *file_name)
 {
@@ -610,6 +637,7 @@ must_be_dot_or_slash (char const *file_name)
 
   if (ISSLASH (file_name[0]))
     {
+      /* It must be a root directory if all components are "." or "..".  */
       for (;;)
 	if (ISSLASH (file_name[1]))
 	  file_name++;
@@ -621,31 +649,32 @@ must_be_dot_or_slash (char const *file_name)
     }
   else
     {
-      while (file_name[0] == '.' && ISSLASH (file_name[1]))
-	{
-	  file_name += 2;
-	  while (ISSLASH (*file_name))
-	    file_name++;
-	}
-
-      return ! file_name[0] || (file_name[0] == '.' && ! file_name[1]);
+      /* It must be a working directory if it is "." or "",
+	 after skipping ^(\./+)* ERE.  */
+      file_name += dotslashlen (file_name);
+      return ! file_name[file_name[0] == '.'];
     }
 }
 
-/* Some implementations of rmdir let you remove '.' or '/'.
-   Report an error with errno set to zero for obvious cases of this;
-   otherwise call rmdir.  */
+/* Act like rmdir (FILENAME) relative to chdir_fd, i.e., like rmdir (F).
+   However, reject attempts to remove a root directory
+   even on systems that allow such a thing.
+   Also, do not try to change the removed directory's status later.  */
 static int
-safer_rmdir (const char *file_name)
+safer_rmdir (const char *file_name, struct fdbase f)
 {
-  if (must_be_dot_or_slash (file_name))
+  if (f.fd == BADFD)
+    return -1; /* Preserve errno.  */
+
+  if (IS_ABSOLUTE_FILE_NAME (f.base))
     {
-      errno = 0;
+      errno = EBUSY;
       return -1;
     }
 
-  if (unlinkat (chdir_fd, file_name, AT_REMOVEDIR) == 0)
+  if (f.fd != BADFD && unlinkat (f.fd, f.base, AT_REMOVEDIR) == 0)
     {
+      fdbase_clear ();
       remove_delayed_set_stat (file_name);
       return 0;
     }
@@ -667,10 +696,15 @@ remove_any_file (const char *file_name, enum remove_option option)
      non-directory.  */
   bool try_unlink_first = cannot_unlink_dir ();
 
+  struct fdbase f = fdbase (file_name);
+
   if (try_unlink_first)
     {
-      if (unlinkat (chdir_fd, file_name, 0) == 0)
-	return 1;
+      if (f.fd != BADFD && unlinkat (f.fd, f.base, 0) == 0)
+	{
+	  fdbase_clear ();
+	  return 1;
+	}
 
       /* POSIX 1003.1-2001 requires EPERM when attempting to unlink a
 	 directory without appropriate privileges, but many Linux
@@ -679,13 +713,16 @@ remove_any_file (const char *file_name, enum remove_option option)
 	return 0;
     }
 
-  if (safer_rmdir (file_name) == 0)
+  if (safer_rmdir (file_name, f) == 0)
     return 1;
 
   switch (errno)
     {
     case ENOTDIR:
-      return !try_unlink_first && unlinkat (chdir_fd, file_name, 0) == 0;
+      if (try_unlink_first || f.fd == BADFD || unlinkat (f.fd, f.base, 0) < 0)
+	return 0;
+      fdbase_clear ();
+      return 1;
 
     case 0:
     case EEXIST:
@@ -726,7 +763,7 @@ remove_any_file (const char *file_name, enum remove_option option)
 	      }
 
 	    free (directory);
-	    return safer_rmdir (file_name) == 0;
+	    return safer_rmdir (file_name, fdbase (file_name)) == 0;
 	  }
 	}
       break;
@@ -776,13 +813,27 @@ maybe_backup_file (const char *file_name, bool this_is_the_archive)
       && (S_ISBLK (file_stat.st_mode) || S_ISCHR (file_stat.st_mode)))
     return true;
 
-  after_backup_name = find_backup_file_name (chdir_fd, file_name, backup_type);
+  struct fdbase f = fdbase (file_name);
+  if (f.fd == BADFD)
+    {
+      open_error (file_name);
+      return false;
+    }
+  idx_t subdirlen = f.base - file_name;
+  after_backup_name = find_backup_file_name (f.fd, f.base, backup_type);
   if (! after_backup_name)
     xalloc_die ();
+  idx_t after_backup_namelen = strlen (after_backup_name);
+  after_backup_name = xrealloc (after_backup_name,
+				subdirlen + after_backup_namelen + 1);
+  memmove (after_backup_name + subdirlen, after_backup_name,
+	   after_backup_namelen + 1);
+  memcpy (after_backup_name, file_name, subdirlen);
 
-  if (renameat (chdir_fd, before_backup_name, chdir_fd, after_backup_name)
-      == 0)
+  if (renameat (f.fd, f.base, f.fd, &after_backup_name[subdirlen]) == 0)
     {
+      if (S_ISLNK (file_stat.st_mode))
+	fdbase_clear ();
       if (verbose_option)
 	fprintf (stdlis, _("Renaming %s to %s\n"),
 		 quote_n (0, before_backup_name),
@@ -808,8 +859,11 @@ undo_last_backup (void)
 {
   if (after_backup_name)
     {
-      if (renameat (chdir_fd, after_backup_name, chdir_fd, before_backup_name)
-	  < 0)
+      struct fdbase f = fdbase (before_backup_name);
+      if (f.fd == BADFD
+	  || (renameat (f.fd, &after_backup_name[f.base - before_backup_name],
+			f.fd, f.base)
+	      < 0))
 	{
 	  int e = errno;
 	  paxerror (e, _("%s: Cannot rename to %s"),
@@ -830,7 +884,8 @@ undo_last_backup (void)
 int
 deref_stat (char const *name, struct stat *buf)
 {
-  return fstatat (chdir_fd, name, buf, fstatat_flags);
+  struct fdbase f = fdbase (name);
+  return f.fd == BADFD ? -1 : fstatat (f.fd, f.base, buf, fstatat_flags);
 }
 
 /* Read from FD into the buffer BUF with COUNT bytes.  Attempt to fill
@@ -913,6 +968,11 @@ struct wd
      the working directory.  If zero, the directory needs to be opened
      to be used.  */
   int fd;
+
+  /* If ID.err is zero, the directory's identity;
+     if positive, a failure indication with errno = ID.err;
+     if negative, no attempt has been made yet to get the identity.  */
+  struct chdir_id id;
 };
 
 /* A vector of chdir targets.  wd[0] is the initial working directory.  */
@@ -943,31 +1003,35 @@ chdir_count (void)
   return wd_count - !!wd_count;
 }
 
+/* Grow the WD table by at least one entry.  */
+static void
+grow_wd (void)
+{
+  wd = xpalloc (wd, &wd_alloc, wd_alloc ? 1 : 2, -1, sizeof *wd);
+
+  if (! wd_count)
+    {
+      wd[wd_count].name = ".";
+      wd[wd_count].abspath = NULL;
+      wd[wd_count].fd = AT_FDCWD;
+      wd[wd_count].id.err = -1;
+      wd_count++;
+    }
+}
+
 /* DIR is the operand of a -C option; add it to vector of chdir targets,
    and return the index of its location.  */
 idx_t
 chdir_arg (char const *dir)
 {
   if (wd_count == wd_alloc)
-    {
-      wd = xpalloc (wd, &wd_alloc, wd_alloc ? 1 : 2, -1, sizeof *wd);
-
-      if (! wd_count)
-	{
-	  wd[wd_count].name = ".";
-	  wd[wd_count].abspath = NULL;
-	  wd[wd_count].fd = AT_FDCWD;
-	  wd_count++;
-	}
-    }
+    grow_wd ();
 
   /* Optimize the common special case of the working directory,
      or the working directory as a prefix.  */
   if (dir[0])
     {
-      while (dir[0] == '.' && ISSLASH (dir[1]))
-	for (dir += 2;  ISSLASH (*dir);  dir++)
-	  continue;
+      dir += dotslashlen (dir);
       if (! dir[dir[0] == '.'])
 	return wd_count - 1;
     }
@@ -975,6 +1039,7 @@ chdir_arg (char const *dir)
   wd[wd_count].name = dir;
   wd[wd_count].abspath = NULL;
   wd[wd_count].fd = 0;
+  wd[wd_count].id.err = -1;
   return wd_count++;
 }
 
@@ -985,7 +1050,7 @@ idx_t chdir_current;
    similar locations for fstatat, etc.  This is an open file
    descriptor, or AT_FDCWD if the working directory is current.  It is
    valid until the next invocation of chdir_do.  */
-int chdir_fd = AT_FDCWD;
+static int chdir_fd = AT_FDCWD;
 
 /* Change to directory I, in a virtual way.  This does not actually
    invoke chdir; it merely sets chdir_fd to an int suitable as the
@@ -1005,7 +1070,7 @@ chdir_do (idx_t i)
 	  if (! IS_ABSOLUTE_FILE_NAME (curr->name))
 	    chdir_do (i - 1);
 	  fd = openat (chdir_fd, curr->name,
-		       open_searchdir_flags & ~ O_NOFOLLOW);
+		       open_searchdir_how.flags & ~O_NOFOLLOW);
 	  if (fd < 0)
 	    open_fatal (curr->name);
 
@@ -1046,6 +1111,186 @@ chdir_do (idx_t i)
       chdir_fd = fd;
     }
 }
+
+/* Return the identity of the current directory.  */
+struct chdir_id
+chdir_id (void)
+{
+  if (!wd)
+    grow_wd ();
+
+  struct wd *curr = &wd[chdir_current];
+  if (curr->id.err < 0)
+    {
+      struct stat st;
+      curr->id = ((chdir_fd < 0 ? stat (".", &st) : fstat (chdir_fd, &st)) < 0
+		  ? (struct chdir_id) { .err = errno }
+		  : (struct chdir_id) { .st_dev = st.st_dev,
+		                        .st_ino = st.st_ino });
+    }
+  return curr->id;
+}
+
+/* Caches of recent calls to fdbase and fdbase1.  */
+static struct fdbase_cache
+{
+  /* Length of subdirectory name, which need not be null-terminated.
+     If the length is zero, no subdir is cached here:
+     SUBDIR (if nonnull) is merely a buffer available for use later,
+     and CHDIR_CURRENT and FD are irrelevant.  */
+  idx_t subdirlen;
+
+  /* Index of ancestor of this subdirectory.  */
+  idx_t chdir_current;
+
+  /* Buffer containing name of subdirectory relative to the ancestor.  */
+  char *subdir;
+
+  /* Number of bytes allocated for SUBDIR.  */
+  idx_t subdiralloc;
+
+  /* FD of subdirectory.  */
+  int fd;
+} fdbase_cache[2];
+
+/* Clear the fdbase cache.  Call this after any action that might
+   invalidate the cache.  Such actions include removing or renaming
+   directories or symlinks to directories.  Call this if in doubt,
+   e.g., if it is not known whether a removed directory entry is a
+   symlink to a directory.  */
+void
+fdbase_clear (void)
+{
+  for (int i = 0; i < 2; i++)
+    {
+      struct fdbase_cache *c = &fdbase_cache[i];
+      if (c->subdirlen)
+	{
+	  if (0 <= c->fd)
+	    close (c->fd);
+	  c->subdirlen = 0;
+	}
+    }
+}
+
+/* Starting from the directory FD, open a subdirectory SUBDIR for search.
+   If extracting or diffing and --absolute-names (-P) is not in effect,
+   do not let the subdirectory escape FD, i.e., the subdirectory must
+   be at or under FD in the directory hierarchy.  */
+static int
+open_subdir (int fd, char const *subdir)
+{
+  return openat2 (fd, subdir, &open_searchdir_how, sizeof open_searchdir_how);
+}
+
+/* Return an fd open to FILE_NAME's parent directory,
+   along with the base name of FILE_NAME.
+   Use the alternate cache if ALTERNATE, the main cache otherwise.
+   If FILE_NAME is relative, it is relative to chdir_fd.
+   Return AT_FDCWD if FILE_NAME is relative to the working directory.
+   Return BADFD (setting errno) on failure.  */
+static struct fdbase
+fdbase_opendir (char const *file_name, bool alternate)
+{
+  char const *name = file_name;
+
+  /* Skip past leading "./"s,
+     but not past the last "./" if that ends the name.  */
+  idx_t dslen = dotslashlen (name);
+  if (dslen)
+    {
+      name += dslen;
+      if (!*name)
+	for (name--; *--name != '.'; )
+	  continue;
+    }
+
+  /* For files immediately under CHDIR_FD, and for root directories,
+     just use CHDIR_FD and NAME.  */
+  char const *base = last_component (name);
+  idx_t subdirlen = base - name;
+  if (!subdirlen | !*base)
+    return (struct fdbase) { .fd = chdir_fd, .base = name };
+
+  struct fdbase_cache *c = &fdbase_cache[alternate];
+  int fd = c->fd;
+  bool submatch = (0 < c->subdirlen && c->subdirlen <= subdirlen
+		   && c->chdir_current == chdir_current
+		   && !ISSLASH (name[c->subdirlen])
+		   && memeq (c->subdir, name, c->subdirlen));
+
+  if (! (submatch && c->subdirlen == subdirlen))
+    {
+      /* Copy the new directory's name into the cache.  */
+      char *subdir = c->subdir;
+      if (c->subdiralloc <= subdirlen)
+	c->subdir = subdir = xpalloc (subdir, &c->subdiralloc,
+				      subdirlen - c->subdiralloc + 1, -1, 1);
+      char *p = mempcpy (subdir, name, subdirlen);
+      *p = '\0';
+
+      if (submatch && c->subdirlen < subdirlen
+	  && !ISSLASH (subdir[c->subdirlen]))
+	{
+	  /* The new directory is a subdirectory of the old,
+	     so open relative to FD rather than to chdir_fd.  */
+	  int subfd = open_subdir (fd, &subdir[c->subdirlen]);
+	  if (subfd < 0)
+	    {
+	      /* Keep the old directory cached and report open failure,
+		 unless EMFILE means it's possible that falling
+		 through to close the old directory would mean we
+		 could successfully retry from the chdir_fd level.
+	         When reporting failure, there is no need to
+	         null-terminate the old directory, since the code does
+	         not assume null termination.  */
+	      if (errno != EMFILE)
+		return (struct fdbase) { .fd = BADFD, .base = base };
+	    }
+	  else
+	    {
+	      /* Replace the old directory with the new one.  */
+	      close (fd);
+	      c->fd = subfd;
+	      c->subdirlen = subdirlen;
+	      return (struct fdbase) { .fd = subfd, .base = base };
+	    }
+	}
+
+      /* Remove any old directory info,
+	 and add new info if the new directory can be opened.  */
+      if (0 < c->subdirlen)
+	close (fd);
+      fd = open_subdir (chdir_fd, c->subdir);
+      if (fd < 0)
+	{
+	  if (BADFD != -1 && fd < 0)
+	    fd = BADFD;
+	  c->subdirlen = 0;
+	}
+      else
+	{
+	  c->chdir_current = chdir_current;
+	  c->fd = fd;
+	  c->subdirlen = subdirlen;
+	}
+    }
+
+  return (struct fdbase) { .fd = fd, .base = base };
+}
+
+struct fdbase
+fdbase (char const *name)
+{
+  return fdbase_opendir (name, false);
+}
+
+struct fdbase
+fdbase1 (char const *name)
+{
+  return fdbase_opendir (name, true);
+}
+
 
 const char *
 tar_dirname (void)
@@ -1299,7 +1544,9 @@ tar_savedir (const char *name, bool must_exist)
 {
   char *ret = NULL;
   DIR *dir = NULL;
-  int fd = openat (chdir_fd, name, open_read_flags | O_DIRECTORY);
+  struct fdbase f = fdbase (name);
+  int fd = (f.fd == BADFD ? -1
+	    : openat (f.fd, f.base, open_read_flags | O_DIRECTORY));
   if (fd < 0)
     {
       if (!must_exist && errno == ENOENT)

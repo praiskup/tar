@@ -18,7 +18,7 @@ documentation files in various formats.  If the doc/manual directory
 already exists, it will be removed prior to rebuilding.
 
 The command produces very copious output.  We advise you to examine it
-closely to make sure no error messages slip your attention. 
+closely to make sure no error messages slip your attention.
 
 For the completeness sake, there are two more Makefile goals related
 to the online manual:
@@ -55,7 +55,7 @@ before publishing:
 To publish the created manual, change to the tar top-level directory
 and run:
 
-  rsync -avz --exclude CVS --delete manual ~/websrc/tar 
+  rsync -avz --exclude CVS --delete manual ~/websrc/tar
 
 This will synchronize the newly created manual pages with the content
 of the CVS sandbox.  Then, change to the ~/websrc/tar directory and
@@ -67,7 +67,7 @@ to the repository:
 
 Then commit your changes:
 
-  cvs commit 
+  cvs commit
 
 Once the changes are committed to CVS a job is scheduled on the server,
 which synchronizes them with the content of the directory served by

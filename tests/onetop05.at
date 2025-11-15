@@ -22,7 +22,7 @@ AT_SETUP([tar --one-top-level restoring permissions])
 AT_KEYWORDS([extract onetop onetop05 chdir])
 
 # When extracting an archive that contains ./ with the --one-top-level option,
-# the mode and ownership of ./ would be incorrectly applied to the current
+# the mode and ownership of ./ would be incorrectly applied to the
 # working directory, instead of the requested top-level directory.
 
 AT_TAR_CHECK([
@@ -47,7 +47,7 @@ if test 700 = $mode; then
 else
     echo "CWD: mode changed: 700 != $mode"
 fi
- 
+
 mkdir d2
 chmod 700 d2
 tar -C d2 --one-top-level=top -xpf d.tar
@@ -60,7 +60,7 @@ fi
 mode=$(genfile --stat=mode.7777 d2/top)
 if test $mode = $orig_mode; then
     echo "TOP: OK"
-else    
+else
     echo "TOP: mode changed: $orig_mode != $mode"
 fi
 ],

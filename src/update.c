@@ -45,7 +45,8 @@ static bool acting_as_filter;
 static void
 append_file (char *file_name)
 {
-  int handle = openat (chdir_fd, file_name, O_RDONLY | O_BINARY);
+  struct fdbase f = fdbase (file_name);
+  int handle = f.fd == BADFD ? -1 : openat (f.fd, f.base, O_RDONLY | O_BINARY);
 
   if (handle < 0)
     {
@@ -102,7 +103,7 @@ update_archive (void)
 
   name_gather ();
   open_archive (ACCESS_UPDATE);
-  acting_as_filter = strcmp (archive_name_array[0], "-") == 0;
+  acting_as_filter = streq (archive_name_array[0], "-");
   xheader_forbid_global ();
 
   while (!found_end)

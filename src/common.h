@@ -376,7 +376,7 @@ struct name
 
 /* Flags for reading, searching, and fstatatting files.  */
 extern int open_read_flags;
-extern int open_searchdir_flags;
+extern struct open_how open_searchdir_how;
 extern int fstatat_flags;
 
 extern int seek_option;
@@ -474,7 +474,6 @@ void print_total_stats (void);
 void reset_eof (void);
 void set_next_block_after (void *);
 void clear_read_error_count (void);
-void xclose (int fd);
 _Noreturn void archive_write_error (ssize_t status);
 void archive_read_error (void);
 off_t seek_archive (off_t size);
@@ -502,7 +501,7 @@ COMMON_INLINE intmax_t
 add_printf (intmax_t a, intmax_t b)
 {
   intmax_t sum;
-  return (a < 0) | (b < 0) | ckd_add (&sum, a, b) ? -1 : sum;
+  return ((a < 0) | (b < 0) | ckd_add (&sum, a, b)) ? -1 : sum;
 }
 
 /* Module create.c.  */
@@ -661,6 +660,7 @@ void assign_string_n (char **string, const char *value, idx_t n);
 #define ASSIGN_STRING_N(s,v) assign_string_n (s, v, sizeof (v))
 void unquote_string (char *str);
 char *zap_slashes (char *name);
+idx_t dotslashlen (char const *);
 char *normalize_filename (idx_t, char const *);
 void normalize_filename_x (char *name);
 void replace_prefix (char **pname, const char *samp, idx_t slen,
@@ -683,7 +683,15 @@ intmax (intmax_t n)
 }
 /* intmax should be used only with signed types.
    To bypass this check parenthesize the function, e.g., (intmax) (n).  */
-#define intmax(n) verify_expr (EXPR_SIGNED (n), (intmax) (n))
+#if 201112 <= __STDC_VERSION__ && !_GL__GENERIC_BOGUS
+# define intmax(n) \
+    verify_expr (_Generic (n, \
+			   unsigned char: 0, unsigned short int: 0, \
+			   unsigned int: 0, unsigned long int: 0, \
+			   unsigned long long int: 0, \
+			   default: 1), \
+		 (intmax) (n))
+#endif
 
 /* Represent N using a signed integer I such that (uintmax_t) I == N.
    With a good optimizing compiler, this is equivalent to (intmax_t) i
@@ -752,10 +760,17 @@ int deref_stat (char const *name, struct stat *buf);
 idx_t blocking_read (int fd, void *buf, idx_t count);
 idx_t blocking_write (int fd, void const *buf, idx_t count);
 
+/* Not valid as the first argument to openat.
+   It is a negative integer not equal to AT_FDCWD.  */
+enum { BADFD = AT_FDCWD == -1 ? -2 : -1 };
+
 extern idx_t chdir_current;
-extern int chdir_fd;
 idx_t chdir_arg (char const *dir);
 void chdir_do (idx_t dir);
+struct chdir_id { int err; dev_t st_dev; ino_t st_ino; } chdir_id (void);
+struct fdbase { int fd; char const *base; } fdbase (char const *);
+struct fdbase fdbase1 (char const *);
+void fdbase_clear (void);
 idx_t chdir_count (void);
 
 void close_diag (char const *name);
@@ -819,8 +834,6 @@ bool all_names_found (struct tar_stat_info *st);
 void add_avoided_name (char const *name);
 bool is_avoided_name (char const *name);
 
-bool contains_dot_dot (char const *name);
-
 COMMON_INLINE bool
 isfound (struct name const *c)
 {
@@ -838,8 +851,6 @@ wasfound (struct name const *c)
 }
 
 /* Module tar.c.  */
-
-_Noreturn void usage (int);
 
 bool confirm (const char *message_action, const char *name);
 

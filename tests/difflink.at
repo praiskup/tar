@@ -32,4 +32,3 @@ tar df a.tar
 [],
 [],[],[ustar]) # Testing one format is enough
 AT_CLEANUP
-

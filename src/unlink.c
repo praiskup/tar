@@ -106,7 +106,10 @@ flush_deferred_unlinks (bool force)
 	      else
 		fname = p->file_name;
 
-	      if (unlinkat (chdir_fd, fname, AT_REMOVEDIR) < 0)
+	      struct fdbase f = fdbase (fname);
+	      if (f.fd != BADFD && unlinkat (f.fd, f.base, AT_REMOVEDIR) == 0)
+		fdbase_clear ();
+	      else
 		{
 		  switch (errno)
 		    {
@@ -132,7 +135,10 @@ flush_deferred_unlinks (bool force)
 	    }
 	  else
 	    {
-	      if (unlinkat (chdir_fd, p->file_name, 0) < 0 && errno != ENOENT)
+	      struct fdbase f = fdbase (p->file_name);
+	      if (f.fd != BADFD && unlinkat (f.fd, f.base, 0) == 0)
+		fdbase_clear ();
+	      else if (errno != ENOENT)
 		unlink_error (p->file_name);
 	    }
 	  dunlink_reclaim (p);
@@ -166,11 +172,12 @@ flush_deferred_unlinks (bool force)
 	  else
 	    fname = p->file_name;
 
-	  if (unlinkat (chdir_fd, fname, AT_REMOVEDIR) < 0)
-	    {
-	      if (errno != ENOENT)
-		rmdir_error (fname);
-	    }
+	  struct fdbase f = fdbase (fname);
+	  if (f.fd != BADFD && unlinkat (f.fd, f.base, AT_REMOVEDIR) == 0)
+	    fdbase_clear ();
+	  else if (errno != ENOENT)
+	    rmdir_error (fname);
+
 	  dunlink_reclaim (p);
 	  p = next;
 	}

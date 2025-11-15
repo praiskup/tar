@@ -541,12 +541,12 @@ uname_to_uid (char const *uname, uid_t *uidp)
   struct passwd *passwd;
 
   if (cached_no_such_uname
-      && strcmp (uname, cached_no_such_uname) == 0)
+      && streq (uname, cached_no_such_uname))
     return false;
 
-  if (!cached_uname
-      || uname[0] != cached_uname[0]
-      || strcmp (uname, cached_uname) != 0)
+  if (! (cached_uname
+	 && uname[0] == cached_uname[0]
+	 && streq (uname, cached_uname)))
     {
       passwd = getpwnam (uname);
       if (passwd)
@@ -572,12 +572,12 @@ gname_to_gid (char const *gname, gid_t *gidp)
   struct group *group;
 
   if (cached_no_such_gname
-      && strcmp (gname, cached_no_such_gname) == 0)
+      && streq (gname, cached_no_such_gname))
     return false;
 
-  if (!cached_gname
-      || gname[0] != cached_gname[0]
-      || strcmp (gname, cached_gname) != 0)
+  if (! (cached_gname
+	 && gname[0] == cached_gname[0]
+	 && streq (gname, cached_gname)))
     {
       group = getgrnam (gname);
       if (group)
@@ -1016,7 +1016,7 @@ read_next_name (struct name_elt *ent, struct name_elt *ret)
 {
   if (!ent->v.file.fp)
     {
-      if (strcmp (ent->v.file.name, "-") == 0)
+      if (streq (ent->v.file.name, "-"))
 	{
 	  request_stdin ("-T");
 	  ent->v.file.fp = stdin;
@@ -1067,7 +1067,7 @@ read_next_name (struct name_elt *ent, struct name_elt *ret)
 	  return true;
 
 	case file_list_end:
-	  if (strcmp (ent->v.file.name, "-"))
+	  if (!streq (ent->v.file.name, "-"))
 	    fclose (ent->v.file.fp);
 	  ent->v.file.fp = NULL;
 	  name_list_advance ();
@@ -1294,7 +1294,7 @@ namelist_match_from (struct name *p, char const *file_name, bool exact)
   return NULL;
 }
 
-static COMMON_INLINE struct name *
+static struct name *
 namelist_match (char const *file_name, bool exact)
 {
   return namelist_match_from (namelist, file_name, exact);
@@ -1317,7 +1317,7 @@ remname (struct name *name)
 }
 
 /* Update CURSOR to remember that it matched FILE_NAME. */
-static COMMON_INLINE void
+static void
 register_match (struct name *cursor, const char *file_name)
 {
   if (!(ISSLASH (file_name[cursor->length]) && recursion_option)
@@ -1707,7 +1707,7 @@ name_compare (void const *entry1, void const *entry2)
 {
   struct name const *name1 = entry1;
   struct name const *name2 = entry2;
-  return strcmp (name1->caname, name2->caname) == 0;
+  return streq (name1->caname, name2->caname);
 }
 
 
@@ -1799,8 +1799,9 @@ collect_and_sort_names (void)
 	}
       if (S_ISDIR (st.stat.st_mode))
 	{
-	  int dir_fd = openat (chdir_fd, name->name,
-			       open_read_flags | O_DIRECTORY);
+	  struct fdbase f = fdbase (name->name);
+	  int dir_fd = (f.fd == BADFD ? -1
+			: openat (f.fd, f.base, open_read_flags | O_DIRECTORY));
 	  if (dir_fd < 0)
 	    open_diag (name->name);
 	  else
@@ -1987,23 +1988,4 @@ stripped_prefix_len (char const *file_name, idx_t num)
 	}
     }
   return -1;
-}
-
-/* Return nonzero if NAME contains ".." as a file name component.  */
-bool
-contains_dot_dot (char const *name)
-{
-  char const *p = name + FILE_SYSTEM_PREFIX_LEN (name);
-
-  for (;; p++)
-    {
-      if (p[0] == '.' && p[1] == '.' && (ISSLASH (p[2]) || !p[2]))
-	return 1;
-
-      while (! ISSLASH (*p))
-	{
-	  if (! *p++)
-	    return 0;
-	}
-    }
 }

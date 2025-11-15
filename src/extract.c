@@ -24,6 +24,7 @@
 #include <errno.h>
 #include <flexmember.h>
 #include <hash.h>
+#include <issymlink.h>
 #include <priv-set.h>
 #include <root-uid.h>
 #include <same-inode.h>
@@ -46,21 +47,6 @@ static mode_t const all_mode_bits = ~ (mode_t) 0;
 # define fchown(fd, uid, gid) (errno = ENOSYS, -1)
 #endif
 
-#if (defined HAVE_STRUCT_STAT_ST_BIRTHTIMESPEC_TV_NSEC \
-     || defined HAVE_STRUCT_STAT_ST_BIRTHTIM_TV_NSEC \
-     || defined HAVE_STRUCT_STAT_ST_BIRTHTIMENSEC \
-     || (defined _WIN32 && ! defined __CYGWIN__))
-# define HAVE_BIRTHTIME 1
-#else
-# define HAVE_BIRTHTIME 0
-#endif
-
-#if HAVE_BIRTHTIME
-# define BIRTHTIME_EQ(a, b) (timespec_cmp (a, b) == 0)
-#else
-# define BIRTHTIME_EQ(a, b) true
-#endif
-
 /* Return true if an error number ERR means the system call is
    supported in this case.  */
 static bool
@@ -72,13 +58,9 @@ implemented (int err)
 }
 
 /* List of directories whose statuses we need to extract after we've
-   finished extracting their subsidiary files.  If you consider each
-   contiguous subsequence of elements of the form [D]?[^D]*, where [D]
-   represents an element where AFTER_LINKS is nonzero and [^D]
-   represents an element where AFTER_LINKS is zero, then the head
-   of the subsequence has the longest name, and each non-head element
-   in the prefix is an ancestor (in the directory hierarchy) of the
-   preceding element.  */
+   finished extracting their subsidiary files.  The head of the list
+   has the longest name, and each non-head element is an ancestor (in
+   the directory hierarchy) of the preceding element.  */
 
 struct delayed_set_stat
   {
@@ -86,6 +68,7 @@ struct delayed_set_stat
     struct delayed_set_stat *next;
 
     /* Metadata for this directory.  */
+    bool metadata_set;
     dev_t st_dev;
     ino_t st_ino;
     mode_t mode; /* The desired mode is MODE & ~ current_umask.  */
@@ -111,10 +94,6 @@ struct delayed_set_stat
        directory.  */
     int atflag;
 
-    /* Do not set the status of this directory until after delayed
-       links are created.  */
-    bool after_links;
-
     /* Directory that the name is relative to.  */
     idx_t change_dir;
 
@@ -135,90 +114,6 @@ static struct delayed_set_stat *delayed_set_stat_head;
 /* Table of delayed stat updates hashed by path; null if none.  */
 static Hash_table *delayed_set_stat_table;
 
-/* A link whose creation we have delayed.  */
-struct delayed_link
-  {
-    /* The next in a list of delayed links that should be made after
-       this delayed link.  */
-    struct delayed_link *next;
-
-    /* The device, inode number and birthtime of the placeholder.
-       birthtime.tv_nsec is negative if the birthtime is not available.
-       Don't use mtime as this would allow for false matches if some
-       other process removes the placeholder.  Don't use ctime as
-       this would cause race conditions and other screwups, e.g.,
-       when restoring hard-linked symlinks.  */
-    dev_t st_dev;
-    ino_t st_ino;
-#if HAVE_BIRTHTIME
-    struct timespec birthtime;
-#endif
-
-    /* True if the link is symbolic.  */
-    bool is_symlink;
-
-    /* The desired metadata, valid only the link is symbolic.  */
-    mode_t mode;
-    uid_t uid;
-    gid_t gid;
-    struct timespec atime;
-    struct timespec mtime;
-
-    /* The directory that the sources and target are relative to.  */
-    idx_t change_dir;
-
-    /* A list of sources for this link.  The sources are all to be
-       hard-linked together.  */
-    struct string_list *sources;
-
-    /* SELinux context */
-    char *cntx_name;
-
-    /* ACLs */
-    char *acls_a_ptr;
-    idx_t acls_a_len;
-    char *acls_d_ptr;
-    idx_t acls_d_len;
-
-    struct xattr_map xattr_map;
-
-    /* The desired target of the desired link.  */
-    char target[FLEXIBLE_ARRAY_MEMBER];
-  };
-
-/* Table of delayed links hashed by device and inode; null if none.  */
-static Hash_table *delayed_link_table;
-
-/* A list of the delayed links in tar file order,
-   and the tail of that list.  */
-static struct delayed_link *delayed_link_head;
-static struct delayed_link **delayed_link_tail = &delayed_link_head;
-
-struct string_list
-  {
-    struct string_list *next;
-    char string[FLEXIBLE_ARRAY_MEMBER];
-  };
-
-static size_t
-dl_hash (void const *entry, size_t table_size)
-{
-  struct delayed_link const *dl = entry;
-  uintmax_t n = dl->st_dev;
-  int nshift = TYPE_WIDTH (n) - TYPE_WIDTH (dl->st_dev);
-  if (0 < nshift)
-    n <<= nshift;
-  n ^= dl->st_ino;
-  return n % table_size;
-}
-
-static bool
-dl_compare (void const *a, void const *b)
-{
-  struct delayed_link const *da = a, *db = b;
-  return PSAME_INODE (da, db);
-}
-
 static size_t
 ds_hash (void const *entry, size_t table_size)
 {
@@ -230,7 +125,7 @@ static bool
 ds_compare (void const *a, void const *b)
 {
   struct delayed_set_stat const *dsa = a, *dsb = b;
-  return strcmp (dsa->file_name, dsb->file_name) == 0;
+  return streq (dsa->file_name, dsb->file_name);
 }
 
 /*  Set up to extract files.  */
@@ -265,7 +160,8 @@ fd_i_chmod (int fd, char const *file, mode_t mode, int atflag)
       if (result == 0 || implemented (errno))
 	return result;
     }
-  return fchmodat (chdir_fd, file, mode, atflag);
+  struct fdbase f = fdbase (file);
+  return f.fd == BADFD ? -1 : fchmodat (f.fd, f.base, mode, atflag);
 }
 
 /* A version of fd_i_chmod which gracefully handles several common error
@@ -314,16 +210,18 @@ fd_chown (int fd, char const *file, uid_t uid, gid_t gid, int atflag)
       if (result == 0 || implemented (errno))
 	return result;
     }
-  return fchownat (chdir_fd, file, uid, gid, atflag);
+  struct fdbase f = fdbase (file);
+  return f.fd == BADFD ? -1 : fchownat (f.fd, f.base, uid, gid, atflag);
 }
 
 /* Use fstat if possible, fstatat otherwise.  */
 static int
 fd_stat (int fd, char const *file, struct stat *st, int atflag)
 {
-  return (0 <= fd
-	  ? fstat (fd, st)
-	  : fstatat (chdir_fd, file, st, atflag));
+  if (0 <= fd)
+    return fstat (fd, st);
+  struct fdbase f = fdbase (file);
+  return f.fd == BADFD ? -1 : fstatat (f.fd, f.base, st, atflag);
 }
 
 /* Set the mode for FILE_NAME to MODE.
@@ -420,7 +318,15 @@ set_stat (char const *file_name,
 	ts[0].tv_nsec = UTIME_OMIT;
       ts[1] = st->mtime;
 
-      if (fdutimensat (fd, chdir_fd, file_name, ts, atflag) == 0)
+      int r;
+      if (0 <= fd)
+	r = futimens (fd, ts);
+      if (fd < 0 || (r < 0 && errno == ENOSYS))
+	{
+	  struct fdbase f = fdbase (file_name);
+	  r = f.fd == BADFD ? -1 : utimensat (f.fd, f.base, ts, atflag);
+	}
+      if (r == 0)
 	{
 	  if (incremental_option)
 	    check_time (file_name, ts[0]);
@@ -463,27 +369,8 @@ set_stat (char const *file_name,
   xattrs_selinux_set (st, file_name, typeflag);
 }
 
-/* Find the direct ancestor of FILE_NAME in the delayed_set_stat list.
- */
-static struct delayed_set_stat *
-find_direct_ancestor (char const *file_name)
-{
-  struct delayed_set_stat *h = delayed_set_stat_head;
-  while (h)
-    {
-      if (! h->after_links
-	  && strncmp (file_name, h->file_name, h->file_name_len) == 0
-	  && ISSLASH (file_name[h->file_name_len])
-	  && (last_component (file_name) == file_name + h->file_name_len + 1))
-	break;
-      h = h->next;
-    }
-  return h;
-}
-
-/* For each entry H in the leading prefix of entries in HEAD that do
-   not have after_links marked, mark H and fill in its dev and ino
-   members.  Assume HEAD && ! HEAD->after_links.  */
+/* For each entry H in the entries in HEAD, mark H and fill in its dev
+   and ino members.  Assume HEAD.  */
 static void
 mark_after_links (struct delayed_set_stat *head)
 {
@@ -492,7 +379,7 @@ mark_after_links (struct delayed_set_stat *head)
   do
     {
       struct stat st;
-      h->after_links = 1;
+      h->metadata_set = true;
 
       if (deref_stat (h->file_name, &st) < 0)
 	stat_error (h->file_name);
@@ -502,7 +389,7 @@ mark_after_links (struct delayed_set_stat *head)
 	  h->st_ino = st.st_ino;
 	}
     }
-  while ((h = h->next) && ! h->after_links);
+  while ((h = h->next) && ! h->metadata_set);
 }
 
 /* Remember to restore stat attributes (owner, group, mode and times)
@@ -545,9 +432,9 @@ delay_set_stat (char const *file_name, struct tar_stat_info const *st,
       if (data->interdir)
 	{
 	  struct stat real_st;
-	  if (fstatat (chdir_fd, data->file_name,
-		       &real_st, data->atflag)
-	      < 0)
+	  struct fdbase f = fdbase (data->file_name);
+	  if (f.fd == BADFD
+	      || fstatat (f.fd, f.base, &real_st, data->atflag) < 0)
 	    {
 	      stat_error (data->file_name);
 	    }
@@ -567,7 +454,7 @@ delay_set_stat (char const *file_name, struct tar_stat_info const *st,
       data->file_name = xstrdup (file_name);
       if (! hash_insert (delayed_set_stat_table, data))
 	xalloc_die ();
-      data->after_links = false;
+      data->metadata_set = false;
       if (st)
 	{
 	  data->st_dev = st->stat.st_dev;
@@ -659,7 +546,8 @@ repair_delayed_set_stat (char const *dir,
   for (data = delayed_set_stat_head; data; data = data->next)
     {
       struct stat st;
-      if (fstatat (chdir_fd, data->file_name, &st, data->atflag) < 0)
+      struct fdbase f = fdbase (data->file_name);
+      if (f.fd == BADFD || fstatat (f.fd, f.base, &st, data->atflag) < 0)
 	{
 	  stat_error (data->file_name);
 	  return;
@@ -704,7 +592,7 @@ remove_delayed_set_stat (const char *fname)
     {
       next = data->next;
       if (chdir_current == data->change_dir
-	  && strcmp (data->file_name, fname) == 0)
+	  && streq (data->file_name, fname))
 	{
 	  hash_remove (delayed_set_stat_table, data);
 	  free_delayed_set_stat (data);
@@ -726,7 +614,7 @@ fixup_delayed_set_stat (char const *src, char const *dst)
   for (data = delayed_set_stat_head; data; data = data->next)
     {
       if (chdir_current == data->change_dir
-	  && strcmp (data->file_name, src) == 0)
+	  && streq (data->file_name, src))
 	{
 	  free (data->file_name);
 	  data->file_name = xstrdup (dst);
@@ -773,7 +661,8 @@ make_directories (char *file_name, bool *interdir_made)
       *cursor = '\0';		/* truncate the name there */
       desired_mode = MODE_RWX & ~ newdir_umask;
       mode = desired_mode | (we_are_root ? 0 : MODE_WXUSR);
-      status = mkdirat (chdir_fd, file_name, mode);
+      struct fdbase f = fdbase (file_name);
+      status = f.fd == BADFD ? -1 : mkdirat (f.fd, f.base, mode);
 
       if (status == 0)
 	{
@@ -816,7 +705,8 @@ make_directories (char *file_name, bool *interdir_made)
      process may have created it, so check whether it exists now.  */
   *parent_end = '\0';
   struct stat st;
-  int stat_status = fstatat (chdir_fd, file_name, &st, 0);
+  struct fdbase f = fdbase (file_name);
+  int stat_status = f.fd == BADFD ? -1 : fstatat (f.fd, f.base, &st, 0);
   if (! (stat_status < 0 || S_ISDIR (st.st_mode)))
     stat_status = -1;
   if (stat_status < 0)
@@ -972,7 +862,8 @@ set_xattr (MAYBE_UNUSED char const *file_name,
 #ifdef HAVE_XATTRS
   if (xattrs_option && st->xattr_map.xm_size)
     {
-      int r = mknodat (chdir_fd, file_name, mode | S_IFREG, 0);
+      struct fdbase f = fdbase (file_name);
+      int r = f.fd == BADFD ? -1 : mknodat (f.fd, f.base, mode | S_IFREG, 0);
       if (r < 0)
 	return r;
       xattrs_xattrs_set (st, file_name, typeflag, false);
@@ -984,12 +875,11 @@ set_xattr (MAYBE_UNUSED char const *file_name,
 }
 
 /* Fix the statuses of all directories whose statuses need fixing, and
-   which are not ancestors of FILE_NAME.  If AFTER_LINKS is
-   nonzero, do this for all such directories; otherwise, stop at the
-   first directory that is marked to be fixed up only after delayed
-   links are applied.  */
+   which are not ancestors of FILE_NAME.  If METADATA_SET,
+   do this for all such directories; otherwise, stop at the
+   first directory with metadata already determined.  */
 static void
-apply_nonancestor_delayed_set_stat (char const *file_name, bool after_links)
+apply_nonancestor_delayed_set_stat (char const *file_name, bool metadata_set)
 {
   idx_t file_name_len = strlen (file_name);
   bool check_for_renamed_directories = 0;
@@ -1002,21 +892,22 @@ apply_nonancestor_delayed_set_stat (char const *file_name, bool after_links)
       mode_t current_mode = data->current_mode;
       mode_t current_mode_mask = data->current_mode_mask;
 
-      check_for_renamed_directories |= data->after_links;
+      check_for_renamed_directories |= data->metadata_set;
 
-      if (after_links < data->after_links
+      if (metadata_set < data->metadata_set
 	  || (data->file_name_len < file_name_len
 	      && file_name[data->file_name_len]
 	      && (ISSLASH (file_name[data->file_name_len])
 		  || ISSLASH (file_name[data->file_name_len - 1]))
-	      && memcmp (file_name, data->file_name, data->file_name_len) == 0))
+	      && memeq (file_name, data->file_name, data->file_name_len)))
 	break;
 
       chdir_do (data->change_dir);
 
       if (check_for_renamed_directories)
 	{
-	  if (fstatat (chdir_fd, data->file_name, &st, data->atflag) < 0)
+	  struct fdbase f = fdbase (data->file_name);
+	  if (f.fd == BADFD || fstatat (f.fd, f.base, &st, data->atflag) < 0)
 	    {
 	      stat_error (data->file_name);
 	      skip_this_one = 1;
@@ -1065,9 +956,9 @@ apply_nonancestor_delayed_set_stat (char const *file_name, bool after_links)
 static bool
 is_directory_link (char const *file_name, struct stat *st)
 {
-  char buf[1];
-  return (0 <= readlinkat (chdir_fd, file_name, buf, sizeof buf)
-	  && fstatat (chdir_fd, file_name, st, 0) == 0
+  struct fdbase f = fdbase (file_name);
+  return (f.fd != BADFD && issymlinkat (f.fd, f.base)
+	  && fstatat (f.fd, f.base, st, 0) == 0
 	  && S_ISDIR (st->st_mode));
 }
 
@@ -1106,12 +997,14 @@ extract_dir (char *file_name, char typeflag)
   /* Save 'root device' to avoid purging mount points. */
   if (one_file_system_option && root_device == 0)
     {
-      struct stat st;
-
-      if (fstatat (chdir_fd, ".", &st, 0) < 0)
-	stat_diag (".");
+      struct chdir_id id = chdir_id ();
+      if (id.err)
+	{
+	  errno = id.err;
+	  stat_diag (".");
+	}
       else
-	root_device = st.st_dev;
+	root_device = id.st_dev;
     }
 
   if (incremental_option)
@@ -1124,7 +1017,8 @@ extract_dir (char *file_name, char typeflag)
 
   for (;;)
     {
-      status = mkdirat (chdir_fd, file_name, mode);
+      struct fdbase f = fdbase (file_name);
+      status = f.fd == BADFD ? -1 : mkdirat (f.fd, f.base, mode);
       if (status == 0)
 	{
 	  current_mode = mode & ~ current_umask;
@@ -1233,21 +1127,20 @@ open_output_file (char const *file_name, char typeflag, mode_t mode,
 	}
     }
 
+  struct fdbase f = fdbase (file_name);
+
   /* If O_NOFOLLOW is needed but does not work, check for a symlink
      separately.  There's a race condition, but that cannot be avoided
      on hosts lacking O_NOFOLLOW.  */
   if (! HAVE_WORKING_O_NOFOLLOW
-      && overwriting_old_files && ! dereference_option)
+      && overwriting_old_files && ! dereference_option
+      && f.fd != BADFD && issymlinkat (f.fd, f.base))
     {
-      char buf[1];
-      if (0 <= readlinkat (chdir_fd, file_name, buf, sizeof buf))
-	{
-	  errno = ELOOP;
-	  return -1;
-	}
+      errno = ELOOP;
+      return -1;
     }
 
-  fd = openat (chdir_fd, file_name, openflag, mode);
+  fd = f.fd == BADFD ? -1 : openat (f.fd, f.base, openflag, mode);
   if (0 <= fd)
     {
       if (openflag & O_EXCL)
@@ -1394,134 +1287,6 @@ extract_file (char *file_name, char typeflag)
   return status == 0;
 }
 
-/* Return true if NAME is a delayed link.  This can happen only if the link
-   placeholder file has been created. Therefore, try to stat the NAME
-   first. If it doesn't exist, there is no matching entry in the table.
-   Otherwise, look for the entry in the table that has the matching dev
-   and ino numbers.  Return false if not found.
-
-   Do not rely on comparing file names, which may differ for
-   various reasons (e.g. relative vs. absolute file names).
- */
-static bool
-find_delayed_link_source (char const *name)
-{
-  struct stat st;
-
-  if (!delayed_link_table)
-    return false;
-
-  if (fstatat (chdir_fd, name, &st, AT_SYMLINK_NOFOLLOW) < 0)
-    {
-      if (errno != ENOENT)
-	stat_error (name);
-      return false;
-    }
-
-  struct delayed_link dl;
-  dl.st_dev = st.st_dev;
-  dl.st_ino = st.st_ino;
-  return hash_lookup (delayed_link_table, &dl) != NULL;
-}
-
-/* Create a placeholder file with name FILE_NAME, which will be
-   replaced after other extraction is done by a symbolic link if
-   IS_SYMLINK is true, and by a hard link otherwise.  Set
-   *INTERDIR_MADE if an intermediate directory is made in the
-   process.
-*/
-
-static bool
-create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made)
-{
-  int fd;
-  struct stat st;
-
-  while ((fd = openat (chdir_fd, file_name, O_WRONLY | O_CREAT | O_EXCL, 0)) < 0)
-    {
-      if (errno == EEXIST && find_delayed_link_source (file_name))
-	{
-	  /* The placeholder file has already been created.  This means
-	     that the link being extracted is a duplicate of an already
-	     processed one.  Skip it.
-	   */
-	  return true;
-	}
-
-      switch (maybe_recoverable (file_name, false, interdir_made))
-	{
-	case RECOVER_OK:
-	  continue;
-
-	case RECOVER_SKIP:
-	  return true;
-
-	case RECOVER_NO:
-	  open_error (file_name);
-	  return false;
-	}
-      }
-
-  if (fstat (fd, &st) < 0)
-    {
-      stat_error (file_name);
-      close (fd);
-    }
-  else if (close (fd) < 0)
-    close_error (file_name);
-  else
-    {
-      struct delayed_set_stat *h;
-      struct delayed_link *p =
-	xmalloc (FLEXNSIZEOF (struct delayed_link, target,
-			      strlen (current_stat_info.link_name) + 1));
-      p->next = NULL;
-      p->st_dev = st.st_dev;
-      p->st_ino = st.st_ino;
-#if HAVE_BIRTHTIME
-      p->birthtime = get_stat_birthtime (&st);
-#endif
-      p->is_symlink = is_symlink;
-      if (is_symlink)
-	{
-	  p->mode = current_stat_info.stat.st_mode;
-	  p->uid = current_stat_info.stat.st_uid;
-	  p->gid = current_stat_info.stat.st_gid;
-	  p->atime = current_stat_info.atime;
-	  p->mtime = current_stat_info.mtime;
-	}
-      p->change_dir = chdir_current;
-      p->sources = xmalloc (FLEXNSIZEOF (struct string_list, string,
-					 strlen (file_name) + 1));
-      p->sources->next = 0;
-      strcpy (p->sources->string, file_name);
-      p->cntx_name = NULL;
-      assign_string_or_null (&p->cntx_name, current_stat_info.cntx_name);
-      p->acls_a_ptr = NULL;
-      p->acls_a_len = 0;
-      p->acls_d_ptr = NULL;
-      p->acls_d_len = 0;
-      xattr_map_init (&p->xattr_map);
-      xattr_map_copy (&p->xattr_map, &current_stat_info.xattr_map);
-      strcpy (p->target, current_stat_info.link_name);
-
-      *delayed_link_tail = p;
-      delayed_link_tail = &p->next;
-      if (! ((delayed_link_table
-	      || (delayed_link_table = hash_initialize (0, 0, dl_hash,
-							dl_compare, free)))
-	     && hash_insert (delayed_link_table, p)))
-	xalloc_die ();
-
-      if ((h = find_direct_ancestor (file_name)) != NULL)
-	mark_after_links (h);
-
-      return true;
-    }
-
-  return false;
-}
-
 static bool
 extract_link (char *file_name, MAYBE_UNUSED char typeflag)
 {
@@ -1531,48 +1296,31 @@ extract_link (char *file_name, MAYBE_UNUSED char typeflag)
 
   link_name = current_stat_info.link_name;
 
-  if ((! absolute_names_option && contains_dot_dot (link_name))
-      || find_delayed_link_source (link_name))
-    return create_placeholder_file (file_name, false, &interdir_made);
-
   do
     {
-      struct stat st1, st2;
-      int e;
-      int status = linkat (chdir_fd, link_name, chdir_fd, file_name, 0);
-      e = errno;
+      struct stat st, st1;
+      int status;
+
+      struct fdbase f = fdbase (file_name), f1;
+      if (f.fd == BADFD)
+	status = -1;
+      else
+	{
+	  f1 = fdbase1 (link_name);
+	  status = (f1.fd == BADFD ? -1
+		    : linkat (f1.fd, f1.base, f.fd, f.base, 0));
+	}
 
       if (status == 0)
-	{
-	  if (delayed_link_table
-	      && fstatat (chdir_fd, link_name, &st1, AT_SYMLINK_NOFOLLOW) == 0)
-	    {
-	      struct delayed_link dl1;
-	      dl1.st_ino = st1.st_ino;
-	      dl1.st_dev = st1.st_dev;
-	      struct delayed_link *ds = hash_lookup (delayed_link_table, &dl1);
-	      if (ds && ds->change_dir == chdir_current
-		  && BIRTHTIME_EQ (ds->birthtime, get_stat_birthtime (&st1)))
-		{
-		  struct string_list *p
-		    = xmalloc (FLEXNSIZEOF (struct string_list,
-					    string, strlen (file_name) + 1));
-		  strcpy (p->string, file_name);
-		  p->next = ds->sources;
-		  ds->sources = p;
-		}
-	    }
-
-	  return true;
-	}
-      else if ((e == EEXIST && strcmp (link_name, file_name) == 0)
-	       || ((fstatat (chdir_fd, link_name, &st1, AT_SYMLINK_NOFOLLOW)
-		    == 0)
-		   && (fstatat (chdir_fd, file_name, &st2, AT_SYMLINK_NOFOLLOW)
-		       == 0)
-		   && psame_inode (&st1, &st2)))
 	return true;
 
+      int e = errno;
+      if ((e == EEXIST && streq (link_name, file_name))
+	  || (f.fd != BADFD && f1.fd != BADFD
+	      && fstatat (f1.fd, f1.base, &st1, AT_SYMLINK_NOFOLLOW) == 0
+	      && fstatat (f.fd, f.base, &st, AT_SYMLINK_NOFOLLOW) == 0
+	      && psame_inode (&st1, &st)))
+	return true;
       errno = e;
     }
   while ((rc = maybe_recoverable (file_name, false, &interdir_made))
@@ -1593,12 +1341,10 @@ extract_symlink (char *file_name, MAYBE_UNUSED char typeflag)
 {
   bool interdir_made = false;
 
-  if (! absolute_names_option
-      && (IS_ABSOLUTE_FILE_NAME (current_stat_info.link_name)
-	  || contains_dot_dot (current_stat_info.link_name)))
-    return create_placeholder_file (file_name, true, &interdir_made);
-
-  while (symlinkat (current_stat_info.link_name, chdir_fd, file_name) < 0)
+  for (struct fdbase f;
+       ((f = fdbase (file_name)).fd == BADFD
+	|| symlinkat (current_stat_info.link_name, f.fd, f.base) < 0);
+       )
     switch (maybe_recoverable (file_name, false, &interdir_made))
       {
       case RECOVER_OK:
@@ -1637,8 +1383,10 @@ extract_node (char *file_name, char typeflag)
   mode_t mode = (current_stat_info.stat.st_mode & (MODE_RWX | S_IFBLK | S_IFCHR)
 		 & ~ (0 < same_owner_option ? S_IRWXG | S_IRWXO : 0));
 
-  while (mknodat (chdir_fd, file_name, mode, current_stat_info.stat.st_rdev)
-	 < 0)
+  for (struct fdbase f;
+       ((f = fdbase (file_name)).fd == BADFD
+	|| mknodat (f.fd, f.base, mode, current_stat_info.stat.st_rdev) < 0);
+       )
     switch (maybe_recoverable (file_name, false, &interdir_made))
       {
       case RECOVER_OK:
@@ -1667,7 +1415,10 @@ extract_fifo (char *file_name, char typeflag)
   mode_t mode = (current_stat_info.stat.st_mode & MODE_RWX
 		 & ~ (0 < same_owner_option ? S_IRWXG | S_IRWXO : 0));
 
-  while (mkfifoat (chdir_fd, file_name, mode) < 0)
+  for (struct fdbase f;
+       ((f = fdbase (file_name)).fd == BADFD
+	|| mkfifoat (f.fd, f.base, mode) < 0);
+       )
     switch (maybe_recoverable (file_name, false, &interdir_made))
       {
       case RECOVER_OK:
@@ -1813,20 +1564,12 @@ void
 extract_archive (void)
 {
   char typeflag;
-  bool skip_dotdot_name;
 
   fatal_exit_hook = extract_finish;
 
   set_next_block_after (current_header);
 
-  skip_dotdot_name = (!absolute_names_option
-		      && contains_dot_dot (current_stat_info.orig_file_name));
-  if (skip_dotdot_name)
-    paxerror (0, _("%s: Member name contains '..'"),
-	      quotearg_colon (current_stat_info.orig_file_name));
-
   if (!current_stat_info.file_name[0]
-      || skip_dotdot_name
       || (interactive_option
 	  && !confirm ("extract", current_stat_info.file_name)))
     {
@@ -1878,110 +1621,11 @@ extract_archive (void)
     undo_last_backup ();
 }
 
-/* Extract the link DS whose final extraction was delayed.  */
-static void
-apply_delayed_link (struct delayed_link *ds)
-{
-  struct string_list *sources = ds->sources;
-  char const *valid_source = 0;
-
-  chdir_do (ds->change_dir);
-
-  for (sources = ds->sources; sources; sources = sources->next)
-    {
-      char const *source = sources->string;
-      struct stat st;
-
-      /* Make sure the placeholder file is still there.  If not,
-	 don't create a link, as the placeholder was probably
-	 removed by a later extraction.  */
-      if (fstatat (chdir_fd, source, &st, AT_SYMLINK_NOFOLLOW) == 0
-	  && SAME_INODE (st, *ds)
-	  && BIRTHTIME_EQ (get_stat_birthtime (&st), ds->birthtime))
-	{
-	  /* Unlink the placeholder, then create a hard link if possible,
-	     a symbolic link otherwise.  */
-	  if (unlinkat (chdir_fd, source, 0) < 0)
-	    unlink_error (source);
-	  else if (valid_source
-		   && (linkat (chdir_fd, valid_source, chdir_fd, source, 0)
-		       == 0))
-	    ;
-	  else if (!ds->is_symlink)
-	    {
-	      if (linkat (chdir_fd, ds->target, chdir_fd, source, 0) < 0)
-		link_error (ds->target, source);
-	    }
-	  else if (symlinkat (ds->target, chdir_fd, source) < 0)
-	    symlink_error (ds->target, source);
-	  else
-	    {
-	      struct tar_stat_info st1;
-	      st1.stat.st_mode = ds->mode;
-	      st1.stat.st_uid = ds->uid;
-	      st1.stat.st_gid = ds->gid;
-	      st1.atime = ds->atime;
-	      st1.mtime = ds->mtime;
-	      st1.cntx_name = ds->cntx_name;
-	      st1.acls_a_ptr = ds->acls_a_ptr;
-	      st1.acls_a_len = ds->acls_a_len;
-	      st1.acls_d_ptr = ds->acls_d_ptr;
-	      st1.acls_d_len = ds->acls_d_len;
-	      st1.xattr_map = ds->xattr_map;
-	      set_stat (source, &st1, -1, 0, 0, SYMTYPE,
-			false, AT_SYMLINK_NOFOLLOW);
-	      valid_source = source;
-	    }
-	}
-    }
-
-  /* There is little point to freeing, as we are about to exit,
-     and freeing is more likely to cause than cure trouble.  */
-  if (false)
-    {
-      for (sources = ds->sources; sources; )
-	{
-	  struct string_list *next = sources->next;
-	  free (sources);
-	  sources = next;
-	}
-
-      xattr_map_free (&ds->xattr_map);
-      free (ds->cntx_name);
-    }
-}
-
-/* Extract the links whose final extraction were delayed.  */
-static void
-apply_delayed_links (void)
-{
-  for (struct delayed_link *ds = delayed_link_head; ds; ds = ds->next)
-    apply_delayed_link (ds);
-
-  if (false && delayed_link_table)
-    {
-      /* There is little point to freeing, as we are about to exit,
-	 and freeing is more likely to cause than cure trouble.
-	 Also, the above code has not bothered to free the list
-	 in delayed_link_head.  */
-      hash_free (delayed_link_table);
-      delayed_link_table = NULL;
-    }
-}
-
 /* Finish the extraction of an archive.  */
 void
 extract_finish (void)
 {
-  /* First, fix the status of ordinary directories that need fixing.  */
-  apply_nonancestor_delayed_set_stat ("", false);
-
-  /* Then, apply delayed links, so that they don't affect delayed
-     directory status-setting for ordinary directories.  */
-  apply_delayed_links ();
-
-  /* Finally, fix the status of directories that are ancestors
-     of delayed links.  */
+  /* Fix the status of ordinary directories that need fixing.  */
   apply_nonancestor_delayed_set_stat ("", true);
 
   /* This table should be empty after apply_nonancestor_delayed_set_stat.  */
@@ -1997,9 +1641,14 @@ extract_finish (void)
 bool
 rename_directory (char *src, char *dst)
 {
-  if (renameat (chdir_fd, src, chdir_fd, dst) == 0)
-    fixup_delayed_set_stat (src, dst);
-  else
+  struct fdbase f1 = fdbase1 (src);
+  struct fdbase f = f1.fd == BADFD ? f1 : fdbase (dst);
+  if (f.fd != BADFD && renameat (f1.fd, f1.base, f.fd, f.base) == 0)
+    {
+      fdbase_clear ();
+      fixup_delayed_set_stat (src, dst);
+    }
+  else if (f1.fd != BADFD)
     {
       int e = errno;
 
@@ -2008,8 +1657,13 @@ rename_directory (char *src, char *dst)
 	case ENOENT:
 	  if (make_directories (dst, NULL) == 0)
 	    {
-	      if (renameat (chdir_fd, src, chdir_fd, dst) == 0)
-		return true;
+	      f = fdbase (dst);
+	      if (f.fd != BADFD
+		  && renameat (f1.fd, f1.base, f.fd, f.base) == 0)
+		{
+		  fdbase_clear ();
+		  return true;
+		}
 	      e = errno;
 	    }
 	  break;

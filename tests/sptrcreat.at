@@ -23,7 +23,7 @@
 #
 # The bug has been assigned id CVE-2018-20482 (on the grounds that it is a
 # denial of service possibility).
-# 
+#
 # Reported by: Chris Siebenmann <cks.gnutar-01@cs.toronto.edu>
 # References: <20181226223948.781EB32008E@apps1.cs.toronto.edu>,
 #   <http://lists.gnu.org/archive/html/bug-tar/2018-12/msg00023.html>

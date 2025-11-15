@@ -542,7 +542,7 @@ read_header (union block **return_block, struct tar_stat_info *info,
                  section 10.1.1.  */
 	      char *np = namebuf;
 
-	      if (h->prefix[0] && memcmp (h->magic, TMAGIC, sizeof TMAGIC) == 0)
+	      if (h->prefix[0] && memeq (h->magic, TMAGIC, sizeof TMAGIC))
 		{
 		  memcpy (np, h->prefix, sizeof h->prefix);
 		  np[sizeof h->prefix] = '\0';
@@ -613,7 +613,7 @@ decode_header (union block *header, struct tar_stat_info *stat_info,
   bool hbits;
   mode_t mode = MODE_FROM_HEADER (header->header.mode, &hbits);
 
-  if (memcmp (header->header.magic, TMAGIC, sizeof TMAGIC) == 0)
+  if (memeq (header->header.magic, TMAGIC, sizeof TMAGIC))
     {
       if (header->star_header.prefix[130] == 0
 	  && is_octal_digit (header->star_header.atime[0])
@@ -626,9 +626,8 @@ decode_header (union block *header, struct tar_stat_info *stat_info,
       else
 	format = USTAR_FORMAT;
     }
-  else if (memcmp (header->buffer + offsetof (struct posix_header, magic),
-		   OLDGNU_MAGIC, sizeof OLDGNU_MAGIC)
-	   == 0)
+  else if (memeq (header->buffer + offsetof (struct posix_header, magic),
+		  OLDGNU_MAGIC, sizeof OLDGNU_MAGIC))
     format = hbits ? OLDGNU_FORMAT : GNU_FORMAT;
   else
     format = V7_FORMAT;

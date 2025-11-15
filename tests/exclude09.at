@@ -33,7 +33,7 @@
 # References: <20120528140419.GT2654@shire.ontko.com>,
 #   <20130311210006.GA3732@shire.ontko.com>,
 #   http://lists.gnu.org/archive/html/bug-tar/2012-06/msg00013.html
- 
+
 AT_SETUP([--exclude-tag option and --listed-incremental])
 AT_KEYWORDS([exclude exclude-tag listed incremental exclude09])
 
@@ -54,4 +54,3 @@ tar: etest/subdir: contains a cache directory tag excludeme; contents not dumped
 ],[],[],[gnu])
 
 AT_CLEANUP
-

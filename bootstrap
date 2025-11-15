@@ -37,7 +37,7 @@ medir=`dirname "$me"`
 
 # A library of shell functions for autopull.sh, autogen.sh, and bootstrap.
 
-scriptlibversion=2025-06-10.02; # UTC
+scriptlibversion=2025-11-12.14; # UTC
 
 # Copyright (C) 2003-2025 Free Software Foundation, Inc.
 #
@@ -72,7 +72,7 @@ export LC_ALL
 # Honor $PERL, but work even if there is none.
 PERL="${PERL-perl}"
 
-default_gnulib_url=https://git.savannah.gnu.org/git/gnulib.git
+default_gnulib_url=https://https.git.savannah.gnu.org/git/gnulib.git
 
 # Copyright year, for the --version output.
 copyright_year=`echo "$scriptlibversion" | sed -e 's/[^0-9].*//'`
@@ -861,7 +861,7 @@ autopull()
     elif check_exists git-merge-changelog; then
       echo "$0: initializing git-merge-changelog driver"
       git config merge.merge-changelog.name 'GNU-style ChangeLog merge driver'
-      git config merge.merge-changelog.driver 'git-merge-changelog %O %A %B'
+      git config merge.merge-changelog.driver 'git-merge-changelog %O %A %B "%Y"'
     else
       echo "$0: consider installing git-merge-changelog from gnulib"
     fi
