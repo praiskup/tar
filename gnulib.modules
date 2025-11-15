@@ -49,7 +49,6 @@ file-has-acl
 fileblocks
 flexmember
 fnmatch-gnu
-fprintftime
 free-posix
 fseeko
 fstatat
