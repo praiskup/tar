@@ -40,8 +40,12 @@ tar -cf a.tar -C dira sub sym
 tar -cf b.tar -C dirb sym/file1 sub/sym/file2
 tar -xf a.tar -C ext
 echo status1=$?
-tar -xf b.tar -C ext
+tar -xf b.tar -C ext 2>b.err
 echo status2=$?
+
+# Solaris 10 says just "Cross-device link".
+sed 's/: Cross-device link/: Invalid cross-device link/' b.err >&2
+
 diff victimdir victimexp
 ],
 [],
