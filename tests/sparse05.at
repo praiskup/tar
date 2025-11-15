@@ -34,7 +34,10 @@ AT_DATA([mapfile],
 [0 =2560
 m4_for([i], 1, 999, 1, [10M =2560
 ])])
-genfile --sparse --file BIGFILE --block-size 4K - < mapfile || AT_SKIP_TEST
+genfile --sparse --file BIGFILE --block-size 4K - < mapfile || {
+  rm -f BIGFILE
+  AT_SKIP_TEST
+}
 tar -f - -c --sparse --posix BIGFILE | tar tvf - | awk '{ print $3, $(NF) }'
 ],
 [0],
