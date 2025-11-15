@@ -1294,7 +1294,7 @@ namelist_match_from (struct name *p, char const *file_name, bool exact)
   return NULL;
 }
 
-static COMMON_INLINE struct name *
+static struct name *
 namelist_match (char const *file_name, bool exact)
 {
   return namelist_match_from (namelist, file_name, exact);
@@ -1317,7 +1317,7 @@ remname (struct name *name)
 }
 
 /* Update CURSOR to remember that it matched FILE_NAME. */
-static COMMON_INLINE void
+static void
 register_match (struct name *cursor, const char *file_name)
 {
   if (!(ISSLASH (file_name[cursor->length]) && recursion_option)
