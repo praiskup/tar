@@ -683,7 +683,15 @@ intmax (intmax_t n)
 }
 /* intmax should be used only with signed types.
    To bypass this check parenthesize the function, e.g., (intmax) (n).  */
-#define intmax(n) verify_expr (EXPR_SIGNED (n), (intmax) (n))
+#if 201112 <= __STDC_VERSION__ && !_GL__GENERIC_BOGUS
+# define intmax(n) \
+    verify_expr (_Generic (n, \
+			   unsigned char: 0, unsigned short int: 0, \
+			   unsigned int: 0, unsigned long int: 0, \
+			   unsigned long long int: 0, \
+			   default: 1), \
+		 (intmax) (n))
+#endif
 
 /* Represent N using a signed integer I such that (uintmax_t) I == N.
    With a good optimizing compiler, this is equivalent to (intmax_t) i
