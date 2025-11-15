@@ -136,6 +136,8 @@ bool delay_directory_restore_option;
 #include <priv-set.h>
 #include <savedir.h>
 
+#include <stdcountof.h>
+
 /* Local declarations.  */
 
 #ifndef DEFAULT_ARCHIVE_FORMAT
@@ -1106,12 +1108,11 @@ decode_signal (const char *name)
     { "INT", SIGINT },
     { "QUIT", SIGQUIT }
   };
-  enum { nsigtab = sizeof sigtab / sizeof *sigtab };
   char const *s = name;
 
   if (strncmp (s, "SIG", 3) == 0)
     s += 3;
-  for (struct sigtab const *p = sigtab; p < sigtab + nsigtab; p++)
+  for (struct sigtab const *p = sigtab; p < sigtab + countof (sigtab); p++)
     if (streq (p->name, s))
       return p->signo;
   paxfatal (0, _("Unknown signal name: %s"), name);

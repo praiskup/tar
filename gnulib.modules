@@ -102,6 +102,7 @@ selinux-at
 setenv
 stat-time
 std-gnu23
+stdcountof-h
 stddef-h
 stdint-h
 stpcpy
