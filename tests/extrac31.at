@@ -43,8 +43,12 @@ echo status1=$?
 tar -xf b.tar -C ext 2>b.err
 echo status2=$?
 
+# FreeBSD 15 says "Capabilities insufficient".
 # Solaris 10 says just "Cross-device link".
-sed 's/: Cross-device link/: Invalid cross-device link/' b.err >&2
+sed '
+  s/: Capabilities insufficient$/: Invalid cross-device link/
+  s/: Cross-device link$/: Invalid cross-device link/
+' b.err >&2
 
 diff victimdir victimexp
 ],
