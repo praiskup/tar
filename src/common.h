@@ -501,7 +501,7 @@ COMMON_INLINE intmax_t
 add_printf (intmax_t a, intmax_t b)
 {
   intmax_t sum;
-  return (a < 0) | (b < 0) | ckd_add (&sum, a, b) ? -1 : sum;
+  return ((a < 0) | (b < 0) | ckd_add (&sum, a, b)) ? -1 : sum;
 }
 
 /* Module create.c.  */

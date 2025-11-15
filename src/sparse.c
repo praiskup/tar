@@ -1255,7 +1255,7 @@ decode_num (struct block_ptr bp, uintmax_t nmax, struct tar_sparse_file *file)
 
   overflow |= nmax < n;
   char const *msgid
-    = (!digit_seen | nondigit_seen ? N_("%s: malformed sparse archive member")
+    = ((!digit_seen | nondigit_seen) ? N_("%s: malformed sparse archive member")
        : overflow ? N_("%s: numeric overflow in sparse archive member")
        : NULL);
   if (msgid)
