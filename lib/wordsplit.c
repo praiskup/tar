@@ -26,6 +26,7 @@
 #include <pwd.h>
 #include <stdarg.h>
 #include <stdckdint.h>
+#include <stdcountof.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -2590,14 +2591,13 @@ static char const *const wordsplit_errstr[] = {
   N_("unbalanced parenthesis"),
   N_("globbing error")
 };
-enum { wordsplit_nerrs = sizeof wordsplit_errstr / sizeof *wordsplit_errstr };
 
 const char *
 wordsplit_strerror (struct wordsplit const *ws)
 {
   if (ws->ws_errno == WRDSE_USERERR)
     return ws->ws_usererr;
-  if (ws->ws_errno < wordsplit_nerrs)
+  if (ws->ws_errno < countof (wordsplit_errstr))
     return wordsplit_errstr[ws->ws_errno];
   return N_("unknown error");
 }

@@ -19,6 +19,8 @@
 #include <system.h>
 #include "common.h"
 
+#include <stdcountof.h>
+
 struct compression_suffix
 {
   char suffix[sizeof "tbz2"];  /* "tbz2" is tied for longest.  */
@@ -72,8 +74,7 @@ find_compression_suffix (char const *name, idx_t *ret_len)
       suf++;
 
       for (struct compression_suffix const *p = compression_suffixes;
-	   p < (compression_suffixes
-		+ sizeof compression_suffixes / sizeof *compression_suffixes);
+	   p < compression_suffixes + countof (compression_suffixes);
 	   p++)
 	if (streq (p->suffix, suf))
 	  return p;
