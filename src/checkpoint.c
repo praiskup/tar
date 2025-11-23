@@ -182,7 +182,7 @@ getarg (char const *input, char const **endp, char **argbuf, idx_t *arglen)
 {
   if (input[0] == '{')
     {
-      char *p = strchr (input + 1, '}');
+      char const *p = strchr (input + 1, '}');
       if (p)
 	{
 	  idx_t n = p - input;
