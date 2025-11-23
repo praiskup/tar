@@ -1285,7 +1285,7 @@ expand_pax_option (struct tar_args *targs, const char *arg)
   while (*arg)
     {
       idx_t seglen = strcspn (arg, ",");
-      char *p = memchr (arg, '=', seglen);
+      char const *p = memchr (arg, '=', seglen);
       if (p)
 	{
 	  idx_t len = p - arg + 1;

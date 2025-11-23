@@ -22,6 +22,7 @@
 
 #include <wordsplit.h>
 #include <flexmember.h>
+#include <strftime.h>
 
 #include <sys/ioctl.h>
 #include <termios.h>
@@ -182,7 +183,7 @@ getarg (char const *input, char const **endp, char **argbuf, idx_t *arglen)
 {
   if (input[0] == '{')
     {
-      char *p = strchr (input + 1, '}');
+      char const *p = strchr (input + 1, '}');
       if (p)
 	{
 	  idx_t n = p - input;
@@ -306,22 +307,41 @@ format_checkpoint_string (FILE *fp, intmax_t len,
 	      {
 		struct timespec ts = current_timespec ();
 		struct tm *tm = localtime (&ts.tv_sec);
-		char const *tmstr = NULL;
 
+#if HAVE_STRUCT_TM_TM_GMTOFF && HAVE_STRUCT_TM_TM_ZONE
+		/* struct tm has POSIX.1-2024 tm_gmtoff and tm_zone,
+		   so nstrftime ignores tz and any tz value will do.  */
+		timezone_t tz = 0;
+#else
+		static timezone_t tz;
+		if (tm && !tz)
+		  {
+		    tz = tzalloc (getenv ("TZ"));
+		    if (!tz)
+		      tm = NULL;
+		  }
+#endif
 		/* Keep BUF relatively small, as any text timestamp
 		   not fitting into BUF is likely a DoS attack.  */
-		char buf[max (SYSINT_BUFSIZE, 256)];
-
-		if (tm)
+		char buf[max (TIMESPEC_STRSIZE_BOUND, 256)];
+		ptrdiff_t buflen =
+		  (tm
+		   ? nstrftime (buf, sizeof buf, arg ? arg : "%c",
+				tm, tz, ts.tv_nsec)
+		   : -1);
+		char const *tmstr;
+		idx_t tmstrlen;
+		if (buflen < 0)
 		  {
-		    buf[0] = '\0';
-		    char const *fmt = arg ? arg : "%c";
-		    if (strftime (buf, sizeof buf, fmt, tm) != 0 || !buf[0])
-		      tmstr = buf;
+		    tmstr = code_timespec (ts, buf);
+		    tmstrlen = strlen (tmstr);
 		  }
-		if (!tmstr)
-		  tmstr = timetostr (ts.tv_sec, buf);
-		len = add_printf (len, fprintf (fp, "%s", tmstr));
+		else
+		  {
+		    tmstr = buf;
+		    tmstrlen = buflen;
+		  }
+		len = add_printf (len, fwrite (tmstr, 1, tmstrlen, stdout));
 	      }
 	      break;
 
