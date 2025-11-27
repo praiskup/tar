@@ -2662,7 +2662,8 @@ directories until the end of extraction. @xref{Directory Modification Times and 
 
 When reading or writing a file to be archived, @command{tar} accesses
 the file that a symbolic link points to, rather than the symlink
-itself.  @xref{dereference}.
+itself.  This a dangerous option, as it can cause @command{tar} to
+access files outside the working directory.  @xref{dereference}.
 
 @opsummary{directory}
 @item --directory=@var{dir}
@@ -9527,7 +9528,7 @@ The interpretation of options in file lists is disabled by
 @cindex file names, absolute
 
 By default, @GNUTAR{} drops a leading @samp{/} on
-input or output, and complains about file names containing a @file{..}
+input or output, and complains about file names containing a @samp{..}
 component.  There is an option that turns off this behavior:
 
 @table @option
@@ -9535,7 +9536,8 @@ component.  There is an option that turns off this behavior:
 @item --absolute-names
 @itemx -P
 Do not strip leading slashes from file names, and permit file names
-containing a @file{..} file name component.
+containing a @samp{..} file name component, or that escape
+the extraction directory.
 @end table
 
 When @command{tar} extracts archive members from an archive, it strips any
@@ -9547,7 +9549,7 @@ in the archive.  For example, if the archive member has the name
 @file{/etc/passwd}, @command{tar} will extract it as if the name were
 really @file{etc/passwd}.
 
-File names containing @file{..} can cause problems when extracting, so
+File names containing @samp{..} can cause problems when extracting, so
 @command{tar} normally warns you about such files when creating an
 archive, and prevents attempts to extract such files if that would
 affect files outside the working directory.
@@ -9569,45 +9571,14 @@ for the information on how to handle this case.}.
 If you use the @option{--absolute-names} (@option{-P}) option,
 @command{tar} will do none of these transformations.
 
-To archive or extract files relative to the root directory, specify
-the @option{--absolute-names} (@option{-P}) option.
-
-Normally, @command{tar} acts on files relative to the working
-directory---ignoring superior directory names when archiving, and
-ignoring leading slashes when extracting.
-
-When you specify @option{--absolute-names} (@option{-P}),
-@command{tar} stores file names including all superior directory
-names, and preserves leading slashes.  If you only invoked
-@command{tar} from the root directory you would never need the
-@option{--absolute-names} option, but using this option
-may be more convenient than switching to root.
-
 @FIXME{Should be an example in the tutorial/wizardry section using this
 to transfer files between systems.}
 
-@table @option
-@item --absolute-names
-Preserves full file names (including superior directory names) when
-archiving and extracting files.
-
-@end table
-
-@command{tar} prints out a message about removing the @samp{/} from
+By default @command{tar} prints out a message about removing the @samp{/} from
 file names.  This message appears once per @GNUTAR{}
 invocation.  It represents something which ought to be told; ignoring
 what it means can cause very serious surprises, later.
-
-Some people, nevertheless, do not want to see this message.  Wanting to
-play really dangerously, one may of course redirect @command{tar} standard
-error to the sink.  For example, under @command{sh}:
-
-@smallexample
-$ @kbd{tar -c -f archive.tar /home 2> /dev/null}
-@end smallexample
-
-@noindent
-Another solution, both nicer and simpler, would be to change to
+However, to suppress this message change to
 the @file{/} directory first, and then avoid absolute notation.
 For example:
 
@@ -9615,8 +9586,15 @@ For example:
 $ @kbd{tar -c -f archive.tar -C / home}
 @end smallexample
 
+If you use the dangerous options @option{--absolute-names}
+(@option{-P}) or @option{--dereference} (@option{-h}),
+symbolic links containing @samp{..} or leading @samp{/} can cause
+problems when extracting, so @command{tar} extracts them last;
+it may create empty files as placeholders during extraction.
+Although these placeholders prevent problems if you are extracting
+into an empty directory, they do not suffice for nonempty directories.
 @xref{Integrity}, for some of the security-related implications
-of using this option.
+of using these dangerous options.
 
 @include parse-datetime.texi
 
@@ -10429,10 +10407,12 @@ When @option{--dereference} (@option{-h}) is used with
 symbolic links point to, instead of
 the links themselves.
 
-When creating portable archives, use @option{--dereference}
+When creating a portable archive from a directory that adversaries
+cannot modify, consider using @option{--dereference}
 (@option{-h}): some systems do not support
 symbolic links, and moreover, your distribution might be unusable if
 it contains unresolved symbolic links.
+@xref{dereference}.
 
 When reading from an archive, the @option{--dereference} (@option{-h})
 option causes @command{tar} to follow an already-existing symbolic
@@ -10442,7 +10422,8 @@ remove the link before writing a new file.  @xref{Dealing with Old
 Files}.
 
 The @option{--dereference} option is unsafe if an untrusted user can
-modify directories while @command{tar} is running.  @xref{Security}.
+modify directories while @command{tar} is running, or if extracting
+from an untrusted archive into a nonempty directory.  @xref{Security}.
 
 @node hard links
 @subsection Hard Links
@@ -13131,7 +13112,7 @@ directory and run @command{tar} in that directory.  You can use the
 @option{--directory} (@option{-C}) option to specify the working
 directory (@pxref{directory}).
 
-When extracting from an archive, @command{tar} rejects attempts to
+When extracting from an archive, @command{tar} by default rejects attempts to
 modify files outside the working directory.
 For example, if a symbolic link points outside the working directory,
 @command{tar} refuses to follow the link, regardless of whether the
@@ -13147,11 +13128,13 @@ ordinarily follow symbolic links even if they escape the working directory.
 
 If you use the @option{--absolute-names} (@option{-P}) option when
 extracting, @command{tar} respects any file names in the archive, even
-file names that begin with @file{/}, contain @file{..}, or that follow
-a symbolic link to escape the extraction directory.  As this lets the
-archive overwrite any file in your system that you can write,
-the @option{--absolute-names} (@option{-P}) option should be used only
-for trusted archives.
+file names that begin with @samp{/}, contain @samp{..}, or that follow
+a symbolic link to escape the extraction directory.
+If you use the @option{--dereference} (@option{-h}) option when extracting,
+@command{tar} follows any existing symbolic link that is the last component of
+a file name, even if that link escapes the extraction directory.
+These two options should be used only for trusted archives, as they
+can let an archive overwrite any file in your system that you can owrite.
 
 Conversely, with the @option{--keep-old-files} (@option{-k}) and
 @option{--skip-old-files} options, @command{tar} refuses to replace
