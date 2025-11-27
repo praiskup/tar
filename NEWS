@@ -1,4 +1,4 @@
-GNU tar NEWS - User visible changes. 2025-11-13
+GNU tar NEWS - User visible changes. 2025-11-26
 Please send GNU tar bug reports to <bug-tar@gnu.org>
 
 version 1.35.90 (git)
@@ -62,10 +62,11 @@ option.
 
 ** Sparse files are now read and written with larger blocksizes.
 
-** When extracting, tar no longer creates empty placeholder files
+** When extracting and neither --absolute-names (-P) nor --dereference
+   (-h) is used, tar no longer creates empty placeholder files
    that are later replaced by symbolic links.  The placeholders are no
-   longer needed now that tar no longer follows symbolic links to
-   targets outside the working directory.
+   longer needed now that tar by default no longer follows symbolic
+   links to targets outside the working directory.
 
 
 version 1.35 - Sergey Poznyakoff, 2023-07-18
