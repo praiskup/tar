@@ -72,6 +72,23 @@ implemented (int err)
 	    || (EOPNOTSUPP != ENOTSUP && err == EOPNOTSUPP));
 }
 
+/* Return true if NAME contains ".." as a file name component.  */
+static bool
+contains_dot_dot (char const *name)
+{
+  char const *p = name + FILE_SYSTEM_PREFIX_LEN (name);
+
+  for (;; p++)
+    {
+      if (p[0] == '.' && p[1] == '.' && (ISSLASH (p[2]) || !p[2]))
+	return true;
+
+      for (; ! ISSLASH (*p); p++)
+	if (!*p)
+	  return false;
+    }
+}
+
 /* List of directories whose statuses we need to extract after we've
    finished extracting their subsidiary files.  Ordinarily the head of
    the list has the longest name, and each non-head element is an
