@@ -24,7 +24,7 @@
 #include <errno.h>
 #include <flexmember.h>
 #include <hash.h>
-#include <issymlink.h>
+#include <issymlinkat.h>
 #include <priv-set.h>
 #include <root-uid.h>
 #include <same-inode.h>
