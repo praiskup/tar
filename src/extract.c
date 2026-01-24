@@ -1,6 +1,6 @@
 /* Extract files from a tar archive.
 
-   Copyright 1988-2025 Free Software Foundation, Inc.
+   Copyright 1988-2026 Free Software Foundation, Inc.
 
    This file is part of GNU tar.
 
@@ -24,7 +24,7 @@
 #include <errno.h>
 #include <flexmember.h>
 #include <hash.h>
-#include <issymlink.h>
+#include <issymlinkat.h>
 #include <priv-set.h>
 #include <root-uid.h>
 #include <same-inode.h>
@@ -565,7 +565,7 @@ delay_set_stat (char const *file_name, struct tar_stat_info const *st,
   struct delayed_set_stat *data;
 
   if (! (delayed_set_stat_table
-	 || (delayed_set_stat_table = hash_initialize (0, 0, ds_hash,
+	 || (delayed_set_stat_table = hash_initialize (0, NULL, ds_hash,
 	                                               ds_compare, NULL))))
     xalloc_die ();
 
@@ -816,7 +816,7 @@ make_directories (char *file_name, bool *interdir_made)
 	     mode == desired_mode, because
 	     repair_delayed_set_stat may need to update the struct.  */
 	  delay_set_stat (file_name,
-			  0, mode & ~ current_umask, MODE_RWX,
+			  NULL, mode & ~ current_umask, MODE_RWX,
 			  desired_mode, AT_SYMLINK_NOFOLLOW);
 	  if (interdir_made)
 	    *interdir_made = true;
@@ -915,7 +915,7 @@ maybe_recoverable (char *file_name, bool regular, bool *interdir_made)
 {
   int e = errno;
   struct stat st;
-  struct stat const *stp = 0;
+  struct stat const *stp = NULL;
 
   if (*interdir_made)
     return RECOVER_NO;
@@ -1539,7 +1539,7 @@ create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made)
       p->change_dir = chdir_current;
       p->sources = xmalloc (FLEXNSIZEOF (struct string_list, string,
 					 strlen (file_name) + 1));
-      p->sources->next = 0;
+      p->sources->next = NULL;
       strcpy (p->sources->string, file_name);
       p->cntx_name = NULL;
       assign_string_or_null (&p->cntx_name, current_stat_info.cntx_name);
@@ -1554,7 +1554,7 @@ create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made)
       *delayed_link_tail = p;
       delayed_link_tail = &p->next;
       if (! ((delayed_link_table
-	      || (delayed_link_table = hash_initialize (0, 0, dl_hash,
+	      || (delayed_link_table = hash_initialize (0, NULL, dl_hash,
 							dl_compare, free)))
 	     && hash_insert (delayed_link_table, p)))
 	xalloc_die ();
@@ -1856,7 +1856,7 @@ prepare_to_extract (char const *file_name, char typeflag)
 	  break;
 
 	case KEEP_NEWER_FILES:
-	  if (file_newer_p (file_name, 0, &current_stat_info))
+	  if (file_newer_p (file_name, NULL, &current_stat_info))
 	    {
 	      warnopt (WARN_IGNORE_NEWER, 0, _("Current %s is newer or same age"),
 		       quote (file_name));

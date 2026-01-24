@@ -1,6 +1,6 @@
 /* Checkpoint management for tar.
 
-   Copyright 2007-2025 Free Software Foundation, Inc.
+   Copyright 2007-2026 Free Software Foundation, Inc.
 
    This file is part of GNU tar.
 
@@ -311,7 +311,7 @@ format_checkpoint_string (FILE *fp, intmax_t len,
 #if HAVE_STRUCT_TM_TM_GMTOFF && HAVE_STRUCT_TM_TM_ZONE
 		/* struct tm has POSIX.1-2024 tm_gmtoff and tm_zone,
 		   so nstrftime ignores tz and any tz value will do.  */
-		timezone_t tz = 0;
+		timezone_t tz = NULL;
 #else
 		static timezone_t tz;
 		if (tm && !tz)

@@ -1,6 +1,6 @@
 /* Charset handling for GNU tar.
 
-   Copyright 2004-2025 Free Software Foundation, Inc.
+   Copyright 2004-2026 Free Software Foundation, Inc.
 
    This file is part of GNU tar.
 
@@ -73,7 +73,7 @@ utf8_convert (bool to_utf, char const *input, char **output)
   size_t outlen;
   iconv_t cd = utf8_init (to_utf);
 
-  if (cd == 0)
+  if (!cd)
     {
       *output = xstrdup (input);
       return true;

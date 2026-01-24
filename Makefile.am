@@ -1,6 +1,6 @@
 # Main Makefile for GNU tar.
 
-# Copyright 1994-2025 Free Software Foundation, Inc.
+# Copyright 1994-2026 Free Software Foundation, Inc.
 
 # This file is part of GNU tar.
 

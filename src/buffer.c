@@ -1,6 +1,6 @@
 /* Buffer management for tar.
 
-   Copyright 1988-2025 Free Software Foundation, Inc.
+   Copyright 1988-2026 Free Software Foundation, Inc.
 
    This file is part of GNU tar.
 
@@ -318,8 +318,8 @@ struct zip_program
 };
 
 static struct zip_magic const magic[] = {
-  { ct_none,     0, 0 },
-  { ct_tar,      0, 0 },
+  { ct_none,     0, NULL },
+  { ct_tar,      0, NULL },
   { ct_compress, 2, "\037\235" },
   { ct_gzip,     2, "\037\213" },
   { ct_bzip2,    3, "BZh" },
@@ -413,7 +413,7 @@ check_compressed_archive (bool *pshort)
   sfr = read_full_records;
   read_full_records = true; /* Suppress fatal error on reading a partial
                                record */
-  *pshort = find_next_block () == 0;
+  *pshort = !find_next_block ();
 
   /* Restore global values */
   read_full_records = sfr;
@@ -615,12 +615,12 @@ find_next_block (void)
   if (current_block == record_end)
     {
       if (hit_eof)
-        return 0;
+        return NULL;
       flush_archive ();
       if (current_block == record_end)
         {
           hit_eof = true;
-          return 0;
+          return NULL;
         }
     }
   return current_block;

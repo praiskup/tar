@@ -1,6 +1,6 @@
 /* A tar (tape archiver) program.
 
-   Copyright 1988-2025 Free Software Foundation, Inc.
+   Copyright 1988-2026 Free Software Foundation, Inc.
 
    Written by John Gilmore, starting 1985-08-25.
 
@@ -532,24 +532,24 @@ static struct argp_option options[] = {
   {NULL, 0, NULL, 0,
    N_("Main operation mode:"), GRH_COMMAND },
 
-  {"list", 't', 0, 0,
+  {"list", 't', NULL, 0,
    N_("list the contents of an archive"), GRID_COMMAND },
-  {"extract", 'x', 0, 0,
+  {"extract", 'x', NULL, 0,
    N_("extract files from an archive"), GRID_COMMAND },
-  {"get", 0, 0, OPTION_ALIAS, NULL, GRID_COMMAND },
-  {"create", 'c', 0, 0,
+  {"get", 0, NULL, OPTION_ALIAS, NULL, GRID_COMMAND },
+  {"create", 'c', NULL, 0,
    N_("create a new archive"), GRID_COMMAND },
-  {"diff", 'd', 0, 0,
+  {"diff", 'd', NULL, 0,
    N_("find differences between archive and file system"), GRID_COMMAND },
-  {"compare", 0, 0, OPTION_ALIAS, NULL, GRID_COMMAND },
-  {"append", 'r', 0, 0,
+  {"compare", 0, NULL, OPTION_ALIAS, NULL, GRID_COMMAND },
+  {"append", 'r', NULL, 0,
    N_("append files to the end of an archive"), GRID_COMMAND },
-  {"update", 'u', 0, 0,
+  {"update", 'u', NULL, 0,
    N_("only append files newer than copy in archive"), GRID_COMMAND },
-  {"catenate", 'A', 0, 0,
+  {"catenate", 'A', NULL, 0,
    N_("append tar files to an archive"), GRID_COMMAND },
-  {"concatenate", 0, 0, OPTION_ALIAS, NULL, GRID_COMMAND },
-  {"delete", DELETE_OPTION, 0, 0,
+  {"concatenate", 0, NULL, OPTION_ALIAS, NULL, GRID_COMMAND },
+  {"delete", DELETE_OPTION, NULL, 0,
    N_("delete from the archive (not on mag tapes!)"), GRID_COMMAND },
   {"test-label", TEST_LABEL_OPTION, NULL, 0,
    N_("test the archive volume label and exit"), GRID_COMMAND },
@@ -557,20 +557,20 @@ static struct argp_option options[] = {
   {NULL, 0, NULL, 0,
    N_("Operation modifiers:"), GRH_MODIFIER },
 
-  {"sparse", 'S', 0, 0,
+  {"sparse", 'S', NULL, 0,
    N_("handle sparse files efficiently"), GRID_MODIFIER },
   {"hole-detection", HOLE_DETECTION_OPTION, N_("TYPE"), 0,
    N_("technique to detect holes"), GRID_MODIFIER },
   {"sparse-version", SPARSE_VERSION_OPTION, N_("MAJOR[.MINOR]"), 0,
    N_("set version of the sparse format to use (implies --sparse)"),
    GRID_MODIFIER},
-  {"incremental", 'G', 0, 0,
+  {"incremental", 'G', NULL, 0,
    N_("handle old GNU-format incremental backup"), GRID_MODIFIER },
   {"listed-incremental", 'g', N_("FILE"), 0,
    N_("handle new GNU-format incremental backup"), GRID_MODIFIER },
   {"level", LEVEL_OPTION, N_("NUMBER"), 0,
    N_("dump level for created listed-incremental archive"), GRID_MODIFIER },
-  {"ignore-failed-read", IGNORE_FAILED_READ_OPTION, 0, 0,
+  {"ignore-failed-read", IGNORE_FAILED_READ_OPTION, NULL, 0,
    N_("do not exit with nonzero on unreadable files"), GRID_MODIFIER },
   {"occurrence", OCCURRENCE_OPTION, N_("NUMBER"), OPTION_ARG_OPTIONAL,
    N_("process only the NUMBERth occurrence of each file in the archive;"
@@ -592,30 +592,30 @@ static struct argp_option options[] = {
   {NULL, 0, NULL, 0,
    N_("Overwrite control:"), GRH_OVERWRITE },
 
-  {"verify", 'W', 0, 0,
+  {"verify", 'W', NULL, 0,
    N_("attempt to verify the archive after writing it"), GRID_OVERWRITE },
-  {"remove-files", REMOVE_FILES_OPTION, 0, 0,
+  {"remove-files", REMOVE_FILES_OPTION, NULL, 0,
    N_("remove files after adding them to the archive"), GRID_OVERWRITE },
-  {"keep-old-files", 'k', 0, 0,
+  {"keep-old-files", 'k', NULL, 0,
    N_("don't replace existing files when extracting, "
       "treat them as errors"), GRID_OVERWRITE },
-  {"skip-old-files", SKIP_OLD_FILES_OPTION, 0, 0,
+  {"skip-old-files", SKIP_OLD_FILES_OPTION, NULL, 0,
    N_("don't replace existing files when extracting, silently skip over them"),
    GRID_OVERWRITE },
-  {"keep-newer-files", KEEP_NEWER_FILES_OPTION, 0, 0,
+  {"keep-newer-files", KEEP_NEWER_FILES_OPTION, NULL, 0,
    N_("don't replace existing files that are newer than their archive copies"), GRID_OVERWRITE },
-  {"overwrite", OVERWRITE_OPTION, 0, 0,
+  {"overwrite", OVERWRITE_OPTION, NULL, 0,
    N_("overwrite existing files when extracting"), GRID_OVERWRITE },
-  {"unlink-first", 'U', 0, 0,
+  {"unlink-first", 'U', NULL, 0,
    N_("remove each file prior to extracting over it"), GRID_OVERWRITE },
-  {"recursive-unlink", RECURSIVE_UNLINK_OPTION, 0, 0,
+  {"recursive-unlink", RECURSIVE_UNLINK_OPTION, NULL, 0,
    N_("empty hierarchies prior to extracting directory"), GRID_OVERWRITE },
-  {"no-overwrite-dir", NO_OVERWRITE_DIR_OPTION, 0, 0,
+  {"no-overwrite-dir", NO_OVERWRITE_DIR_OPTION, NULL, 0,
    N_("preserve metadata of existing directories"), GRID_OVERWRITE },
-  {"overwrite-dir", OVERWRITE_DIR_OPTION, 0, 0,
+  {"overwrite-dir", OVERWRITE_DIR_OPTION, NULL, 0,
    N_("overwrite metadata of existing directories when extracting (default)"),
    GRID_OVERWRITE },
-  {"keep-directory-symlink", KEEP_DIRECTORY_SYMLINK_OPTION, 0, 0,
+  {"keep-directory-symlink", KEEP_DIRECTORY_SYMLINK_OPTION, NULL, 0,
    N_("preserve existing symlinks to directories when extracting"),
    GRID_OVERWRITE },
   {"one-top-level", ONE_TOP_LEVEL_OPTION, N_("DIR"), OPTION_ARG_OPTIONAL,
@@ -625,13 +625,13 @@ static struct argp_option options[] = {
   {NULL, 0, NULL, 0,
    N_("Select output stream:"), GRH_OUTPUT },
 
-  {"to-stdout", 'O', 0, 0,
+  {"to-stdout", 'O', NULL, 0,
    N_("extract files to standard output"), GRID_OUTPUT },
   {"to-command", TO_COMMAND_OPTION, N_("COMMAND"), 0,
    N_("pipe extracted files to another program"), GRID_OUTPUT },
-  {"ignore-command-error", IGNORE_COMMAND_ERROR_OPTION, 0, 0,
+  {"ignore-command-error", IGNORE_COMMAND_ERROR_OPTION, NULL, 0,
    N_("ignore exit codes of children"), GRID_OUTPUT },
-  {"no-ignore-command-error", NO_IGNORE_COMMAND_ERROR_OPTION, 0, 0,
+  {"no-ignore-command-error", NO_IGNORE_COMMAND_ERROR_OPTION, NULL, 0,
    N_("treat non-zero exit codes of children as error"), GRID_OUTPUT },
 
   {NULL, 0, NULL, 0,
@@ -647,7 +647,7 @@ static struct argp_option options[] = {
    N_("use FILE to map file owner GIDs and names"), GRID_FATTR },
   {"mtime", MTIME_OPTION, N_("DATE-OR-FILE"), 0,
    N_("set mtime for added files from DATE-OR-FILE"), GRID_FATTR },
-  {"clamp-mtime", CLAMP_MTIME_OPTION, 0, 0,
+  {"clamp-mtime", CLAMP_MTIME_OPTION, NULL, 0,
    N_("only set time when the file is more recent than what was given with --mtime"), GRID_FATTR },
   {"set-mtime-command", SET_MTIME_COMMAND_OPTION, N_("COMMAND"), 0,
    N_("use output of the COMMAND to set mtime of the stored archive members"),
@@ -661,28 +661,28 @@ static struct argp_option options[] = {
    N_("preserve access times on dumped files, either by restoring the times"
       " after reading (METHOD='replace'; default) or by not setting the times"
       " in the first place (METHOD='system')"), GRID_FATTR },
-  {"touch", 'm', 0, 0,
+  {"touch", 'm', NULL, 0,
    N_("don't extract file modified time"), GRID_FATTR },
-  {"same-owner", SAME_OWNER_OPTION, 0, 0,
+  {"same-owner", SAME_OWNER_OPTION, NULL, 0,
    N_("try extracting files with the same ownership as exists in the archive (default for superuser)"), GRID_FATTR },
-  {"no-same-owner", NO_SAME_OWNER_OPTION, 0, 0,
+  {"no-same-owner", NO_SAME_OWNER_OPTION, NULL, 0,
    N_("extract files as yourself (default for ordinary users)"), GRID_FATTR },
-  {"numeric-owner", NUMERIC_OWNER_OPTION, 0, 0,
+  {"numeric-owner", NUMERIC_OWNER_OPTION, NULL, 0,
    N_("always use numbers for user/group names"), GRID_FATTR },
-  {"preserve-permissions", 'p', 0, 0,
+  {"preserve-permissions", 'p', NULL, 0,
    N_("extract information about file permissions (default for superuser)"),
    GRID_FATTR },
-  {"same-permissions", 0, 0, OPTION_ALIAS, NULL, GRID_FATTR },
-  {"no-same-permissions", NO_SAME_PERMISSIONS_OPTION, 0, 0,
+  {"same-permissions", 0, NULL, OPTION_ALIAS, NULL, GRID_FATTR },
+  {"no-same-permissions", NO_SAME_PERMISSIONS_OPTION, NULL, 0,
    N_("apply the user's umask when extracting permissions from the archive (default for ordinary users)"), GRID_FATTR },
-  {"preserve-order", 's', 0, 0,
+  {"preserve-order", 's', NULL, 0,
    N_("member arguments are listed in the same order as the "
       "files in the archive"), GRID_FATTR },
-  {"same-order", 0, 0, OPTION_ALIAS, NULL, GRID_FATTR },
-  {"delay-directory-restore", DELAY_DIRECTORY_RESTORE_OPTION, 0, 0,
+  {"same-order", 0, NULL, OPTION_ALIAS, NULL, GRID_FATTR },
+  {"delay-directory-restore", DELAY_DIRECTORY_RESTORE_OPTION, NULL, 0,
    N_("delay setting modification times and permissions of extracted"
       " directories until the end of extraction"), GRID_FATTR },
-  {"no-delay-directory-restore", NO_DELAY_DIRECTORY_RESTORE_OPTION, 0, 0,
+  {"no-delay-directory-restore", NO_DELAY_DIRECTORY_RESTORE_OPTION, NULL, 0,
    N_("cancel the effect of --delay-directory-restore option"), GRID_FATTR },
   {"sort", SORT_OPTION, N_("ORDER"), 0,
 #if D_INO_IN_DIRENT
@@ -695,21 +695,21 @@ static struct argp_option options[] = {
   {NULL, 0, NULL, 0,
    N_("Handling of extended file attributes:"), GRH_XATTR },
 
-  {"xattrs", XATTR_OPTION, 0, 0,
+  {"xattrs", XATTR_OPTION, NULL, 0,
    N_("Enable extended attributes support"), GRID_XATTR },
-  {"no-xattrs", NO_XATTR_OPTION, 0, 0,
+  {"no-xattrs", NO_XATTR_OPTION, NULL, 0,
    N_("Disable extended attributes support"), GRID_XATTR },
   {"xattrs-include", XATTR_INCLUDE, N_("MASK"), 0,
    N_("specify the include pattern for xattr keys"), GRID_XATTR },
   {"xattrs-exclude", XATTR_EXCLUDE, N_("MASK"), 0,
    N_("specify the exclude pattern for xattr keys"), GRID_XATTR },
-  {"selinux", SELINUX_CONTEXT_OPTION, 0, 0,
+  {"selinux", SELINUX_CONTEXT_OPTION, NULL, 0,
    N_("Enable the SELinux context support"), GRID_XATTR },
-  {"no-selinux", NO_SELINUX_CONTEXT_OPTION, 0, 0,
+  {"no-selinux", NO_SELINUX_CONTEXT_OPTION, NULL, 0,
    N_("Disable the SELinux context support"), GRID_XATTR },
-  {"acls", ACLS_OPTION, 0, 0,
+  {"acls", ACLS_OPTION, NULL, 0,
    N_("Enable the POSIX ACLs support"), GRID_XATTR },
-  {"no-acls", NO_ACLS_OPTION, 0, 0,
+  {"no-acls", NO_ACLS_OPTION, NULL, 0,
    N_("Disable the POSIX ACLs support"), GRID_XATTR },
 
   {NULL, 0, NULL, 0,
@@ -733,7 +733,7 @@ static struct argp_option options[] = {
   {NULL, '8', NULL, OPTION_HIDDEN, NULL, GRID_DEVICE },
   {NULL, '9', NULL, OPTION_HIDDEN, NULL, GRID_DEVICE },
 
-  {"force-local", FORCE_LOCAL_OPTION, 0, 0,
+  {"force-local", FORCE_LOCAL_OPTION, NULL, 0,
    N_("archive file is local even if it has a colon"),
    GRID_DEVICE },
   {"rmt-command", RMT_COMMAND_OPTION, N_("COMMAND"), 0,
@@ -743,7 +743,7 @@ static struct argp_option options[] = {
    N_("use remote COMMAND instead of rsh"),
    GRID_DEVICE },
 
-  {"multi-volume", 'M', 0, 0,
+  {"multi-volume", 'M', NULL, 0,
    N_("create/list/extract multi-volume archive"),
    GRID_DEVICE },
   {"tape-length", 'L', N_("NUMBER"), 0,
@@ -752,7 +752,7 @@ static struct argp_option options[] = {
   {"info-script", 'F', N_("NAME"), 0,
    N_("run script at end of each tape (implies -M)"),
    GRID_DEVICE },
-  {"new-volume-script", 0, 0, OPTION_ALIAS, NULL, GRID_DEVICE },
+  {"new-volume-script", 0, NULL, OPTION_ALIAS, NULL, GRID_DEVICE },
   {"volno-file", VOLNO_FILE_OPTION, N_("FILE"), 0,
    N_("use/update the volume number in FILE"),
    GRID_DEVICE },
@@ -764,9 +764,9 @@ static struct argp_option options[] = {
    N_("BLOCKS x 512 bytes per record"), GRID_BLOCKING },
   {"record-size", RECORD_SIZE_OPTION, N_("NUMBER"), 0,
    N_("NUMBER of bytes per record, multiple of 512"), GRID_BLOCKING },
-  {"ignore-zeros", 'i', 0, 0,
+  {"ignore-zeros", 'i', NULL, 0,
    N_("ignore zeroed blocks in archive (means EOF)"), GRID_BLOCKING },
-  {"read-full-records", 'B', 0, 0,
+  {"read-full-records", 'B', NULL, 0,
    N_("reblock as we read (for 4.2BSD pipes)"), GRID_BLOCKING },
 
   {NULL, 0, NULL, 0,
@@ -789,10 +789,10 @@ static struct argp_option options[] = {
   {"  posix", 0, NULL, OPTION_DOC|OPTION_NO_TRANS, N_("same as pax"),
    GRDOC_FORMAT },
 
-  {"old-archive", OLD_ARCHIVE_OPTION, 0, 0, /* FIXME */
+  {"old-archive", OLD_ARCHIVE_OPTION, NULL, 0, /* FIXME */
    N_("same as --format=v7"), GRID_FORMAT_OPT },
-  {"portability", 0, 0, OPTION_ALIAS, NULL, GRID_FORMAT_OPT },
-  {"posix", POSIX_OPTION, 0, 0,
+  {"portability", 0, NULL, OPTION_ALIAS, NULL, GRID_FORMAT_OPT },
+  {"posix", POSIX_OPTION, NULL, 0,
    N_("same as --format=posix"), GRID_FORMAT_OPT },
   {"pax-option", PAX_OPTION, N_("keyword[[:]=value][,keyword[[:]=value]]..."), 0,
    N_("control pax keywords"), GRID_FORMAT_OPT },
@@ -802,37 +802,37 @@ static struct argp_option options[] = {
 
   {NULL, 0, NULL, 0,
    N_("Compression options:"), GRH_COMPRESS },
-  {"auto-compress", 'a', 0, 0,
+  {"auto-compress", 'a', NULL, 0,
    N_("use archive suffix to determine the compression program"),
    GRID_COMPRESS },
-  {"no-auto-compress", NO_AUTO_COMPRESS_OPTION, 0, 0,
+  {"no-auto-compress", NO_AUTO_COMPRESS_OPTION, NULL, 0,
    N_("do not use archive suffix to determine the compression program"),
    GRID_COMPRESS },
   {"use-compress-program", 'I', N_("PROG"), 0,
    N_("filter through PROG (must accept -d)"), GRID_COMPRESS },
   /* Note: docstrings for the options below are generated by tar_help_filter */
-  {"bzip2", 'j', 0, 0, NULL, GRID_COMPRESS },
-  {"gzip", 'z', 0, 0, NULL, GRID_COMPRESS },
-  {"gunzip", 0, 0, OPTION_ALIAS, NULL, GRID_COMPRESS },
-  {"ungzip", 0, 0, OPTION_ALIAS, NULL, GRID_COMPRESS },
-  {"compress", 'Z', 0, 0, NULL, GRID_COMPRESS },
-  {"uncompress", 0, 0, OPTION_ALIAS, NULL, GRID_COMPRESS },
-  {"lzip", LZIP_OPTION, 0, 0, NULL, GRID_COMPRESS },
-  {"lzma", LZMA_OPTION, 0, 0, NULL, GRID_COMPRESS },
-  {"lzop", LZOP_OPTION, 0, 0, NULL, GRID_COMPRESS },
-  {"xz", 'J', 0, 0, NULL, GRID_COMPRESS },
-  {"zstd", ZSTD_OPTION, 0, 0, NULL, GRID_COMPRESS },
+  {"bzip2", 'j', NULL, 0, NULL, GRID_COMPRESS },
+  {"gzip", 'z', NULL, 0, NULL, GRID_COMPRESS },
+  {"gunzip", 0, NULL, OPTION_ALIAS, NULL, GRID_COMPRESS },
+  {"ungzip", 0, NULL, OPTION_ALIAS, NULL, GRID_COMPRESS },
+  {"compress", 'Z', NULL, 0, NULL, GRID_COMPRESS },
+  {"uncompress", 0, NULL, OPTION_ALIAS, NULL, GRID_COMPRESS },
+  {"lzip", LZIP_OPTION, NULL, 0, NULL, GRID_COMPRESS },
+  {"lzma", LZMA_OPTION, NULL, 0, NULL, GRID_COMPRESS },
+  {"lzop", LZOP_OPTION, NULL, 0, NULL, GRID_COMPRESS },
+  {"xz", 'J', NULL, 0, NULL, GRID_COMPRESS },
+  {"zstd", ZSTD_OPTION, NULL, 0, NULL, GRID_COMPRESS },
 
   {NULL, 0, NULL, 0,
    N_("Local file selection:"), GRH_FILE },
-  {"one-file-system", ONE_FILE_SYSTEM_OPTION, 0, 0,
+  {"one-file-system", ONE_FILE_SYSTEM_OPTION, NULL, 0,
    N_("stay in local file system when creating archive"), GRID_FILE },
-  {"absolute-names", 'P', 0, 0,
+  {"absolute-names", 'P', NULL, 0,
    N_("don't strip leading '/'s from file names"), GRID_FILE },
-  {"dereference", 'h', 0, 0,
+  {"dereference", 'h', NULL, 0,
    N_("follow symlinks; archive and dump the files they point to"),
    GRID_FILE },
-  {"hard-dereference", HARD_DEREFERENCE_OPTION, 0, 0,
+  {"hard-dereference", HARD_DEREFERENCE_OPTION, NULL, 0,
    N_("follow hard links; archive and dump the files they refer to"),
    GRID_FILE },
   {"starting-file", 'K', N_("MEMBER-NAME"), 0,
@@ -840,7 +840,7 @@ static struct argp_option options[] = {
    GRID_FILE },
   {"newer", 'N', N_("DATE-OR-FILE"), 0,
    N_("only store files newer than DATE-OR-FILE"), GRID_FILE },
-  {"after-date", 0, 0, OPTION_ALIAS, NULL, GRID_FILE },
+  {"after-date", 0, NULL, OPTION_ALIAS, NULL, GRID_FILE },
   {"newer-mtime", NEWER_MTIME_OPTION, N_("DATE"), 0,
    N_("compare date and time when data changed only"), GRID_FILE },
   {"backup", BACKUP_OPTION, N_("CONTROL"), OPTION_ARG_OPTIONAL,
@@ -857,7 +857,7 @@ static struct argp_option options[] = {
   {"transform", TRANSFORM_OPTION, N_("EXPRESSION"), 0,
    N_("use sed replace EXPRESSION to transform file names"),
    GRID_NAME_XFORM },
-  {"xform", 0, 0, OPTION_ALIAS, NULL, GRID_NAME_XFORM },
+  {"xform", 0, NULL, OPTION_ALIAS, NULL, GRID_NAME_XFORM },
 
   {NULL, 0, NULL, 0,
    N_("Informative output:"), GRH_INFORMATIVE },
@@ -868,41 +868,41 @@ static struct argp_option options[] = {
   {"checkpoint-action", CHECKPOINT_ACTION_OPTION, N_("ACTION"), 0,
    N_("execute ACTION on each checkpoint"),
    GRID_INFORMATIVE },
-  {"check-links", 'l', 0, 0,
+  {"check-links", 'l', NULL, 0,
    N_("print a message if not all links are dumped"), GRID_INFORMATIVE },
   {"totals", TOTALS_OPTION, N_("SIGNAL"), OPTION_ARG_OPTIONAL,
    N_("print total bytes after processing the archive; "
       "with an argument - print total bytes when this SIGNAL is delivered; "
       "Allowed signals are: SIGHUP, SIGQUIT, SIGINT, SIGUSR1 and SIGUSR2; "
       "the names without SIG prefix are also accepted"), GRID_INFORMATIVE },
-  {"utc", UTC_OPTION, 0, 0,
+  {"utc", UTC_OPTION, NULL, 0,
    N_("print file modification times in UTC"), GRID_INFORMATIVE },
-  {"full-time", FULL_TIME_OPTION, 0, 0,
+  {"full-time", FULL_TIME_OPTION, NULL, 0,
    N_("print file time to its full resolution"), GRID_INFORMATIVE },
   {"index-file", INDEX_FILE_OPTION, N_("FILE"), 0,
    N_("send verbose output to FILE"), GRID_INFORMATIVE },
-  {"block-number", 'R', 0, 0,
+  {"block-number", 'R', NULL, 0,
    N_("show block number within archive with each message"), GRID_INFORMATIVE },
-  {"show-defaults", SHOW_DEFAULTS_OPTION, 0, 0,
+  {"show-defaults", SHOW_DEFAULTS_OPTION, NULL, 0,
    N_("show tar defaults"), GRID_INFORMATIVE },
-  {"show-snapshot-field-ranges", SHOW_SNAPSHOT_FIELD_RANGES_OPTION, 0, 0,
+  {"show-snapshot-field-ranges", SHOW_SNAPSHOT_FIELD_RANGES_OPTION, NULL, 0,
    N_("show valid ranges for snapshot-file fields"), GRID_INFORMATIVE },
-  {"show-omitted-dirs", SHOW_OMITTED_DIRS_OPTION, 0, 0,
+  {"show-omitted-dirs", SHOW_OMITTED_DIRS_OPTION, NULL, 0,
    N_("when listing or extracting, list each directory that does not match search criteria"), GRID_INFORMATIVE },
-  {"show-transformed-names", SHOW_TRANSFORMED_NAMES_OPTION, 0, 0,
+  {"show-transformed-names", SHOW_TRANSFORMED_NAMES_OPTION, NULL, 0,
    N_("show file or archive names after transformation"),
    GRID_INFORMATIVE },
-  {"show-stored-names", 0, 0, OPTION_ALIAS, NULL, GRID_INFORMATIVE },
+  {"show-stored-names", 0, NULL, OPTION_ALIAS, NULL, GRID_INFORMATIVE },
   {"quoting-style", QUOTING_STYLE_OPTION, N_("STYLE"), 0,
    N_("set name quoting style; see below for valid STYLE values"), GRID_INFORMATIVE },
   {"quote-chars", QUOTE_CHARS_OPTION, N_("STRING"), 0,
    N_("additionally quote characters from STRING"), GRID_INFORMATIVE },
   {"no-quote-chars", NO_QUOTE_CHARS_OPTION, N_("STRING"), 0,
    N_("disable quoting for characters from STRING"), GRID_INFORMATIVE },
-  {"interactive", 'w', 0, 0,
+  {"interactive", 'w', NULL, 0,
    N_("ask for confirmation for every action"), GRID_INFORMATIVE },
-  {"confirmation", 0, 0, OPTION_ALIAS, NULL, GRID_INFORMATIVE },
-  {"verbose", 'v', 0, 0,
+  {"confirmation", 0, NULL, OPTION_ALIAS, NULL, GRID_INFORMATIVE },
+  {"verbose", 'v', NULL, 0,
    N_("verbosely list files processed"), GRID_INFORMATIVE },
   {"warning", WARNING_OPTION, N_("KEYWORD"), 0,
    N_("warning control"), GRID_INFORMATIVE },
@@ -910,16 +910,16 @@ static struct argp_option options[] = {
   {NULL, 0, NULL, 0,
    N_("Compatibility options:"), GRH_COMPAT },
 
-  {NULL, 'o', 0, 0,
+  {NULL, 'o', NULL, 0,
    N_("when creating, same as --old-archive; when extracting, same as --no-same-owner"), GRID_COMPAT },
 
   {NULL, 0, NULL, 0,
    N_("Other options:"), GRH_OTHER },
 
-  {"restrict", RESTRICT_OPTION, 0, 0,
+  {"restrict", RESTRICT_OPTION, NULL, 0,
    N_("disable use of some potentially harmful options"), -1 },
 
-  {0, 0, 0, 0, 0, 0}
+  {NULL, 0, NULL, 0, NULL, 0}
 };
 
 static char const *const atime_preserve_args[] =
@@ -2242,7 +2242,7 @@ find_argp_option_key (struct argp_option const *o, char key)
   for (;
        !(o->name == NULL
 	 && o->key == 0
-	 && o->arg == 0
+	 && o->arg == NULL
 	 && o->flags == 0
 	 && o->doc == NULL); o++)
     if (o->key == key)
@@ -2325,7 +2325,7 @@ parse_default_options (struct tar_args *args)
 {
   char *opts = getenv ("TAR_OPTIONS");
   struct wordsplit ws;
-  struct option_locus loc = { OPTS_ENVIRON, "TAR_OPTIONS", 0, 0 };
+  struct option_locus loc = { OPTS_ENVIRON, "TAR_OPTIONS", 0, NULL };
   struct option_locus *save_loc_ptr;
 
   if (!opts)
@@ -2445,7 +2445,7 @@ decode_options (int argc, char **argv)
 
       while (in < argv + argc)
 	*out++ = *in++;
-      *out = 0;
+      *out = NULL;
 
       /* Replace the old option list by the new one.  */
 
@@ -2857,7 +2857,7 @@ main (int argc, char **argv)
   exit_status = TAREXIT_SUCCESS;
   error_hook = checkpoint_flush_actions;
 
-  set_quoting_style (0, DEFAULT_QUOTING_STYLE);
+  set_quoting_style (NULL, DEFAULT_QUOTING_STYLE);
 
   close_stdout_set_file_name (_("stdout"));
 
@@ -2963,7 +2963,7 @@ tar_stat_close (struct tar_stat_info *st)
   int status = (st->dirstream ? closedir (st->dirstream)
 		: 0 < st->fd ? close (st->fd)
 		: 0);
-  st->dirstream = 0;
+  st->dirstream = NULL;
   st->fd = 0;
 
   if (status == 0)

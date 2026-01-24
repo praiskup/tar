@@ -1,6 +1,6 @@
 /* Create a tar archive.
 
-   Copyright 1985-2025 Free Software Foundation, Inc.
+   Copyright 1985-2026 Free Software Foundation, Inc.
 
    This file is part of GNU tar.
 
@@ -245,7 +245,7 @@ to_chars_subst (bool negative, bool gnu_format, uintmax_t value, int valsize,
       paxwarn (0, _("value %s%ju out of %s range %jd..%ju;"
 		    " substituting %s%ju"),
 	       valuesign, value, type, minval, maxval, ssign, s);
-      return to_chars (negsub, s, valsize, 0, where, size, type);
+      return to_chars (negsub, s, valsize, NULL, where, size, type);
     }
   else
     paxerror (0, _("value %s%ju out of %s range %jd..%ju"),
@@ -349,13 +349,13 @@ gid_to_chars (gid_t v, char *p, int s)
 static bool
 major_to_chars (major_t v, char *p, int s)
 {
-  return to_chars (v < 0, v, sizeof v, 0, p, s, "major_t");
+  return to_chars (v < 0, v, sizeof v, NULL, p, s, "major_t");
 }
 
 static bool
 minor_to_chars (minor_t v, char *p, int s)
 {
-  return to_chars (v < 0, v, sizeof v, 0, p, s, "minor_t");
+  return to_chars (v < 0, v, sizeof v, NULL, p, s, "minor_t");
 }
 
 static bool
@@ -395,19 +395,19 @@ mode_to_chars (mode_t v, char *p, int s)
 	   | (v & S_IWOTH ? TOWRITE : 0)
 	   | (v & S_IXOTH ? TOEXEC : 0));
     }
-  return to_chars (negative, u, sizeof v, 0, p, s, "mode_t");
+  return to_chars (negative, u, sizeof v, NULL, p, s, "mode_t");
 }
 
 bool
 off_to_chars (off_t v, char *p, int s)
 {
-  return to_chars (v < 0, v, sizeof v, 0, p, s, "off_t");
+  return to_chars (v < 0, v, sizeof v, NULL, p, s, "off_t");
 }
 
 bool
 time_to_chars (time_t v, char *p, int s)
 {
-  return to_chars (v < 0, v, sizeof v, 0, p, s, "time_t");
+  return to_chars (v < 0, v, sizeof v, NULL, p, s, "time_t");
 }
 
 static uintmax_t
@@ -1264,7 +1264,7 @@ get_directory_entries (struct tar_stat_info *st)
 {
   while (! (st->dirstream = fdopendir (st->fd)))
     if (! open_failure_recover (st))
-      return 0;
+      return NULL;
   return streamsavedir (st->dirstream, savedir_sort_order);
 }
 
@@ -1317,7 +1317,7 @@ create_archive (void)
 
       while ((p = name_from_list ()) != NULL)
 	if (!excluded_name (p->name, NULL))
-	  dump_file (0, p->name, p->name);
+	  dump_file (NULL, p->name, p->name);
 
       blank_name_list ();
       while ((p = name_from_list ()) != NULL)
@@ -1377,7 +1377,7 @@ create_archive (void)
       const char *name;
       while ((name = name_next (true)))
 	if (!excluded_name (name, NULL))
-	  dump_file (0, name, name);
+	  dump_file (NULL, name, name);
     }
 
   write_eot ();
@@ -1498,8 +1498,8 @@ file_count_links (struct tar_stat_info *st)
       free (linkname);
 
       if (! ((link_table
-	      || (link_table = hash_initialize (0, 0, hash_link,
-						compare_links, 0)))
+	      || (link_table = hash_initialize (0, NULL, hash_link,
+						compare_links, NULL)))
 	     && (duplicate = hash_insert (link_table, lp))))
 	xalloc_die ();
 
@@ -1620,7 +1620,7 @@ dump_file0 (struct tar_stat_info *st, char const *name, char const *p)
   bool is_dir;
   struct tar_stat_info const *parent = st->parent;
   bool top_level = ! parent;
-  void (*diag) (char const *) = 0;
+  void (*diag) (char const *) = NULL;
 
   if (interactive_option && !confirm ("add", p))
     return NULL;

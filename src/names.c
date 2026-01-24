@@ -1,6 +1,6 @@
 /* Various processing of names.
 
-   Copyright 1988-2025 Free Software Foundation, Inc.
+   Copyright 1988-2026 Free Software Foundation, Inc.
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the
@@ -82,31 +82,31 @@ static struct argp_option names_options[] = {
    N_("change to directory DIR"), GRID_LOCAL },
   {"files-from", 'T', N_("FILE"), 0,
    N_("get names to extract or create from FILE"), GRID_LOCAL },
-  {"null", NULL_OPTION, 0, 0,
+  {"null", NULL_OPTION, NULL, 0,
    N_("-T reads null-terminated names; implies --verbatim-files-from"),
       GRID_LOCAL },
-  {"no-null", NO_NULL_OPTION, 0, 0,
+  {"no-null", NO_NULL_OPTION, NULL, 0,
    N_("disable the effect of the previous --null option"), GRID_LOCAL },
-  {"unquote", UNQUOTE_OPTION, 0, 0,
+  {"unquote", UNQUOTE_OPTION, NULL, 0,
    N_("unquote input file or member names (default)"), GRID_LOCAL },
-  {"no-unquote", NO_UNQUOTE_OPTION, 0, 0,
+  {"no-unquote", NO_UNQUOTE_OPTION, NULL, 0,
    N_("do not unquote input file or member names"), GRID_LOCAL },
-  {"verbatim-files-from", VERBATIM_FILES_FROM_OPTION, 0, 0,
+  {"verbatim-files-from", VERBATIM_FILES_FROM_OPTION, NULL, 0,
    N_("-T reads file names verbatim (no escape or option handling)"), GRID_LOCAL },
-  {"no-verbatim-files-from", NO_VERBATIM_FILES_FROM_OPTION, 0, 0,
+  {"no-verbatim-files-from", NO_VERBATIM_FILES_FROM_OPTION, NULL, 0,
    N_("-T treats file names starting with dash as options (default)"),
       GRID_LOCAL },
   {"exclude", EXCLUDE_OPTION, N_("PATTERN"), 0,
    N_("exclude files, given as a PATTERN"), GRID_LOCAL },
   {"exclude-from", 'X', N_("FILE"), 0,
    N_("exclude patterns listed in FILE"), GRID_LOCAL },
-  {"exclude-caches", EXCLUDE_CACHES_OPTION, 0, 0,
+  {"exclude-caches", EXCLUDE_CACHES_OPTION, NULL, 0,
    N_("exclude contents of directories containing CACHEDIR.TAG, "
       "except for the tag file itself"), GRID_LOCAL },
-  {"exclude-caches-under", EXCLUDE_CACHES_UNDER_OPTION, 0, 0,
+  {"exclude-caches-under", EXCLUDE_CACHES_UNDER_OPTION, NULL, 0,
    N_("exclude everything under directories containing CACHEDIR.TAG"),
    GRID_LOCAL },
-  {"exclude-caches-all", EXCLUDE_CACHES_ALL_OPTION, 0, 0,
+  {"exclude-caches-all", EXCLUDE_CACHES_ALL_OPTION, NULL, 0,
    N_("exclude directories containing CACHEDIR.TAG"), GRID_LOCAL },
   {"exclude-tag", EXCLUDE_TAG_OPTION, N_("FILE"), 0,
    N_("exclude contents of directories containing FILE, except"
@@ -127,29 +127,29 @@ static struct argp_option names_options[] = {
    N_("read exclude patterns from the VCS ignore files"), GRID_LOCAL },
   {"exclude-backups", EXCLUDE_BACKUPS_OPTION, NULL, 0,
    N_("exclude backup and lock files"), GRID_LOCAL },
-  {"recursion", RECURSION_OPTION, 0, 0,
+  {"recursion", RECURSION_OPTION, NULL, 0,
    N_("recurse into directories (default)"), GRID_LOCAL },
-  {"no-recursion", NO_RECURSION_OPTION, 0, 0,
+  {"no-recursion", NO_RECURSION_OPTION, NULL, 0,
    N_("avoid descending automatically in directories"), GRID_LOCAL },
 
   {NULL, 0, NULL, 0,
    N_("File name matching options (affect both exclude and include patterns):"),
    GRH_MATCH },
-  {"anchored", ANCHORED_OPTION, 0, 0,
+  {"anchored", ANCHORED_OPTION, NULL, 0,
    N_("patterns match file name start"), GRID_MATCH },
-  {"no-anchored", NO_ANCHORED_OPTION, 0, 0,
+  {"no-anchored", NO_ANCHORED_OPTION, NULL, 0,
    N_("patterns match after any '/' (default for exclusion)"), GRID_MATCH },
-  {"ignore-case", IGNORE_CASE_OPTION, 0, 0,
+  {"ignore-case", IGNORE_CASE_OPTION, NULL, 0,
    N_("ignore case"), GRID_MATCH },
-  {"no-ignore-case", NO_IGNORE_CASE_OPTION, 0, 0,
+  {"no-ignore-case", NO_IGNORE_CASE_OPTION, NULL, 0,
    N_("case sensitive matching (default)"), GRID_MATCH },
-  {"wildcards", WILDCARDS_OPTION, 0, 0,
+  {"wildcards", WILDCARDS_OPTION, NULL, 0,
    N_("use wildcards (default for exclusion)"), GRID_MATCH },
-  {"no-wildcards", NO_WILDCARDS_OPTION, 0, 0,
+  {"no-wildcards", NO_WILDCARDS_OPTION, NULL, 0,
    N_("verbatim string matching"), GRID_MATCH },
-  {"wildcards-match-slash", WILDCARDS_MATCH_SLASH_OPTION, 0, 0,
+  {"wildcards-match-slash", WILDCARDS_MATCH_SLASH_OPTION, NULL, 0,
    N_("wildcards match '/' (default for exclusion)"), GRID_MATCH },
-  {"no-wildcards-match-slash", NO_WILDCARDS_MATCH_SLASH_OPTION, 0, 0,
+  {"no-wildcards-match-slash", NO_WILDCARDS_MATCH_SLASH_OPTION, NULL, 0,
    N_("wildcards do not match '/'"), GRID_MATCH },
 
   {NULL}
@@ -1188,7 +1188,7 @@ name_gather (void)
 	  free_name (buffer);
 	  buffer = make_name (ep->v.name);
 	  buffer->change_dir = change_dir;
-	  buffer->next = 0;
+	  buffer->next = NULL;
 	  buffer->found_count = 0;
 	  buffer->matching_flags = include_options ();
 	  buffer->directory = NULL;
@@ -1829,7 +1829,7 @@ collect_and_sort_names (void)
   namelist = merge_sort (namelist, num_names, compare_names);
 
   num_names = 0;
-  nametab = hash_initialize (0, 0, name_hash, name_compare, NULL);
+  nametab = hash_initialize (0, NULL, name_hash, name_compare, NULL);
   for (name = namelist; name; name = next_name)
     {
       next_name = name->next;
@@ -1905,10 +1905,10 @@ name_scan (const char *file_name, bool exact)
 	{
 	  name_gather ();	/* read one more */
 	  if (namelist->found_count)
-	    return 0;
+	    return NULL;
 	}
       else
-	return 0;
+	return NULL;
     }
 }
 
@@ -1942,7 +1942,7 @@ blank_name_list (void)
 {
   struct name *name;
 
-  gnu_list_name = 0;
+  gnu_list_name = NULL;
   for (name = namelist; name; name = name->next)
     name->found_count = 0;
 }

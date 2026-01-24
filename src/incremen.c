@@ -1,6 +1,6 @@
 /* GNU dump extensions to tar.
 
-   Copyright 1988-2025 Free Software Foundation, Inc.
+   Copyright 1988-2026 Free Software Foundation, Inc.
 
    This file is part of GNU tar.
 
@@ -388,18 +388,18 @@ note_directory (char const *name, struct timespec mtime,
     directory->dump = NULL;
 
   if (! ((directory_table
-	  || (directory_table = hash_initialize (0, 0,
+	  || (directory_table = hash_initialize (0, NULL,
 						 hash_directory_canonical_name,
 						 compare_directory_canonical_names,
-						 0)))
+						 NULL)))
 	 && hash_insert (directory_table, directory)))
     xalloc_die ();
 
   if (! ((directory_meta_table
-	  || (directory_meta_table = hash_initialize (0, 0,
+	  || (directory_meta_table = hash_initialize (0, NULL,
 						      hash_directory_meta,
 						      compare_directory_meta,
-						      0)))
+						      NULL)))
 	 && hash_insert (directory_meta_table, directory)))
     xalloc_die ();
 
@@ -411,7 +411,7 @@ static struct directory *
 find_directory (const char *name)
 {
   if (! directory_table)
-    return 0;
+    return NULL;
   else
     {
       char *caname = normalize_filename (chdir_current, name);
@@ -452,7 +452,7 @@ static struct directory *
 find_directory_meta (dev_t dev, ino_t ino)
 {
   if (! directory_meta_table)
-    return 0;
+    return NULL;
   else
     {
       struct directory *dir = make_directory ("", NULL);
@@ -820,7 +820,7 @@ scan_directory (struct tar_stat_info *st)
 	      else
 		{
 		  int fd = st->fd;
-		  void (*diag) (char const *) = 0;
+		  void (*diag) (char const *) = NULL;
 		  struct tar_stat_info stsub;
 		  tar_stat_init (&stsub);
 

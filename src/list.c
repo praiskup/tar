@@ -1,6 +1,6 @@
 /* List a tar archive, with support routines for reading a tar archive.
 
-   Copyright 1988-2025 Free Software Foundation, Inc.
+   Copyright 1988-2026 Free Software Foundation, Inc.
 
    This file is part of GNU tar.
 
@@ -364,7 +364,7 @@ tar_checksum (union block *header, bool silent)
   signed_sum   += ' ' * sizeof header->header.chksum;
 
   int recorded_sum = from_header (header->header.chksum,
-				  sizeof header->header.chksum, 0,
+				  sizeof header->header.chksum, NULL,
 				  0, INT_MAX, true, silent);
   if (recorded_sum < 0)
     return HEADER_FAILURE;
@@ -552,7 +552,7 @@ read_header (union block **return_block, struct tar_stat_info *info,
 	      memcpy (np, h->name, sizeof h->name);
 	      np[sizeof h->name] = '\0';
 	      name = namebuf;
-	      recent_long_name = 0;
+	      recent_long_name = NULL;
 	      recent_long_name_blocks = 0;
 	    }
 	  assign_string (&info->orig_file_name, name);
@@ -573,7 +573,7 @@ read_header (union block **return_block, struct tar_stat_info *info,
 	      memcpy (namebuf, h->linkname, sizeof h->linkname);
 	      namebuf[sizeof h->linkname] = '\0';
 	      name = namebuf;
-	      recent_long_link = 0;
+	      recent_long_link = NULL;
 	      recent_long_link_blocks = 0;
 	    }
 	  assign_string (&info->link_name, name);
@@ -912,7 +912,7 @@ from_header (char const *where0, int digs, char const *type,
 
 	  if (!o)
 	    {
-	      o = clone_quoting_options (0);
+	      o = clone_quoting_options (NULL);
 	      set_quoting_style (o, locale_quoting_style);
 	    }
 

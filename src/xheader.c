@@ -1,6 +1,6 @@
 /* POSIX extended headers for tar.
 
-   Copyright (C) 2003-2025 Free Software Foundation, Inc.
+   Copyright (C) 2003-2026 Free Software Foundation, Inc.
 
    This file is part of GNU tar.
 
@@ -904,7 +904,7 @@ xheader_destroy (struct xheader *xhdr)
     }
   else
     free (xhdr->buffer);
-  xhdr->buffer = 0;
+  xhdr->buffer = NULL;
   xhdr->size = 0;
 }
 
