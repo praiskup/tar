@@ -848,7 +848,7 @@ wordsplit_finish (struct wordsplit *wsp)
 	}
       else
 	{
-	  wsp->ws_error = WRDSE_EOF;
+	  wsp->ws_errno = WRDSE_EOF;
 	  return WRDSE_EOF;
 	}
       goto again;
