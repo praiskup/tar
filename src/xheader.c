@@ -904,7 +904,7 @@ xheader_destroy (struct xheader *xhdr)
     }
   else
     free (xhdr->buffer);
-  xhdr->buffer = 0;
+  xhdr->buffer = NULL;
   xhdr->size = 0;
 }
 

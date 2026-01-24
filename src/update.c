@@ -221,7 +221,7 @@ update_archive (void)
 	if (subcommand_option == CAT_SUBCOMMAND)
 	  append_file (file_name);
 	else
-	  dump_file (0, file_name, file_name);
+	  dump_file (NULL, file_name, file_name);
       }
   }
 

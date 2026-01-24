@@ -169,7 +169,8 @@ map_read (Hash_table **ptab, char const *file,
       ent->new_name = name ? xstrdup (name) : NULL;
 
       if (!((*ptab
-	     || (*ptab = hash_initialize (0, 0, map_hash, map_compare, 0)))
+	     || (*ptab = hash_initialize (0, NULL, map_hash, map_compare,
+					  NULL)))
 	    && hash_insert (*ptab, ent)))
 	xalloc_die ();
     }
