@@ -3274,10 +3274,14 @@ directory.
 @opsummary{one-top-level}
 @item --one-top-level[=@var{dir}]
 Tells @command{tar} to create a new directory beneath the extraction directory
-(or the one passed to @option{-C}) and use it to guard against
-tarbombs.  In the absence of @var{dir} argument, the name of the new directory
-will be equal to the base name of the archive (file name minus the
-archive suffix, if recognized).  Any member names that do not begin
+(or the one passed to @option{-C}) and use it to prevent @command{tar}
+from modifying files outside that directory.
+If @var{dir} is present, it must be a relative file name.
+If it is absent, the name of the new directory
+is the base name of the archive minus any recognized archive suffix.
+If multiple @option{-C} options are present,
+each has its own subdirectory with the same name.
+Any member names that do not begin
 with that directory name (after
 transformations from @option{--transform} and
 @option{--strip-components}) will be prefixed with it.  Recognized
