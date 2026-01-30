@@ -2675,7 +2675,7 @@ decode_options (int argc, char **argv)
 	    one_top_level_option = false;
 	}
 
-      if (one_top_level_option && !one_top_level_dir)
+      if (!one_top_level_dir && one_top_level_option)
 	{
 	  /* If the user wants to guarantee that everything is under one
 	     directory, determine its name now and let it be created later.  */
@@ -2687,6 +2687,9 @@ decode_options (int argc, char **argv)
 	    paxusage (_("Cannot deduce top-level directory name; "
 			"please set it explicitly with --one-top-level=DIR"));
 	}
+
+      if (one_top_level_dir && !IS_RELATIVE_FILE_NAME (one_top_level_dir))
+	paxusage(_("--one-top-level=DIR must use a relative file name"));
     }
 
   /* If ready to unlink hierarchies, so we are for simpler files.  */
