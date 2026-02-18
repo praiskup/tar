@@ -9615,7 +9615,7 @@ The most frequently used formats are (in alphabetical order):
 
 @table @asis
 @item gnu
-Format used by @GNUTAR{} versions up to 1.13.25.  This format derived
+Format used by @GNUTAR{} versions starting with 1.13.  This format derived
 from an early @acronym{POSIX} standard, adding some improvements such as
 sparse file handling and incremental archives.  Unfortunately these
 features were implemented in a way incompatible with other archive
@@ -9623,6 +9623,9 @@ formats.
 
 Archives in @samp{gnu} format are able to hold file names of unlimited
 length.
+However, file timestamps in this format are integers, so the timestamps
+have only one-second resolution; any subsecond information is lost.
+Also, UIDs and GIDs are limited to 64 bits, and device numbers to 63 bits.
 
 @item oldgnu
 Format used by @GNUTAR{} of versions prior to 1.12.
@@ -9638,7 +9641,7 @@ File names and symbolic links can contain at most 100 bytes.
 @item
 File sizes must be less than 8 GiB (@math{2^33} bytes = 8,589,934,592 bytes).
 @item
-File timestamps must be nonnegative and less than @math{2^33} seconds
+File timestamps must be nonnegative integers less than @math{2^33} seconds
 since the Epoch, corresponding to the range from 1970-01-01 00:00:00
 (inclusive) to 2242-03-16 12:56:32 (exclusive) UTC, ignoring leap seconds.
 @item
@@ -9674,7 +9677,7 @@ Symbolic links can contain at most 100 bytes.
 @item
 File sizes must be less than 8 GiB (@math{2^33} bytes = 8,589,934,592 bytes).
 @item
-File timestamps must be nonnegative and less than @math{2^33} seconds
+File timestamps must nonnegative integers less than @math{2^33} seconds
 since the Epoch, corresponding to the range from 1970-01-01 00:00:00
 (inclusive) to 2242-03-16 12:56:32 (exclusive) UTC, ignoring leap seconds.
 @item
@@ -9690,7 +9693,8 @@ does not produce them.
 @item posix
 The format defined by @acronym{POSIX.1-2001} and later.  This is the
 most flexible and feature-rich format.  It does not impose arbitrary
-restrictions on file sizes or timestamps or file name lengths.
+restrictions on file sizes, file timestamp range or resolution,
+file name lengths, and number of bits in UIDs or device numbers.
 This format is more
 recent, so some @command{tar} implementations cannot handle it properly.
 However, any @command{tar} implementation able to read @samp{ustar}
@@ -9703,16 +9707,23 @@ of @GNUTAR{}.
 
 @end table
 
-The following table summarizes the limitations of each of these
-formats:
+The following table summarizes the limits of each of these formats.
+``Size'' and ``Date'' stands for file size and date,
+``Res'' for file timestamp resolution (where ``1 s'' means one second),
+``Name'' for length of file names,
+``Sym'' for length of symbolic links,
+``Un'' for the number of bits in a UID or GID, and
+``Dn'' for the number of bits in a device number.
+A ``-'' means the archive format imposes no practical limits,
+though the operating system may have limits of its own.
 
-@multitable {Format} {no limit} {File Size} {File Date} {File Name} {no limit}
-@headitem Format @tab UID @tab File Size @tab File Date @tab File Name @tab Devn
-@item gnu    @tab 1.8e19 @tab no limit @tab no limit @tab no limit @tab 63
-@item oldgnu @tab 1.8e19 @tab no limit @tab no limit @tab no limit @tab 63
-@item v7     @tab 2097151 @tab < 8 GiB @tab 1970--2242 @tab 99 @tab n/a
-@item ustar  @tab 2097151 @tab < 8 GiB @tab 1970--2242 @tab 255 @tab 21
-@item posix  @tab no limit @tab no limit @tab no limit @tab no limit @tab no limit
+@multitable {Format} {< 8 GiB} {1970--2242} {Res} {Name} {Sym} {Un} {Dn}
+@headitem Format @tab Size @tab Date @tab Res @tab Name @tab Sym @tab Un @tab Dn
+@item v7     @tab < 8 GiB @tab 1970--2242 @tab 1 s @tab 100 @tab 100 @tab 21 @tab n/a
+@item ustar  @tab < 8 GiB @tab 1970--2242 @tab 1 s @tab 255 @tab 100 @tab 21 @tab 21
+@item oldgnu @tab - @tab - @tab 1 s @tab - @tab - @tab 64 @tab 63
+@item gnu    @tab - @tab - @tab 1 s @tab - @tab - @tab 64 @tab 63
+@item posix  @tab - @tab - @tab - @tab - @tab - @tab - @tab -
 @end multitable
 
 The default format for @GNUTAR{} is defined at compilation
