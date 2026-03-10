@@ -1588,7 +1588,7 @@ restore_parent_fd (struct tar_stat_info const *st)
 			: openat (f.fd, f.base, open_searchdir_how.flags));
 	  if (0 <= origfd)
 	    {
-	      if (fstat (parentfd, &parentstat) < 0
+	      if (fstat (origfd, &parentstat) < 0
 		  || !psame_inode (&parent->stat, &parentstat))
 		close (origfd);
 	      else
