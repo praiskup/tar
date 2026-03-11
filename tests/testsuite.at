@@ -393,6 +393,7 @@ m4_include([incr11.at])
 AT_BANNER([Files removed while archiving])
 m4_include([filerem01.at])
 m4_include([filerem02.at])
+m4_include([filerem03.at])
 
 AT_BANNER([Directories removed while archiving])
 m4_include([dirrem01.at])

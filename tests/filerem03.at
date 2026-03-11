@@ -1,0 +1,46 @@
+# Process this file with autom4te to create testsuite. -*- Autotest -*-
+
+# Test suite for GNU tar.
+# Copyright 2026 Free Software Foundation, Inc.
+
+# This file is part of GNU tar.
+
+# GNU tar is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+
+# GNU tar is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# Description: see filerem01.at
+# This test case verifies that --ignore-failed-read makes tar exit
+# with code 0 when a file disappears during archiving, instead of
+# TAREXIT_DIFFERS (1).
+
+AT_SETUP([file removed with --ignore-failed-read])
+AT_KEYWORDS([create incremental listed filechange filerem filerem03])
+
+AT_TAR_CHECK([
+mkdir dir
+mkdir dir/sub
+genfile --file dir/file1
+genfile --file dir/sub/file2
+
+genfile --run --checkpoint=3 --unlink dir/file1 -- \
+       tar --blocking-factor=1 -c -f archive.tar \
+       --listed-incremental db --ignore-failed-read -v dir >/dev/null
+],
+[0],
+[ignore],
+[tar: dir: Directory is new
+tar: dir/sub: Directory is new
+tar: dir/file1: File removed before we read it
+],[],[],[gnu, posix])
+
+AT_CLEANUP

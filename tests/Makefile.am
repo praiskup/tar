@@ -143,6 +143,7 @@ TESTSUITE_AT = \
  extrac31.at\
  filerem01.at\
  filerem02.at\
+ filerem03.at\
  grow.at\
  gzip.at\
  ignfail.at\
