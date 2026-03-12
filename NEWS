@@ -1,4 +1,4 @@
-GNU tar NEWS - User visible changes. 2026-03-10
+GNU tar NEWS - User visible changes. 2026-03-12
 Please send GNU tar bug reports to <bug-tar@gnu.org>
 
 version 1.35.90 (git)
@@ -65,6 +65,9 @@ option.
 
 ** tar no longer gives up so easily in deeply nested directory
    hierarchies when file descriptors are limited.
+
+** tar --ignore-failed-read no longer complains about a file removed
+   before reading.
 
 * Performance improvements
 
