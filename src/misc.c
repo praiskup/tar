@@ -1445,7 +1445,8 @@ file_removed_diag (const char *name, bool top_level,
     {
       warnopt (WARN_FILE_REMOVED, 0, _("%s: File removed before we read it"),
 	       quotearg_colon (name));
-      set_exit_status (TAREXIT_DIFFERS);
+      if (!ignore_failed_read_option)
+	  set_exit_status (TAREXIT_DIFFERS);
     }
   else
     diagfn (name);
