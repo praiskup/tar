@@ -1815,7 +1815,7 @@ simple_flush_read (void)
 
 /* Simple flush write (no multi-volume or label extensions) */
 static void
-simple_flush_write (MAYBE_UNUSED idx_t level)
+simple_flush_write (idx_t UNNAMED (level))
 {
   idx_t status = _flush_write ();
   if (status != record_size)

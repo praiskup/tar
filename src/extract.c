@@ -1564,7 +1564,7 @@ create_placeholder_file (char *file_name, bool is_symlink, bool *interdir_made)
 }
 
 static bool
-extract_link (char *file_name, MAYBE_UNUSED char typeflag)
+extract_link (char *file_name, char UNNAMED (typeflag))
 {
   bool interdir_made = false;
   char const *link_name;
@@ -1639,7 +1639,7 @@ extract_link (char *file_name, MAYBE_UNUSED char typeflag)
 }
 
 static bool
-extract_symlink (char *file_name, MAYBE_UNUSED char typeflag)
+extract_symlink (char *file_name, char typeflag)
 {
   bool interdir_made = false;
 
