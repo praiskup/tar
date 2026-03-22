@@ -6,6 +6,7 @@ Many people further contributed to GNU tar by reporting problems,
 suggesting various improvements or submitting actual code.  Here is a
 list of these people.  Help me keep it complete and exempt of errors.
 See various ChangeLogs for a detailed description of contributions.
+This listed is sorted via "LC_ALL=C sort".
 
 Aage Robeck		aagero@ifi.uio.no
 Adam Borowski		kilobyte@angband.pl
@@ -36,8 +37,8 @@ Andrew J. Schorr	schorr@ead.dsa.com
 Andrew Torda		torda@igc.chem.ethz.ch
 Andrey A. Chernov	ache@astral.msk.su
 Andy Gay		andy@rdl.co.uk
-Antonio Jose Coutinho	ajc@di.uminho.pt
 Anthony G. Basile	blueness@gentoo.org
+Antonio Jose Coutinho	ajc@di.uminho.pt
 Ariel Faigon		ariel@engr.sgi.com
 Arne Wichmann		aw@math.uni-sb.de
 Arnold Robbins		arnold@gnu.org
@@ -79,9 +80,9 @@ Cesar Romani		romani@ifm.uni-hamburg.de
 Chad Hurwitz		churritz@cts.com
 Chance Reschke		creschke@usra.edu
 Charles Fu		ccwf@klab.caltech.edu
-Charles McGarvey        chazmcgarvey@brokenzipper.com
 Charles Lopes		Charles.Lopes@infm.ulst.ac.uk
 Charles M. Hannum	mycroft@gnu.org
+Charles McGarvey        chazmcgarvey@brokenzipper.com
 Chip Salzenberg		tct!chip
 Chris Arthur		csa@gnu.org
 Chris F.M. Verberne	verberne@prl.philips.nl
@@ -93,9 +94,9 @@ Christian Callsen	Christian.Callsen@eng.sun.com
 Christian Kirsch	ck@held.mind.de
 Christian Laubscher	christian.laubscher@tiscalinet.ch
 Christian T. Dum	ctd@mpe-garching.mpg.de
-Christian von Roques	roques@pond.sub.org
-Christian Wetzel	wetzel@phoenix-pacs.de
 Christian Weisgerber	naddy@mips.inka.de
+Christian Wetzel	wetzel@phoenix-pacs.de
+Christian von Roques	roques@pond.sub.org
 Christoph Litauer	litauer@mailhost.uni-koblenz.de
 Christophe Colle	colle@krtkg1.rug.ac.be
 Christophe Kalt		Christophe.Kalt@kbcfp.com
@@ -117,8 +118,8 @@ Dan Bloch		dan@transarc.com
 Dan Drake               dan@dandrake.org
 Dan Reish		dreish@izzy.net
 Daniel Hagerty		hag@gnu.org
-Daniel Quinlan		quinlan@pathname.com
 Daniel Kahn Gillmor	dkg@fifthhorseman.net
+Daniel Quinlan		quinlan@pathname.com
 Daniel R. Guilderson	d.guilderson@ma30.bull.com
 Daniel S. Barclay	daniel@compass-da.com
 Daniel Trinkle		trinkle@cs.purdue.edu
@@ -198,6 +199,7 @@ Greg Hudson		ghudson@mit.edu
 Greg Maples		greg@clari.net
 Greg McGary		gkm@cstone.net
 Greg Schafer		gschafer@zip.com.au
+Guillermo de Angel	gdeangelg@gmail.com
 Göran Uddeborg		gvran@uddeborg.pp.se
 Gürkan Karaman		karaman@dssgmbh.de
 Hans Guerth		100664.3101@compuserve.com
@@ -222,6 +224,7 @@ Indra Singhal		indra@synoptics.com
 J. Dean Brock		brock@cs.unca.edu
 J.J. Bailey		jjb@jagware.bcc.com
 J.T. Conklin		jtc@cygnus.com
+James Antill            jantill@redhat.com
 James Crawford Ralston	qralston+@pitt.edu
 James E. Carpenter	jimc@zach1.tiac.net
 James H Caldwell Jr	caldwell@cs.fsu.edu
@@ -233,15 +236,15 @@ Jan Carlson		janc@sni.ca
 Jan Djarv		jan.djarv@mbox200.swipnet.se
 Janice Burton		r06a165@bcc25.kodak.com
 Janne Snabb		snabb@niksula.hut.fi
-Jason R. Mastaler	jason@webmaster.net
 Jason Armistead		Jason.Armistead@otis.com
+Jason R. Mastaler	jason@webmaster.net
 Jay Fenlason		hack@gnu.org
 Jean-Louis Martineau    martineau@zmanda.com
-Jean-Michel Soenen	soenen@lectra.fr
 Jean-Loup Gailly	jloup@chorus.fr
-Jeff Moskow		jeff@rtr.com
+Jean-Michel Soenen	soenen@lectra.fr
 Jean-Ph. Martin-Flatin	syj@ecmwf.int
 Jean-Pierre Demailly	Jean-Pierre.Demailly@ujf-grenoble.fr
+Jeff Moskow		jeff@rtr.com
 Jeff Prothero		jsp@betz.biostr.washington.edu
 Jeff Siegel		js@hornet.att.com
 Jeff Sorensen		sorenj@alumni.rpi.edu
@@ -249,7 +252,6 @@ Jeffrey Goldberg	J.Goldberg@cranfield.ac.uk
 Jeffrey Mark Siskind	Qobi@emba.uvm.edu
 Jeffrey W. Parker	jwpkr@mcs.com
 Jens Henrik Jensen	recjhl@mediator.uni-c.dk
-Jérémy Bobbio		lunar@debian.org
 Jim Blandy		jimb@totoro.cs.oberlin.edu
 Jim Clausing		jac@postbox.acs.ohio-state.edu
 Jim Farrell		jwf@platinum.com
@@ -283,13 +285,14 @@ Joutsiniemi Tommi Il	tj75064@cs.tut.fi
 Joy Kendall		jak8@world.std.com
 Judy Ricker		jricker@gdstech.grumman.com
 Juha Sarlin		juha@tds.kth.se
-Jürgen Botz		jbotz@orixa.mtholyoke.edu
 Jyh-Shyang Wang		erik@vsp.ee.nctu.edu.tw
+Jérémy Bobbio		lunar@debian.org
 Jörg Schilling		schilling@fokus.fraunhofer.de
-Jörg Weule		weule@cs.uni-duesseldorf.de
 Jörg Weilbier 		gnu@weilbier.net
+Jörg Weule		weule@cs.uni-duesseldorf.de
 Jörgen Hågg		Jorgen.Hagg@axis.se
 Jörgen Weigert		jw@suse.de
+Jürgen Botz		jbotz@orixa.mtholyoke.edu
 Jürgen Lüters		jlueters@t-online.de
 Jürgen Reiss		reiss@psychologie.uni-wuerzburg.de
 Kai Petzke		wpp@marie.physik.tu-berlin.de
@@ -312,7 +315,6 @@ Kirill Furman		kfurman@astralinux.ru
 Koji Kishi		kis@rqa.sony.co.jp
 Konno Hiroharu		konno@pac.co.jp
 Kurt Jaeger		pi@lf.net
-James Antill            jantill@redhat.com
 Larry Creech		lcreech@lonestar.rcclub.org
 Larry Schwimmer		rosebud@cyclone.stanford.edu
 Lasse Collin 		lasse.collin@tukaani.org
@@ -396,7 +398,6 @@ Oswald P. Backus IV	backus@lks.csi.com
 Pascal Meheut		pascal@cnam.cnam.fr
 Patrick Fulconis	fulco@sig.uvsq.fr
 Patrick Timmons		timmons@electech.polymtl.ca
-Pavel Raiskup           praiskup@redhat.com
 Paul Eggert		eggert@cs.ucla.edu
 Paul Kanz		paul@icx.com
 Paul Mitchell		P.Mitchell@surrey.ac.uk
@@ -404,6 +405,7 @@ Paul Nevai		pali+@osu.edu
 Paul Nordstrom		100067.3532@compuserve.com
 Paul O'Connor		oconnorp@ul.ie
 Paul Siddall		pauls@postman.essex.ac.uk
+Pavel Raiskup           praiskup@redhat.com
 Peder Chr. Norgaard	pcn@tbit.dk
 Pekka Janhunen		Pekka.Janhunen@fmi.fi
 Per Bojsen		pb@delta.dk
@@ -422,9 +424,9 @@ Piotr Rotter 		piotr.rotter@active24.pl
 R. Kent Dybvig		dyb@cadence.bloomington.in.us
 R. Scott Butler		butler@prism.es.dupont.com
 Rainer Orth		ro@TechFak.Uni-Bielefeld.DE
-Ralf Wildenhues 	Ralf.Wildenhues@gmx.de
 Ralf S. Engelschall	rse@engelschall.com
 Ralf Suckow		suckow@contrib.de
+Ralf Wildenhues 	Ralf.Wildenhues@gmx.de
 Ralph Corderoy		ralph@inputplus.co.uk
 Ralph Schleicher	rs@purple.ul.bawue.de
 Randy Bias		randyb@edge.edge.net

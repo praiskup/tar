@@ -1,7 +1,6 @@
-# Process this file with autom4te to create testsuite. -*- Autotest -*-
+# Check for file injection bug with symlinks. -*- Autotest -*-
 
-# Test suite for GNU tar.
-# Copyright 2025-2026 Free Software Foundation, Inc.
+# Copyright 2026 Free Software Foundation, Inc.
 
 # This file is part of GNU tar.
 
@@ -18,35 +17,31 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# Description: determining member type when listing and extracting
-# should follow the same principles.
-#
-# Until version 1.35 the same archive member could have been processed
-# as a directory when extracting and as a regular file when being
-# skipped during listing.
-#
-# References: https://savannah.gnu.org/patch/index.php?10100
+# Thanks to Guillermo de Angel for the bug report and test cases; see:
+# https://lists.gnu.org/r/bug-tar/2026-03/msg00007.html
 
-AT_SETUP([skip directory members])
-AT_KEYWORDS([skipdir])
+AT_SETUP([skip file injection])
+AT_KEYWORDS([injection])
 AT_DATA([archive.in],
-[/Td6WFoAAATm1rRGAgAhARwAAAAQz1jM4Cf/AG1dADedyh4ubnxHHIi7Cen6orusgKqY3paKeQwp
-3//HS9EIT7Hm+MsndXfRntXVt8mu8oDpLOfC+AB9VldyCtp2jqOfTwa455qfGAcONPn6WWDgsaAh
-O2Y6ptXuaF/vdaNkub7SkOBME8jHYITT5QAAAAAAHtdcflb5Zw8AAYkBgFAAAPYgb0axxGf7AgAA
-AAAEWVo=
+[/Td6WFoAAATm1rRGBMDbAYAcIQEcAAAAAAAAACYr+9LgDf8A010AMZhKvfVdtHe4Rxjj7M03ek97
+UgeKfJ0ORqYg0XDFntWxdTH4PYrTOo9CoqBrnTM2NcwFBrRVr7aFwdd56vddyAw2QGDjxgNexDU3
+ImTi/+z8ZOLMi/+AybdEpd5aA/M9Maa+8tQ84bySzSAwrmxMWJJ6W9IKvsqfiRa3TrD51v44PZU/
+KLVKpocS56n/O3g+b+hiZwaysR0eLO+tiU8FB/e3PEq3vTtDFVi/YfZMieBWSzomSX9eF13K1yPY
+UuWgp7VokXqduL0YGNVV40MTPG9oAAAApD6mpajengIAAfcBgBwAAOM4xw6xxGf7AgAAAAAEWVo=
 ])
 AT_CHECK([base64 --help >/dev/null 2>&1 || AT_SKIP_TEST
 xz --help >/dev/null 2>&1 || AT_SKIP_TEST
 base64 -d < archive.in | xz -c -d > archive.tar
 ])
+cp archive.tar /tmp
 AT_CHECK([tar tf archive.tar],
 [0],
-[owo1/
+[carrier_entry
+marker.txt
 ])
-AT_CHECK([tar vxf archive.tar],
+AT_CHECK([tar xvf archive.tar],
 [0],
-[owo1/
+[carrier_entry
+marker.txt
 ])
-AT_CHECK([tar -xvf archive.tar --exclude owo1],
-[0])
 AT_CLEANUP

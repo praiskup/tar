@@ -423,19 +423,14 @@ read_header (union block **return_block, struct tar_stat_info *info,
       if ((status = tar_checksum (header, false)) != HEADER_SUCCESS)
 	break;
 
-      /* Good block.  Decode file size and return.  */
-
-      if (header->header.typeflag == LNKTYPE)
-	info->stat.st_size = 0;	/* links 0 size on tape */
-      else
+      info->stat.st_size = OFF_FROM_HEADER (header->header.size);
+      if (info->stat.st_size < 0)
 	{
-	  info->stat.st_size = OFF_FROM_HEADER (header->header.size);
-	  if (info->stat.st_size < 0)
-	    {
-	      status = HEADER_FAILURE;
-	      break;
-	    }
+	  status = HEADER_FAILURE;
+	  break;
 	}
+
+      info->skipped = false;
 
       if (header->header.typeflag == GNUTYPE_LONGNAME
 	  || header->header.typeflag == GNUTYPE_LONGLINK
@@ -493,11 +488,15 @@ read_header (union block **return_block, struct tar_stat_info *info,
 		}
 
 	      *bp = '\0';
+	      info->skipped = true;
 	    }
 	  else if (header->header.typeflag == XHDTYPE
 		   || header->header.typeflag == SOLARIS_XHDTYPE)
-	    xheader_read (&info->xhdr, header,
-			  OFF_FROM_HEADER (header->header.size));
+	    {
+	      xheader_read (&info->xhdr, header,
+			    OFF_FROM_HEADER (header->header.size));
+	      info->skipped = true;
+	    }
 	  else if (header->header.typeflag == XGLTYPE)
 	    {
 	      struct xheader xhdr;
@@ -511,6 +510,7 @@ read_header (union block **return_block, struct tar_stat_info *info,
 			    OFF_FROM_HEADER (header->header.size));
 	      xheader_decode_global (&xhdr);
 	      xheader_destroy (&xhdr);
+	      info->skipped = true;
 	      if (mode == read_header_x_global)
 		{
 		  status = HEADER_SUCCESS_EXTENDED;
@@ -1412,23 +1412,6 @@ skip_member (void)
   skim_member (false);
 }
 
-static bool
-member_is_dir (struct tar_stat_info *info, char typeflag)
-{
-  switch (typeflag) {
-  case AREGTYPE:
-  case REGTYPE:
-  case CONTTYPE:
-    return info->had_trailing_slash;
-
-  case DIRTYPE:
-    return true;
-
-  default:
-    return false;
-  }
-}
-
 /* Skip the current member in the archive.
    If MUST_COPY, always copy instead of skipping.  */
 void
@@ -1436,18 +1419,17 @@ skim_member (bool must_copy)
 {
   if (!current_stat_info.skipped)
     {
-      bool is_dir = member_is_dir (&current_stat_info,
-				   current_header->header.typeflag);
       set_next_block_after (current_header);
 
       mv_begin_read (&current_stat_info);
 
       if (current_stat_info.is_sparse)
 	sparse_skim_file (&current_stat_info, must_copy);
-      else if (!is_dir)
+      else
 	skim_file (current_stat_info.stat.st_size, must_copy);
 
       mv_end ();
+      current_stat_info.skipped = true;
     }
 }
 

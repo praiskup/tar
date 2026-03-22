@@ -1132,7 +1132,7 @@ safe_dir_mode (struct stat const *st)
 /* Extractor functions for various member types */
 
 static bool
-extract_dir (char *file_name, char typeflag)
+extract_dir (char *file_name, char UNNAMED (typeflag))
 {
   int status;
   mode_t mode;
@@ -1157,8 +1157,6 @@ extract_dir (char *file_name, char typeflag)
   if (incremental_option)
     /* Read the entry and delete files that aren't listed in the archive.  */
     purge_directory (file_name);
-  else if (typeflag == GNUTYPE_DUMPDIR)
-    skip_member ();
 
   mode = safe_dir_mode (&current_stat_info.stat);
 
@@ -1338,10 +1336,7 @@ extract_file (char *file_name, char typeflag)
     {
       fd = sys_exec_command (file_name, 'f', &current_stat_info);
       if (fd < 0)
-	{
-	  skip_member ();
-	  return true;
-	}
+	return true;
     }
   else
     {
@@ -1362,7 +1357,6 @@ extract_file (char *file_name, char typeflag)
 	    = maybe_recoverable (file_name, true, &interdir_made);
 	  if (recover != RECOVER_OK)
 	    {
-	      skip_member ();
 	      if (recover == RECOVER_SKIP)
 		return true;
 	      open_error (file_name);
@@ -1409,6 +1403,7 @@ extract_file (char *file_name, char typeflag)
       }
 
   skim_file (size, false);
+  current_stat_info.skipped = true;
 
   mv_end ();
 
@@ -1921,15 +1916,9 @@ extract_archive (void)
 
   tar_extractor_t fun = prepare_to_extract (current_stat_info.file_name,
 					    typeflag);
-  if (fun)
-    {
-      if (fun (current_stat_info.file_name, typeflag))
-	return;
-    }
-  else
-    skip_member ();
-
-  if (backup_option)
+  bool ok = fun && fun (current_stat_info.file_name, typeflag);
+  skip_member ();
+  if (!ok && backup_option)
     undo_last_backup ();
 }
 
