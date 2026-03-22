@@ -78,7 +78,7 @@ report_difference (struct tar_stat_info *st, const char *fmt, ...)
 
 /* Take a buffer returned by read_and_process and do nothing with it.  */
 static bool
-process_noop (MAYBE_UNUSED idx_t size, MAYBE_UNUSED char *data)
+process_noop (idx_t UNNAMED (size), char *UNNAMED (data))
 {
   return true;
 }

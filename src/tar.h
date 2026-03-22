@@ -17,7 +17,8 @@
    You should have received a copy of the GNU General Public License
    along with this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
-/* tar Header Block, from POSIX 1003.1-1990.  */
+/* tar Header Block, from POSIX 1003.1-2024
+   <https://pubs.opengroup.org/onlinepubs/9799919799/utilities/pax.html#tagtcjh_21>  */
 
 /* POSIX header.  */
 
@@ -54,12 +55,12 @@ enum
     REGTYPE	= '0',		/* regular file */
     AREGTYPE	= '\0',		/* regular file */
     LNKTYPE	= '1',		/* link */
-    SYMTYPE	= '2',		/* reserved */
+    SYMTYPE	= '2',		/* symbolic link */
     CHRTYPE	= '3',		/* character special */
     BLKTYPE	= '4',		/* block special */
     DIRTYPE	= '5',		/* directory */
     FIFOTYPE	= '6',		/* FIFO special */
-    CONTTYPE	= '7',		/* reserved */
+    CONTTYPE	= '7',		/* contiguous; treated as a regular file */
 
     XHDTYPE	= 'x',		/* Extended header referring to the
 				   next file in the archive */
@@ -85,11 +86,6 @@ enum
   };
 
 /* tar Header Block, GNU extensions.  */
-
-/* In GNU tar, SYMTYPE is for to symbolic links, and CONTTYPE is for
-   contiguous files, so maybe disobeying the "reserved" comment in POSIX
-   header description.  I suspect these were meant to be used this way, and
-   should not have really been "reserved" in the published standards.  */
 
 /* *BEWARE* *BEWARE* *BEWARE* that the following information is still
    boiling, and may change.  Even if the OLDGNU format description should be
@@ -170,13 +166,12 @@ struct oldgnu_header
 #define OLDGNU_MAGIC "ustar  "	/* 7 chars and a null */
 
 /* The standards committee allows only capital A through capital Z for
-   user-defined expansion.  Other letters in use include:
+   user-defined expansion.  Letters in use in other implementations include:
 
    'A' Solaris Access Control List
    'E' Solaris Extended Attribute File
    'I' Inode only, as in 'star'
-   'N' Obsolete GNU tar, for file names that do not fit into the main header.
-   'X' POSIX 1003.1-2001 eXtended (VU version)  */
+   'N' Obsolete GNU tar, for file names too long for main header.  */
 
 enum
   {
@@ -365,8 +360,7 @@ struct tar_stat_info
 
   /* For dumpdirs */
   bool is_dumpdir;          /* Is the member a dumpdir? */
-  bool skipped;             /* The member contents is already read
-			       (for GNUTYPE_DUMPDIR) */
+  bool skipped;             /* The member contents are already read.  */
   char *dumpdir;            /* Contents of the dump directory */
 
   /* Parent directory, if creating an archive.  This is null if the

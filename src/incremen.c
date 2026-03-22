@@ -1621,8 +1621,8 @@ dumpdir_ok (char *dumpdir)
 
 /* Examine the directories under directory_name and delete any
    files that were not there at the time of the back-up. */
-static bool
-try_purge_directory (char const *directory_name)
+void
+purge_directory (char const *directory_name)
 {
   char *current_dir;
   char *cur, *arc, *p;
@@ -1630,18 +1630,18 @@ try_purge_directory (char const *directory_name)
   struct dumpdir *dump;
 
   if (!is_dumpdir (&current_stat_info))
-    return false;
+    return;
 
   current_dir = tar_savedir (directory_name, false);
 
   if (!current_dir)
     /* The directory doesn't exist now.  It'll be created.  In any
        case, we don't have to delete any files out of it.  */
-    return false;
+    return;
 
   /* Verify if dump directory is sane */
   if (!dumpdir_ok (current_stat_info.dumpdir))
-    return false;
+    return;
 
   /* Process renames */
   for (arc = current_stat_info.dumpdir; *arc; arc += strlen (arc) + 1)
@@ -1661,7 +1661,7 @@ try_purge_directory (char const *directory_name)
 			quote (temp_stub));
 	      free (temp_stub);
 	      free (current_dir);
-	      return false;
+	      return;
 	    }
 	}
       else if (*arc == 'R')
@@ -1695,7 +1695,7 @@ try_purge_directory (char const *directory_name)
 	      free (current_dir);
 	      /* FIXME: Make sure purge_directory(dst) will return
 		 immediately */
-	      return false;
+	      return;
 	    }
 	}
     }
@@ -1749,14 +1749,6 @@ try_purge_directory (char const *directory_name)
   dumpdir_free (dump);
 
   free (current_dir);
-  return true;
-}
-
-void
-purge_directory (char const *directory_name)
-{
-  if (!try_purge_directory (directory_name))
-    skip_member ();
 }
 
 void
