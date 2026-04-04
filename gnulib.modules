@@ -78,6 +78,7 @@ localcharset
 manywarnings
 mbrtoc32-regular
 mcel-prefer
+mempcpy
 mkdirat
 mkdtemp
 mkfifoat

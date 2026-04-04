@@ -1,4 +1,4 @@
-GNU tar NEWS - User visible changes. 2026-03-12
+GNU tar NEWS - User visible changes. 2026-04-04
 Please send GNU tar bug reports to <bug-tar@gnu.org>
 
 version 1.35.90 (git)
@@ -42,6 +42,10 @@ option.
 
 ** When extracting, tar no longer follows symbolic links to targets
    outside the working directory.
+
+** When extracting from an incremental dump, tar now strips leading '/'
+   from names of temporary directories specified by 'X' entries,
+   unless --absolute-names (-P) is used.
 
 ** Fixed O(n^2) time complexity bug for large numbers of directories when
    extracting with --delay-directory-restore or reading incremental archives.
