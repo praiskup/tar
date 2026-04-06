@@ -1061,7 +1061,7 @@ pax_dump_header_0 (struct tar_sparse_file *file)
 {
   off_t block_ordinal = current_block_ordinal ();
   union block *blk;
-  char nbuf[UINTMAX_STRSIZE_BOUND];
+  char nbuf[INTMAX_STRSIZE_BOUND];
   struct sp_array *map = file->stat_info->sparse_map;
   char *save_file_name = NULL;
 
@@ -1091,10 +1091,10 @@ pax_dump_header_0 (struct tar_sparse_file *file)
 	  if (i)
 	    xheader_string_add (&file->stat_info->xhdr, ",");
 	  xheader_string_add (&file->stat_info->xhdr,
-			      umaxtostr (map[i].offset, nbuf));
+			      imaxtostr (map[i].offset, nbuf));
 	  xheader_string_add (&file->stat_info->xhdr, ",");
 	  xheader_string_add (&file->stat_info->xhdr,
-			      umaxtostr (map[i].numbytes, nbuf));
+			      imaxtostr (map[i].numbytes, nbuf));
 	}
       if (!xheader_string_end (&file->stat_info->xhdr,
 			       "GNU.sparse.map"))
@@ -1146,9 +1146,10 @@ dump_str_nl (struct block_ptr bp, char const *str)
   return bp;
 }
 
-/* Return the floor of the log base 10 of N.  If N is 0, return 0.  */
+/* Return the floor of the log base 10 of nonnegative N.
+   If N is 0, return 0.  */
 static int
-floorlog10 (uintmax_t n)
+floorlog10 (intmax_t n)
 {
   for (int f = 0; ; f++)
     if ((n /= 10) == 0)
@@ -1159,7 +1160,7 @@ static bool
 pax_dump_header_1 (struct tar_sparse_file *file)
 {
   off_t block_ordinal = current_block_ordinal ();
-  char nbuf[UINTMAX_STRSIZE_BOUND];
+  char nbuf[INTMAX_STRSIZE_BOUND];
   struct sp_array *map = file->stat_info->sparse_map;
   char *save_file_name = file->stat_info->file_name;
 
@@ -1194,11 +1195,11 @@ pax_dump_header_1 (struct tar_sparse_file *file)
 
   bp.block = find_next_block ();
   bp.ptr = bp.block->buffer;
-  bp = dump_str_nl (bp, umaxtostr (file->stat_info->sparse_map_avail, nbuf));
+  bp = dump_str_nl (bp, imaxtostr (file->stat_info->sparse_map_avail, nbuf));
   for (idx_t i = 0; i < file->stat_info->sparse_map_avail; i++)
     {
-      bp = dump_str_nl (bp, umaxtostr (map[i].offset, nbuf));
-      bp = dump_str_nl (bp, umaxtostr (map[i].numbytes, nbuf));
+      bp = dump_str_nl (bp, imaxtostr (map[i].offset, nbuf));
+      bp = dump_str_nl (bp, imaxtostr (map[i].numbytes, nbuf));
     }
   memset (bp.ptr, 0, BLOCKSIZE - (bp.ptr - bp.block->buffer));
   set_next_block_after (bp.block);
@@ -1219,15 +1220,15 @@ pax_dump_header (struct tar_sparse_file *file)
 struct ok_n_block_ptr
 {
   bool ok;
-  uintmax_t n;
+  intmax_t n;
   struct block_ptr bp;
 };
 
 static struct ok_n_block_ptr
-decode_num (struct block_ptr bp, uintmax_t nmax, struct tar_sparse_file *file)
+decode_num (struct block_ptr bp, intmax_t nmax, struct tar_sparse_file *file)
 {
   char *endp = bp.block->buffer + BLOCKSIZE;
-  uintmax_t n = 0;
+  intmax_t n = 0;
   bool digit_seen = false, nondigit_seen = false, overflow = false;
   while (true)
     {
@@ -1275,7 +1276,7 @@ pax_decode_header (struct tar_sparse_file *file)
       if (!bp.block)
 	paxfatal (0, _("Unexpected EOF in archive"));
       bp.ptr = bp.block->buffer;
-      struct ok_n_block_ptr onbp = decode_num (bp, SIZE_MAX, file);
+      struct ok_n_block_ptr onbp = decode_num (bp, IDX_MAX, file);
       if (!onbp.ok)
 	return false;
       bp = onbp.bp;
