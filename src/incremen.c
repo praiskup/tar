@@ -1649,10 +1649,19 @@ purge_directory (char const *directory_name)
       if (*arc == 'X')
 	{
 	  static char const TEMP_DIR_TEMPLATE[] = "tar.XXXXXX";
+	  idx_t topsize
+	    = one_top_level_dir ? strlen (one_top_level_dir) + 1 : 0;
 	  char *d = safer_name_suffix (arc + 1, false, absolute_names_option);
 	  idx_t len = strlen (d);
-	  temp_stub = xrealloc (temp_stub, len + 1 + sizeof TEMP_DIR_TEMPLATE);
-	  char *copy_end = mempcpy (temp_stub, d, len);
+	  temp_stub = xrealloc (temp_stub,
+				topsize + len + 1 + sizeof TEMP_DIR_TEMPLATE);
+	  char *copy_end = temp_stub;
+	  if (topsize)
+	    {
+	      copy_end = mempcpy (copy_end, one_top_level_dir, topsize - 1);
+	      *copy_end++ = '/';
+	    }
+	  copy_end = mempcpy (copy_end, d, len);
 	  *copy_end = '/';
 	  memcpy (copy_end + !ISSLASH (copy_end[-1]), TEMP_DIR_TEMPLATE,
 		  sizeof TEMP_DIR_TEMPLATE);

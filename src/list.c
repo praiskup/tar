@@ -120,8 +120,16 @@ enforce_one_top_level (char **pfile_name)
   char *file_name = *pfile_name;
   char *p;
 
-  for (p = file_name; *p && (ISSLASH (*p) || *p == '.'); p++)
-    ;
+  for (p = file_name; ; p++)
+    {
+      bool dot = p[0] == '.';
+      if (!ISSLASH (p[dot]))
+	{
+	  p += dot & !p[dot];
+	  break;
+	}
+      p += dot;
+    }
 
   if (*p)
     {
@@ -162,7 +170,7 @@ transform_stat_info (char typeflag, struct tar_stat_info *stat_info)
       break;
     }
 
-  if (one_top_level_option)
+  if (one_top_level_dir)
     enforce_one_top_level (&stat_info->file_name);
   return true;
 }

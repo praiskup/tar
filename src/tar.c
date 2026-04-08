@@ -73,7 +73,6 @@ char *set_mtime_format;
 int recursion_option;
 bool numeric_owner_option;
 bool one_file_system_option;
-bool one_top_level_option;
 char *one_top_level_dir;
 char const *owner_name_option;
 uid_t owner_option;
@@ -1630,7 +1629,6 @@ parse_opt (int key, char *arg, struct argp_state *state)
 
     case ONE_TOP_LEVEL_OPTION:
       optloc_save (OC_ONE_TOP_LEVEL, args->loc);
-      one_top_level_option = true;
       one_top_level_dir = arg;
       break;
 
@@ -2656,10 +2654,8 @@ decode_options (int argc, char **argv)
 	same_order_option = false;
     }
 
-  if (one_top_level_option)
+  if (optloc_lookup (OC_ONE_TOP_LEVEL))
     {
-      char *base;
-
       if (absolute_names_option)
 	{
 	  struct option_locus *one_top_level_loc =
@@ -2669,17 +2665,16 @@ decode_options (int argc, char **argv)
 
 	  if (optloc_eq (one_top_level_loc, absolute_names_loc))
 	    option_conflict_error ("--one-top-level", "--absolute-names");
-	  else if (one_top_level_loc->source == OPTS_COMMAND_LINE)
+	  if (one_top_level_loc->source == OPTS_COMMAND_LINE)
 	    absolute_names_option = false;
 	  else
-	    one_top_level_option = false;
+	    one_top_level_dir = NULL;
 	}
 
-      if (!one_top_level_dir && one_top_level_option)
+      if (!absolute_names_option && !one_top_level_dir)
 	{
-	  /* If the user wants to guarantee that everything is under one
-	     directory, determine its name now and let it be created later.  */
-	  base = base_name (archive_name_array[0]);
+	  /* Determine name now; the directory is created later if needed.  */
+	  char *base = base_name (archive_name_array[0]);
 	  one_top_level_dir = strip_compression_suffix (base);
 	  free (base);
 
@@ -2688,7 +2683,9 @@ decode_options (int argc, char **argv)
 			"please set it explicitly with --one-top-level=DIR"));
 	}
 
-      if (one_top_level_dir && !IS_RELATIVE_FILE_NAME (one_top_level_dir))
+      if (one_top_level_dir
+	  && ! (*one_top_level_dir
+		&& IS_RELATIVE_FILE_NAME (one_top_level_dir)))
 	paxusage(_("--one-top-level=DIR must use a relative file name"));
     }
 

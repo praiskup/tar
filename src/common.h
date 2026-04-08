@@ -243,7 +243,6 @@ extern bool numeric_owner_option;
 extern bool one_file_system_option;
 
 /* Create a top-level directory for extracting based on the archive name.  */
-extern bool one_top_level_option;
 extern char *one_top_level_dir;
 
 /* Specified value to be put into tar file in place of stat () results, or
