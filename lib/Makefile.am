@@ -30,6 +30,7 @@ AM_CPPFLAGS = -I$(top_srcdir)/gnu -I../ -I../gnu
 AM_CFLAGS = $(GNULIB_WARN_CFLAGS) $(WERROR_CFLAGS)
 
 noinst_HEADERS = \
+ mkdtempat.h\
  paxlib.h\
  rmt.h\
  system.h\
@@ -37,6 +38,7 @@ noinst_HEADERS = \
  xattr-at.h
 
 libtar_a_SOURCES = \
+  mkdtempat.c\
   paxerror.c paxexit-status.c paxlib.h paxnames.c \
   rtapelib.c \
   rmt.h \

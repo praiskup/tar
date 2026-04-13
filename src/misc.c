@@ -1238,13 +1238,13 @@ fdbase_opendir (char const *file_name, bool alternate)
 	  if (subfd < 0)
 	    {
 	      /* Keep the old directory cached and report open failure,
-		 unless EMFILE means it's possible that falling
+		 unless EMFILE/ENFILE means it's possible that falling
 		 through to close the old directory would mean we
 		 could successfully retry from the chdir_fd level.
 	         When reporting failure, there is no need to
 	         null-terminate the old directory, since the code does
 	         not assume null termination.  */
-	      if (errno != EMFILE)
+	      if (errno != EMFILE && errno != ENFILE)
 		return (struct fdbase) { .fd = BADFD, .base = base };
 	    }
 	  else

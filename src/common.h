@@ -650,6 +650,20 @@ void skim_member (bool must_copy);
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #define max(a, b) ((a) < (b) ? (b) : (a))
 
+/* A directory FD, and a file name BASE that matches the regexp "[^/]*[/]*".
+   If BASE is absolute (i.e., matches "/+"), FD is valid but irrelevant.
+   Otherwise if FD == AT_FDCWD, BASE is relative to the current directory.
+   Otherwise if FD == BADFD, the parent directory could not be opened
+   and BASE is merely the original file name's basename.
+   Otherwise, FD is open to a parent directory,
+   and BASE is relative to that directory.
+   BASE points to storage managed elsewhere; do not free it directly.  */
+struct fdbase
+  {
+    int fd;
+    char const *base;
+  };
+
 char const *quote_n_colon (int n, char const *arg);
 void assign_string_or_null (char **dest, const char *src)
   ATTRIBUTE_NONNULL ((1));
@@ -767,7 +781,7 @@ extern idx_t chdir_current;
 idx_t chdir_arg (char const *dir);
 void chdir_do (idx_t dir);
 struct chdir_id { int err; dev_t st_dev; ino_t st_ino; } chdir_id (void);
-struct fdbase { int fd; char const *base; } fdbase (char const *);
+struct fdbase fdbase (char const *);
 struct fdbase fdbase1 (char const *);
 void fdbase_clear (void);
 idx_t chdir_count (void);

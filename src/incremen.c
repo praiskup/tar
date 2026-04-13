@@ -21,6 +21,7 @@
 #include <c-ctype.h>
 #include <flexmember.h>
 #include <hash.h>
+#include <mkdtempat.h>
 #include <quotearg.h>
 #include <same-inode.h>
 #include "common.h"
@@ -1665,7 +1666,9 @@ purge_directory (char const *directory_name)
 	  *copy_end = '/';
 	  memcpy (copy_end + !ISSLASH (copy_end[-1]), TEMP_DIR_TEMPLATE,
 		  sizeof TEMP_DIR_TEMPLATE);
-	  if (!mkdtemp (temp_stub))
+	  struct fdbase f = fdbase (temp_stub);
+	  if (f.fd == BADFD
+	      || !mkdtempat (f.fd, temp_stub + (f.base - temp_stub)))
 	    {
 	      paxerror (errno, _("Cannot create temporary directory using template %s"),
 			quote (temp_stub));

@@ -80,7 +80,6 @@ mbrtoc32-regular
 mcel-prefer
 mempcpy
 mkdirat
-mkdtemp
 mkfifoat
 modechange
 nstrftime-limited
@@ -115,6 +114,7 @@ stringeq
 strnlen
 symlinkat
 sys_stat-h
+tempname
 time_rz
 timespec
 timespec-sub

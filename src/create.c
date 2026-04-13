@@ -1230,7 +1230,7 @@ ensure_slash (char **pstr)
 /* If we just ran out of file descriptors, release a file descriptor
    in the directory chain somewhere leading from DIR->parent->parent
    up through the root.  Return true if successful, false (preserving
-   errno == EMFILE) otherwise.
+   errno) otherwise.
 
    Do not release DIR's file descriptor, or DIR's parent, as other
    code assumes that they work.  On some operating systems, another
@@ -1241,7 +1241,8 @@ ensure_slash (char **pstr)
 static bool
 open_failure_recover (struct tar_stat_info const *dir)
 {
-  if (errno == EMFILE && dir && dir->parent)
+  int err = errno;
+  if ((err == EMFILE || err == ENFILE) && dir && dir->parent)
     {
       struct tar_stat_info *p;
       for (p = dir->parent->parent; p; p = p->parent)
@@ -1250,7 +1251,7 @@ open_failure_recover (struct tar_stat_info const *dir)
 	    tar_stat_close (p);
 	    return true;
 	  }
-      errno = EMFILE;
+      errno = err;
     }
 
   return false;
