@@ -959,8 +959,6 @@ sys_exec_setmtime_script (const char *script_name,
 	open_error (dev_null);
 
       priv_set_restore_linkdir ();
-      /* FIXME: This mishandles shell metacharacters in the file name.
-	 Come to think of it, isn't every use of xexec suspect?  */
       xexec (command);
     }
   close (p[1]);
