@@ -455,7 +455,7 @@ set_stat (char const *file_name,
 	}
       if (r == 0)
 	{
-	  if (incremental_option)
+	  if (ts[0].tv_nsec != UTIME_OMIT)
 	    check_time (file_name, ts[0]);
 	  check_time (file_name, ts[1]);
 	}
