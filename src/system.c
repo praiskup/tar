@@ -24,6 +24,7 @@
 
 #include "common.h"
 #include <priv-set.h>
+#include <quotearg.h>
 #include <rmt.h>
 #include <same-inode.h>
 #include <signal.h>
@@ -931,11 +932,18 @@ sys_exec_setmtime_script (const char *script_name,
 
   if ((pid = xfork ()) == 0)
     {
-      char *command = xmalloc (strlen (script_name) + strlen (file_name) + 2);
-
-      strcpy (command, script_name);
-      strcat (command, " ");
-      strcat (command, file_name);
+      struct quoting_options *shell_quoting = clone_quoting_options (NULL);
+      set_quoting_style (shell_quoting, shell_quoting_style);
+      idx_t script_name_len = strlen (script_name);
+      idx_t file_name_len = strlen (file_name);
+      idx_t file_name_quoted_len = quotearg_buffer (NULL, 0, file_name,
+						    file_name_len,
+						    shell_quoting);
+      char *command = xmalloc (script_name_len + file_name_quoted_len + 2);
+      cp = mempcpy (command, script_name, script_name_len);
+      *cp++ = ' ';
+      quotearg_buffer (cp, file_name_quoted_len + 1, file_name, file_name_len,
+		       shell_quoting);
 
       if (dirfd != AT_FDCWD && fchdir (dirfd) < 0)
 	paxfatal (errno, _("chdir failed"));
@@ -951,8 +959,6 @@ sys_exec_setmtime_script (const char *script_name,
 	open_error (dev_null);
 
       priv_set_restore_linkdir ();
-      /* FIXME: This mishandles shell metacharacters in the file name.
-	 Come to think of it, isn't every use of xexec suspect?  */
       xexec (command);
     }
   close (p[1]);
