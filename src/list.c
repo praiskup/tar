@@ -136,16 +136,28 @@ enforce_one_top_level (char **pfile_name)
       idx_t pos = strlen (one_top_level_dir);
       if (strncmp (p, one_top_level_dir, pos) == 0)
 	{
-	  if (ISSLASH (p[pos]) || p[pos] == 0)
-	    return;
+	  /* Remove the one_top_level_dir prefix if it ends at
+	     component boundary.  */
+	  if (ISSLASH (p[pos]))
+	    {
+	      *pfile_name = xstrdup (p[pos+1] ? &p[pos+1] : ".");
+	      free (file_name);
+	      return;
+	    }
+	  else if (p[pos] == 0)
+	    {
+	      *pfile_name = xstrdup (".");
+	      free (file_name);
+	      return;
+	    }
 	}
-
-      *pfile_name = make_file_name (one_top_level_dir, file_name);
-      normalize_filename_x (*pfile_name);
+      /* If the prefix does not match, do nothing.  */
     }
   else
-    *pfile_name = xstrdup (one_top_level_dir);
-  free (file_name);
+    {
+      *pfile_name = xstrdup (".");
+      free (file_name);
+    }
 }
 
 bool
@@ -171,7 +183,14 @@ transform_stat_info (char typeflag, struct tar_stat_info *stat_info)
     }
 
   if (one_top_level_dir)
-    enforce_one_top_level (&stat_info->file_name);
+    {
+      enforce_one_top_level (&stat_info->file_name);
+      /* Hard links are interpreted relative to cwd, and --one-top-level
+	 works by means of a hidden change of cwd to the requested directory.
+	 Adjust hard link targets as well.  */
+      if (typeflag == LNKTYPE)
+	enforce_one_top_level (&stat_info->link_name);
+    }
   return true;
 }
 
@@ -1129,10 +1148,10 @@ static void
 simple_print_header (struct tar_stat_info *st, union block *blk,
 		     off_t block_ordinal)
 {
-  char *temp_name
-    = (show_transformed_names_option
-       ? (st->file_name ? st->file_name : st->orig_file_name)
-       : (st->orig_file_name ? st->orig_file_name : st->file_name));
+  char *temp_name =
+    (show_transformed_names_option
+     ? transform_top_level (st->file_name ? st->file_name : st->orig_file_name)
+     : xstrdup (st->orig_file_name ? st->orig_file_name : st->file_name));
 
   if (block_number_option)
     {
@@ -1331,6 +1350,7 @@ simple_print_header (struct tar_stat_info *st, union block *blk,
     }
   fflush (stdlis);
   xattrs_print (st);
+  free (temp_name);
 }
 
 

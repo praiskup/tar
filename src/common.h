@@ -558,6 +558,7 @@ void verify_volume (void);
 extern dev_t root_device;
 
 void extr_init (void);
+bool create_dir (char const *file_name);
 void extract_archive (void);
 void extract_finish (void);
 bool rename_directory (char *src, char *dst);
@@ -687,6 +688,8 @@ void namebuf_free (namebuf_t buf);
 char *namebuf_name (namebuf_t buf, const char *name);
 
 const char *tar_dirname (void);
+char *transform_top_level (const char *name)
+  _GL_ATTRIBUTE_MALLOC _GL_ATTRIBUTE_DEALLOC_FREE;
 
 /* intmax (N) is like ((intmax_t) (N)) except without a cast so
    that it is an error if N is a pointer.  */
@@ -779,8 +782,8 @@ idx_t blocking_write (int fd, void const *buf, idx_t count);
 enum { BADFD = AT_FDCWD == -1 ? -2 : -1 };
 
 extern idx_t chdir_current;
-idx_t chdir_arg (char const *dir);
-void chdir_do (idx_t dir);
+idx_t chdir_arg (char const *dir, bool one_top_level);
+void chdir_do (idx_t dir, bool create);
 struct chdir_id { int err; dev_t st_dev; ino_t st_ino; } chdir_id (void);
 struct fdbase fdbase (char const *);
 struct fdbase fdbase1 (char const *);

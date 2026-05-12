@@ -875,6 +875,7 @@ static idx_t name_buffer_length; /* allocated length of name_buffer */
 void
 name_init (void)
 {
+  chdir_do (chdir_arg (".", !!one_top_level_dir), false);
   name_list_adjust ();
 }
 
@@ -1118,7 +1119,8 @@ name_next_elt (bool change_dirs)
 	case NELT_CHDIR:
 	  if (change_dirs)
 	    {
-	      chdir_do (chdir_arg (xstrdup (ep->v.name)));
+	      chdir_do (chdir_arg (xstrdup (ep->v.name), !!one_top_level_dir),
+			false);
 	      name_list_advance ();
 	      break;
 	    }
@@ -1181,7 +1183,7 @@ name_gather (void)
       static idx_t change_dir;
 
       while ((ep = name_next_elt (false)) && ep->type == NELT_CHDIR)
-	change_dir = chdir_arg (xstrdup (ep->v.name));
+	change_dir = chdir_arg (xstrdup (ep->v.name), !!one_top_level_dir);
 
       if (ep)
 	{
@@ -1210,7 +1212,7 @@ name_gather (void)
 	{
 	  idx_t change_dir0 = change_dir;
 	  while ((ep = name_next_elt (false)) && ep->type == NELT_CHDIR)
-	    change_dir = chdir_arg (xstrdup (ep->v.name));
+	    change_dir = chdir_arg (xstrdup (ep->v.name), !!one_top_level_dir);
 
 	  if (ep)
 	    addname (ep->v.name, change_dir, true, NULL);
@@ -1339,7 +1341,7 @@ name_match (const char *file_name)
 
       if (cursor->name[0] == 0)
 	{
-	  chdir_do (cursor->change_dir);
+	  chdir_do (cursor->change_dir, false);
 	  namelist = NULL;
 	  nametail = NULL;
 	  return true;
@@ -1383,7 +1385,7 @@ name_match (const char *file_name)
 	    return false;
 
 	  /* We got a match. */
-	  chdir_do (found->change_dir);
+	  chdir_do (found->change_dir, false);
 	  return true;
 	}
 
@@ -1785,7 +1787,7 @@ collect_and_sort_names (void)
 	/* NOTE: EXCLUDE_ANCHORED is not relevant here */
 	/* FIXME: just skip regexps for now */
 	continue;
-      chdir_do (name->change_dir);
+      chdir_do (name->change_dir, false);
 
       if (name->name[0] == 0)
 	continue;
@@ -1931,7 +1933,7 @@ name_from_list (void)
     {
       if (!gnu_list_name->is_wildcard)
 	gnu_list_name->found_count++;
-      chdir_do (gnu_list_name->change_dir);
+      chdir_do (gnu_list_name->change_dir, false);
       return gnu_list_name;
     }
   return NULL;

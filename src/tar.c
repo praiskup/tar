@@ -2683,10 +2683,7 @@ decode_options (int argc, char **argv)
 			"please set it explicitly with --one-top-level=DIR"));
 	}
 
-      if (one_top_level_dir
-	  && ! (*one_top_level_dir
-		&& IS_RELATIVE_FILE_NAME (one_top_level_dir)))
-	paxusage(_("--one-top-level=DIR must use a relative file name"));
+      normalize_filename_x (one_top_level_dir);
     }
 
   /* If ready to unlink hierarchies, so we are for simpler files.  */

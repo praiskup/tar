@@ -216,6 +216,8 @@ static Hash_table *delayed_link_table;
 static struct delayed_link *delayed_link_head;
 static struct delayed_link **delayed_link_tail = &delayed_link_head;
 
+static bool one_top_level_prepare = false;
+
 struct string_list
   {
     struct string_list *next;
@@ -815,9 +817,10 @@ make_directories (char *file_name, bool *interdir_made)
 	  /* Create a struct delayed_set_stat even if
 	     mode == desired_mode, because
 	     repair_delayed_set_stat may need to update the struct.  */
-	  delay_set_stat (file_name,
-			  NULL, mode & ~ current_umask, MODE_RWX,
-			  desired_mode, AT_SYMLINK_NOFOLLOW);
+	  if (! one_top_level_prepare)
+	    delay_set_stat (file_name,
+			    NULL, mode & ~ current_umask, MODE_RWX,
+			    desired_mode, AT_SYMLINK_NOFOLLOW);
 	  if (interdir_made)
 	    *interdir_made = true;
 	  print_for_mkdir (file_name, desired_mode);
@@ -1049,7 +1052,7 @@ apply_nonancestor_delayed_set_stat (char const *file_name, bool metadata_set)
 	      && memeq (file_name, data->file_name, data->file_name_len)))
 	break;
 
-      chdir_do (data->change_dir);
+      chdir_do (data->change_dir, false);
 
       if (check_for_renamed_directories)
 	{
@@ -1127,6 +1130,73 @@ safe_dir_mode (struct stat const *st)
 	      ? S_IRWXU
 	      : MODE_RWX))
 	  | (we_are_root ? 0 : MODE_WXUSR));
+}
+
+/* Trimmed version of extract_dir, to create a dir that is not in the
+   archive, including parents.  Should behave like extract_dir when
+   NO_OVERWRITE_DIR_OLD_FILES is set in order to avoid changing existing
+   paths if they are in the way.
+*/
+bool
+create_dir (char const *file_name)
+{
+  int status;
+  mode_t mode;
+  bool interdir_made = false;
+  /* exists only to avoid passing a const pointer to make_directories */
+  char *unconst_file_name;
+
+  mode = MODE_RWX & ~ newdir_umask;
+
+  for (;;)
+    {
+      struct fdbase f = fdbase (file_name);
+      status = f.fd == BADFD ? -1 : mkdirat (f.fd, f.base, mode);
+      if (status == 0)
+	{
+	  return true;
+	}
+
+      if (errno == EEXIST)
+	{
+	  struct stat st;
+	  st.st_mode = 0;
+
+	  if (is_directory_link (file_name, &st))
+	    return true;
+
+	  if ((st.st_mode != 0 && fstatat_flags == 0)
+	      || deref_stat (file_name, &st) == 0)
+	    {
+	      if (S_ISDIR (st.st_mode))
+		{
+		  return true;
+		}
+	    }
+	  errno = EEXIST;
+	  break;
+	}
+      else if (errno != ENOENT || interdir_made)
+	{
+	  /* The error is not due to missing parent, or we already
+	     tried to make the parent directories and succeeded, so
+	     there must be another problem. No point in retrying. */
+	  break;
+	}
+      unconst_file_name = xstrdup (file_name);
+      if (make_directories (unconst_file_name, &interdir_made) == 0)
+	{
+	  free (unconst_file_name);
+	  continue;
+	}
+      else
+	{
+	  free (unconst_file_name);
+	  break;
+	}
+    }
+  mkdir_error (file_name);
+  return false;
 }
 
 /* Extractor functions for various member types */
@@ -1895,7 +1965,7 @@ extract_archive (void)
     {
       idx_t dir = chdir_current;
       apply_nonancestor_delayed_set_stat (current_stat_info.file_name, false);
-      chdir_do (dir);
+      chdir_do (dir, false);
     }
 
   /* Take a safety backup of a previously existing file.  */
@@ -1916,7 +1986,16 @@ extract_archive (void)
 
   tar_extractor_t fun = prepare_to_extract (current_stat_info.file_name,
 					    typeflag);
-  bool ok = fun && fun (current_stat_info.file_name, typeflag);
+  bool ok = false;
+  if (fun)
+    {
+      /* Create one_top_level dir if it does not exist.  */
+      one_top_level_prepare = true;
+      chdir_do (chdir_current, !!one_top_level_dir);
+      one_top_level_prepare = false;
+      if (fun (current_stat_info.file_name, typeflag))
+	ok = true;
+    }
   skip_member ();
   if (!ok && backup_option)
     undo_last_backup ();
@@ -1928,7 +2007,7 @@ apply_delayed_link (struct delayed_link *ds)
 {
   char const *valid_source = NULL;
 
-  chdir_do (ds->change_dir);
+  chdir_do (ds->change_dir, false);
 
   for (struct string_list *sources = ds->sources;
        sources;
