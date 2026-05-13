@@ -1100,15 +1100,6 @@ apply_nonancestor_delayed_set_stat (char const *file_name, bool metadata_set)
 }
 
 
-static bool
-is_directory_link (char const *file_name, struct stat *st)
-{
-  struct fdbase f = fdbase (file_name);
-  return (f.fd != BADFD && issymlinkat (f.fd, f.base)
-	  && fstatat (f.fd, f.base, st, 0) == 0
-	  && S_ISDIR (st->st_mode));
-}
-
 /* Given struct stat of a directory (or directory member) whose ownership
    or permissions of will be restored later, return the temporary permissions
    for that directory, sufficiently restrictive so that in the meantime
@@ -1181,20 +1172,16 @@ extract_dir (char *file_name, char UNNAMED (typeflag))
 	      || old_files_option == OVERWRITE_OLD_FILES)
 	    {
 	      struct stat st;
-	      st.st_mode = 0;
-
-	      if (keep_directory_symlink_option
-		  && is_directory_link (file_name, &st))
-		return true;
-
-	      if ((st.st_mode != 0 && fstatat_flags == 0)
-		  || deref_stat (file_name, &st) == 0)
+	      if (fstatat (f.fd, f.base, &st, fstatat_flags) == 0)
 		{
 		  current_mode = st.st_mode;
 		  current_mode_mask = all_mode_bits;
 
 		  if (S_ISDIR (current_mode))
 		    {
+		      if (keep_directory_symlink_option && !fstatat_flags
+			  && issymlinkat (f.fd, f.base))
+			return true;
 		      if (interdir_made)
 			{
 			  repair_delayed_set_stat (file_name, &st);
@@ -1202,6 +1189,12 @@ extract_dir (char *file_name, char UNNAMED (typeflag))
 			}
 		      break;
 		    }
+
+		  struct stat dirst;
+		  if (S_ISLNK (st.st_mode) && keep_directory_symlink_option
+		      && fstatat (f.fd, f.base, &dirst, 0) == 0
+		      && S_ISDIR (dirst.st_mode))
+		    return true;
 		}
 	    }
 	  else if (update_interdir_set_stat (file_name))
