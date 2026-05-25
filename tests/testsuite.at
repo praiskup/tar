@@ -409,6 +409,8 @@ m4_include([rename03.at])
 m4_include([rename04.at])
 m4_include([rename05.at])
 m4_include([rename06.at])
+m4_include([rename08.at])
+m4_include([rename09.at])
 m4_include([chtype.at])
 
 AT_BANNER([Ignore failing reads])

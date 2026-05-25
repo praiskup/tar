@@ -244,6 +244,8 @@ TESTSUITE_AT = \
  rename04.at\
  rename05.at\
  rename06.at\
+ rename08.at\
+ rename09.at\
  same-order01.at\
  same-order02.at\
  selacl01.at\
