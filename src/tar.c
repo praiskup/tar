@@ -2673,7 +2673,9 @@ decode_options (int argc, char **argv)
 
       if (!absolute_names_option && !one_top_level_dir)
 	{
-	  /* Determine name now; the directory is created later if needed.  */
+	  /* Determine name now; the directory (or directories, if -C
+	     means there are multiple top-level directories) are
+	     created later if needed.  */
 	  char *base = base_name (archive_name_array[0]);
 	  one_top_level_dir = strip_compression_suffix (base);
 	  free (base);
