@@ -9730,7 +9730,7 @@ must be less than @math{2^21} (2,097,152).
 @end enumerate
 
 @item star
-The format used by the late J@"org Schilling's @command{star}
+The format used by the late J@"{o}rg Schilling's @command{star}
 implementation.  @GNUTAR{} can read @samp{star} archives but
 does not produce them.
 

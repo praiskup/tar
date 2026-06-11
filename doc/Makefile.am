@@ -45,7 +45,7 @@ RENDITION = DISTRIB
 
 MAKEINFOFLAGS=-D$(RENDITION)
 
-header.texi: $(top_srcdir)/src/tar.h
+header.texi: $(top_srcdir)/src/tar.h texify.sed
 	sed -f $(srcdir)/texify.sed $(top_srcdir)/src/tar.h \
 	  | expand >$@
 
@@ -140,7 +140,7 @@ clean-local:
 
 GENDOCS=$(top_srcdir)/build-aux/gendocs.sh
 
-TEXI2DVI=texi2dvi -E
+TEXI2DVI=texi2dvi -E -I $(abs_srcdir) --build=tidy
 
 # Make sure you set TEXINPUTS
 # Usual value is:
@@ -149,6 +149,6 @@ manual:
 	TEXINPUTS=$(srcdir):$(top_srcdir)/build-tex:$(TEXINPUTS) \
 	 MAKEINFO="$(MAKEINFO) $(MAKEINFOFLAGS)" \
 	 TEXI2DVI="$(TEXI2DVI) -t '@set DISTRIB' -t @finalout" \
-	$(GENDOCS) --texi2html tar 'GNU tar manual'
+	$(GENDOCS) tar 'GNU tar manual'
 
 manual-rebuild: clean-local manual
