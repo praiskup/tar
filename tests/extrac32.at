@@ -33,7 +33,6 @@ AT_CHECK([base64 --help >/dev/null 2>&1 || AT_SKIP_TEST
 xz --help >/dev/null 2>&1 || AT_SKIP_TEST
 base64 -d < archive.in | xz -c -d > archive.tar
 ])
-cp archive.tar /tmp
 AT_CHECK([tar tf archive.tar],
 [0],
 [carrier_entry
