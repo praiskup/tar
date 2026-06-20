@@ -1,4 +1,4 @@
-GNU tar NEWS - User visible changes. 2026-04-04
+GNU tar NEWS - User visible changes. 2026-06-20
 Please send GNU tar bug reports to <bug-tar@gnu.org>
 
 version 1.35.90 (git)
@@ -72,6 +72,11 @@ option.
 
 ** tar --ignore-failed-read no longer complains about a file removed
    before reading.
+
+** tar no longer behaves erratically when reading nonzero size fields
+   in archive headers representing special files, fifos, and symlinks.
+   Although these size fields are typically zero, POSIX allows some to
+   be nonzero, and in practice they do not count data blocks.
 
 * Performance improvements
 

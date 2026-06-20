@@ -535,6 +535,22 @@ read_header (union block **return_block, struct tar_stat_info *info,
 	  struct posix_header const *h = &header->header;
 	  char namebuf[sizeof h->prefix + 1 + NAME_FIELD_SIZE + 1];
 
+	  switch (h->typeflag)
+	    {
+	    /* For these file types, although POSIX does not specify the
+	       meaning of the size, it does say there should be no data,
+	       so treat the size as zero.  */
+	    case BLKTYPE: case CHRTYPE: case FIFOTYPE:
+
+	    /* For these file types, POSIX requires that the size be zero.
+	       Be generous and accept any size as zero, as some
+	       nonconforming programs generate nonzero size fields along
+	       with no data.  */
+	    case LNKTYPE: case SYMTYPE:
+
+	      info->stat.st_size = 0;
+	    }
+
 	  free (recent_long_name);
 
 	  if (next_long_name)
