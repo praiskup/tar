@@ -337,13 +337,14 @@ list_archive (void)
 }
 
 /* Check header checksum */
-/* The standard BSD tar sources create the checksum by adding up the
-   bytes in the header as type char.  I think the type char was unsigned
-   on the PDP-11, but it's signed on the Next and Sun.  It looks like the
-   sources to BSD tar were never changed to compute the checksum
-   correctly, so both the Sun and Next add the bytes of the header as
-   signed chars.  This doesn't cause a problem until you get a file with
-   a name containing characters with the high bit set.  So tar_checksum
+
+/* 7th Edition Unix tar created the checksum by adding the bytes
+   in the header as type char, which was signed.  This caused the
+   checksum to disagree when the same code was later compiled on
+   platforms where char was unsigned.  Although POSIX.1-1988
+   standardized on using unsigned char for checksums, old tar files
+   created by pre-standard programs may have used plain char,
+   which may happen to have been signed.  So tar_checksum
    computes two checksums -- signed and unsigned.  */
 
 enum read_header
