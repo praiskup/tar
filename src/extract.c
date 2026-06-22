@@ -216,8 +216,6 @@ static Hash_table *delayed_link_table;
 static struct delayed_link *delayed_link_head;
 static struct delayed_link **delayed_link_tail = &delayed_link_head;
 
-static bool one_top_level_prepare = false;
-
 struct string_list
   {
     struct string_list *next;
@@ -776,7 +774,7 @@ fixup_delayed_set_stat (char const *src, char const *dst)
    create all required directories.  Return zero if all the required
    directories were created, nonzero (issuing a diagnostic) otherwise.
    Set *INTERDIR_MADE (unless NULL) if at least one directory was created. */
-static int
+int
 make_directories (char *file_name, bool *interdir_made)
 {
   char *cursor0 = file_name + FILE_SYSTEM_PREFIX_LEN (file_name);
@@ -817,10 +815,9 @@ make_directories (char *file_name, bool *interdir_made)
 	  /* Create a struct delayed_set_stat even if
 	     mode == desired_mode, because
 	     repair_delayed_set_stat may need to update the struct.  */
-	  if (! one_top_level_prepare)
-	    delay_set_stat (file_name,
-			    NULL, mode & ~ current_umask, MODE_RWX,
-			    desired_mode, AT_SYMLINK_NOFOLLOW);
+	  delay_set_stat (file_name,
+			  NULL, mode & ~ current_umask, MODE_RWX,
+			  desired_mode, AT_SYMLINK_NOFOLLOW);
 	  if (interdir_made)
 	    *interdir_made = true;
 	  print_for_mkdir (file_name, desired_mode);
@@ -1130,73 +1127,6 @@ safe_dir_mode (struct stat const *st)
 	      ? S_IRWXU
 	      : MODE_RWX))
 	  | (we_are_root ? 0 : MODE_WXUSR));
-}
-
-/* Trimmed version of extract_dir, to create a dir that is not in the
-   archive, including parents.  Should behave like extract_dir when
-   NO_OVERWRITE_DIR_OLD_FILES is set in order to avoid changing existing
-   paths if they are in the way.
-*/
-bool
-create_dir (char const *file_name)
-{
-  int status;
-  mode_t mode;
-  bool interdir_made = false;
-  /* exists only to avoid passing a const pointer to make_directories */
-  char *unconst_file_name;
-
-  mode = MODE_RWX & ~ newdir_umask;
-
-  for (;;)
-    {
-      struct fdbase f = fdbase (file_name);
-      status = f.fd == BADFD ? -1 : mkdirat (f.fd, f.base, mode);
-      if (status == 0)
-	{
-	  return true;
-	}
-
-      if (errno == EEXIST)
-	{
-	  struct stat st;
-	  st.st_mode = 0;
-
-	  if (is_directory_link (file_name, &st))
-	    return true;
-
-	  if ((st.st_mode != 0 && fstatat_flags == 0)
-	      || deref_stat (file_name, &st) == 0)
-	    {
-	      if (S_ISDIR (st.st_mode))
-		{
-		  return true;
-		}
-	    }
-	  errno = EEXIST;
-	  break;
-	}
-      else if (errno != ENOENT || interdir_made)
-	{
-	  /* The error is not due to missing parent, or we already
-	     tried to make the parent directories and succeeded, so
-	     there must be another problem. No point in retrying. */
-	  break;
-	}
-      unconst_file_name = xstrdup (file_name);
-      if (make_directories (unconst_file_name, &interdir_made) == 0)
-	{
-	  free (unconst_file_name);
-	  continue;
-	}
-      else
-	{
-	  free (unconst_file_name);
-	  break;
-	}
-    }
-  mkdir_error (file_name);
-  return false;
 }
 
 /* Extractor functions for various member types */
@@ -1992,9 +1922,25 @@ extract_archive (void)
       if (one_top_level_dir)
 	{
 	  /* Create one_top_level dir if it does not exist.  */
-	  one_top_level_prepare = true;
 	  chdir_do (chdir_current, true);
-	  one_top_level_prepare = false;
+	  /* Flush delayed stat to mirror the code above that does it
+	     before extracting a new entry. Creating the one_top_level
+	     dir may have created new delayed_set_stat interdir
+	     entries, so repeat the operation. Ideally this should not
+	     be needed, but the newly-created interdir entries have
+	     st_dev/st_ino uninitialized, which would be a problem if
+	     there is a "." entry afterwards:
+	     apply_nonancestor_delayed_set_stat would use the
+	     uninitialized values. Ideally, st_dev/st_ino would be
+	     initialized by mark_metadata_set, but this one does not
+	     take chdir into account, so it stats a wrong file. */
+	  if (!delay_directory_restore_option)
+	    {
+	      idx_t dir = chdir_current;
+	      apply_nonancestor_delayed_set_stat (current_stat_info.file_name,
+						  false);
+	      chdir_do (dir, false);
+	    }
 	}
       if (fun (current_stat_info.file_name, typeflag))
 	ok = true;
