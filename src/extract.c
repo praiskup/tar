@@ -1989,10 +1989,13 @@ extract_archive (void)
   bool ok = false;
   if (fun)
     {
-      /* Create one_top_level dir if it does not exist.  */
-      one_top_level_prepare = true;
-      chdir_do (chdir_current, !!one_top_level_dir);
-      one_top_level_prepare = false;
+      if (one_top_level_dir)
+	{
+	  /* Create one_top_level dir if it does not exist.  */
+	  one_top_level_prepare = true;
+	  chdir_do (chdir_current, true);
+	  one_top_level_prepare = false;
+	}
       if (fun (current_stat_info.file_name, typeflag))
 	ok = true;
     }
