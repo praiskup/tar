@@ -2712,7 +2712,7 @@ decode_options (int argc, char **argv)
 #endif
     open_searchdir_how.flags = (search_flags | nofollow_flag
 				| O_BINARY | O_CLOEXEC | O_DIRECTORY);
-    if (!absolute_names_option
+    if (!absolute_names_option && !dereference_option
 	&& (subcommand_option == EXTRACT_SUBCOMMAND
 	    || subcommand_option == DIFF_SUBCOMMAND))
       open_searchdir_how.resolve = RESOLVE_BENEATH;

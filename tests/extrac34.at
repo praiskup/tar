@@ -1,4 +1,4 @@
-# Check for file injection bug with symlinks. -*- Autotest -*-
+# Check hard link with nonzero size field in tarball. -*- Autotest -*-
 
 # Copyright 2026 Free Software Foundation, Inc.
 
@@ -17,32 +17,24 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-# Thanks to Guillermo de Angel for the bug report and test cases; see:
-# https://lists.gnu.org/r/bug-tar/2026-03/msg00007.html
+# Check extracting from a nonconforming tarball that has
+# a hard link with nonzero size.
 
-AT_SETUP([skip file injection])
-AT_KEYWORDS([injection])
+AT_SETUP([hard link with a nonzero size field])
+AT_KEYWORDS([extract extrac34 hard link])
 AT_DATA([archive.in],
-[/Td6WFoAAATm1rRGBMDbAYAcIQEcAAAAAAAAACYr+9LgDf8A010AMZhKvfVdtHe4Rxjj7M03ek97
-UgeKfJ0ORqYg0XDFntWxdTH4PYrTOo9CoqBrnTM2NcwFBrRVr7aFwdd56vddyAw2QGDjxgNexDU3
-ImTi/+z8ZOLMi/+AybdEpd5aA/M9Maa+8tQ84bySzSAwrmxMWJJ6W9IKvsqfiRa3TrD51v44PZU/
-KLVKpocS56n/O3g+b+hiZwaysR0eLO+tiU8FB/e3PEq3vTtDFVi/YfZMieBWSzomSX9eF13K1yPY
-UuWgp7VokXqduL0YGNVV40MTPG9oAAAApD6mpajengIAAfcBgBwAAOM4xw6xxGf7AgAAAAAEWVo=
+[/Td6WFoAAATm1rRGBMBwgFAhARwAAAAAAAAAAAbKrCjgJ/8AaF0AMIAzUBhoiawFdYeRen4lxlj0
+QWRLpUM+28ArRsXVY5bGv4H5kijsqiJ4Z9YIVhZd01+IppF+AkltS60aB8fuUW35Tp/3XzUx9Mq2
+4ypJFzvcgHXsSIvc9L+mmTDuHzhvJQ/oe7ya8QAASbOfD7CgZcIAAYwBgFAAAEWxohaxxGf7AgAA
+AAAEWVo=
 ])
 AT_CHECK([base64 --help >/dev/null 2>&1 || AT_SKIP_TEST
 xz --help >/dev/null 2>&1 || AT_SKIP_TEST
 base64 -d < archive.in | xz -c -d > archive.tar
 ])
-AT_CHECK([tar tf archive.tar],
-[0],
-[carrier_entry
-injected.txt
-marker.txt
+AT_CHECK([mkdir dir
 ])
-AT_CHECK([tar xvf archive.tar],
-[0],
-[carrier_entry
-injected.txt
-marker.txt
+AT_CHECK([tar -C dir -xf archive.tar || exit 1
+cmp dir/a dir/b
 ])
 AT_CLEANUP
