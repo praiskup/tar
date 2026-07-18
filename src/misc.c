@@ -959,7 +959,7 @@ set_file_atime (int fd, int parentfd, char const *file, struct timespec atime)
 struct wd
 {
   /* The directory's name.  */
-  char const *name;
+  char *name;
   /* "Absolute" path representing this directory; in the contrast to
      the real absolute pathname, it can contain /../ components (see
      normalize_filename_x for the reason of it).  It is NULL if the
@@ -1020,7 +1020,7 @@ chdir_count (void)
    DFD is either AT_FDWD for the initial "." entry,
    or 0 meaning the file descriptor is not open yet.  */
 static void
-add_wd (char const *dir, int dfd)
+add_wd (char *dir, int dfd)
 {
   wd[wd_count].name = dir;
   wd[wd_count].abspath = NULL;
@@ -1051,7 +1051,7 @@ ensure_wd (void)
       int n_incr_min = 4;
 
       wd = xpalloc (NULL, &wd_alloc, n_incr_min, -1, sizeof *wd);
-      add_wd (".", AT_FDCWD);
+      add_wd ((char *) ".", AT_FDCWD);
     }
 }
 
@@ -1060,7 +1060,7 @@ ensure_wd (void)
    two targets to the vector.  However, if DIR is "." or an equivalent,
    just reuse the last item in the vector.  */
 idx_t
-chdir_arg (char const *dir)
+chdir_arg (char *dir)
 {
   ensure_wd ();
 
@@ -1124,27 +1124,16 @@ chdir_do (idx_t i, bool create)
 	    {
 	      if (create)
 		{
-		  char *dir_with_dot;
 		  struct open_how saved_open_searchdir_how = open_searchdir_how;
 		  /* Don't use O_BENEATH during creation of the
 		     directory. The one-top-level directory is
 		     allowed to be given as an absolute path.  */
 		  open_searchdir_how.resolve = 0;
-		  /* Append a dot. make_directories creates
-		     directories up to and excluding the last
-		     component of the path. So, in order to create
-		     "a/b", we need to pass "a/b/." to it. */
-		  {
-		    namebuf_t nbuf = namebuf_create (curr->name);
-		    namebuf_add_dir (nbuf, ".");
-		    dir_with_dot = namebuf_finish (nbuf);
-		  }
-		  if (0 <= make_directories (dir_with_dot))
+		  if (0 <= make_directories (curr->name, false))
 		    /* Directory created, retry */
 		    fd = openat (chdir_fd, curr->name,
 				 open_searchdir_how.flags & ~O_NOFOLLOW);
 		  open_searchdir_how = saved_open_searchdir_how;
-		  free (dir_with_dot);
 		  /* Either the creation or open failed */
 		  if (fd < 0)
 		    open_fatal (curr->name);

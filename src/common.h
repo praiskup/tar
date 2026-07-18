@@ -558,7 +558,7 @@ void verify_volume (void);
 extern dev_t root_device;
 
 void extr_init (void);
-int make_directories (char *file_name);
+int make_directories (char *file_name, bool just_parent);
 void extract_archive (void);
 void extract_finish (void);
 bool rename_directory (char *src, char *dst);
@@ -782,7 +782,7 @@ idx_t blocking_write (int fd, void const *buf, idx_t count);
 enum { BADFD = AT_FDCWD == -1 ? -2 : -1 };
 
 extern idx_t chdir_current;
-idx_t chdir_arg (char const *dir);
+idx_t chdir_arg (char *dir);
 void chdir_do (idx_t dir, bool create);
 struct chdir_id { int err; dev_t st_dev; ino_t st_ino; } chdir_id (void);
 struct fdbase fdbase (char const *);

@@ -770,8 +770,8 @@ fixup_delayed_set_stat (char const *src, char const *dst)
     }
 }
 
-/* Ensure that FILE_NAME's parent is a directory by creating the
-   directory and ancestors as needed.
+/* Ensure that FILE_NAME is a directory by creating it and ancestors as needed.
+   If JUST_PARENT do so for FILE_NAME's parent directory, not FILE_NAME itself.
    Do not overwrite existing files.
    Possibly temporarily modify FILE_NAME if it contains slashes,
    but restore FILE_NAME before returning.
@@ -779,7 +779,7 @@ fixup_delayed_set_stat (char const *src, char const *dst)
    some other process), zero if a directory is already there, and
    negative (issuing a diagnostic) otherwise.  */
 int
-make_directories (char *file_name)
+make_directories (char *file_name, bool just_parent)
 {
   char *cursor0 = file_name + FILE_SYSTEM_PREFIX_LEN (file_name);
   char *cursor;	        	/* points into the file name */
@@ -787,29 +787,34 @@ make_directories (char *file_name)
   int parent_errno;
   int result = 0;
 
-  for (cursor = cursor0; *cursor; cursor++)
+  for (cursor = cursor0; ; cursor++)
     {
       mode_t mode;
       mode_t desired_mode;
       int status;
 
-      if (! ISSLASH (*cursor))
-	continue;
-
-      /* Avoid mkdir of empty string, if leading or double '/'.  */
-
-      if (cursor == cursor0 || ISSLASH (cursor[-1]))
-	continue;
-
-      /* Avoid mkdir where last part of file name is "." or "..".  */
-
-      if (cursor[-1] == '.'
-	  && (cursor == cursor0 + 1 || ISSLASH (cursor[-2])
-	      || (cursor[-2] == '.'
-		  && (cursor == cursor0 + 2 || ISSLASH (cursor[-3])))))
-	continue;
-
       char c = *cursor;
+      if (! ISSLASH (c))
+	{
+	  if (c)
+	    continue;
+	  if (just_parent)
+	    break;
+	}
+
+      /* Avoid mkdir of empty string (if leading or double slash),
+	 or where last part of file name is "." or "..".  */
+      if (cursor == cursor0 || ISSLASH (cursor[-1])
+	  || (cursor[-1] == '.'
+	      && (cursor == cursor0 + 1 || ISSLASH (cursor[-2])
+		  || (cursor[-2] == '.'
+		      && (cursor == cursor0 + 2 || ISSLASH (cursor[-3]))))))
+	{
+	  if (c)
+	    continue;
+	  break;
+	}
+
       *cursor = '\0';		/* truncate the name there */
       desired_mode = MODE_RWX & ~ newdir_umask;
       mode = desired_mode | (we_are_root ? 0 : MODE_WXUSR);
@@ -846,6 +851,8 @@ make_directories (char *file_name)
 	    break;
 	  }
 
+      if (!c)
+	break;
       *cursor = c;
     }
 
@@ -982,7 +989,7 @@ maybe_recoverable (char *file_name, bool regular, bool *interdir_made)
 
     case ENOENT:
       /* Attempt creating missing intermediate directories. */
-      if (0 < make_directories (file_name))
+      if (0 < make_directories (file_name, true))
 	return RECOVER_OK;
       break;
 
@@ -2086,7 +2093,7 @@ rename_directory (char *src, char *dst)
       switch (e)
 	{
 	case ENOENT:
-	  if (0 <= make_directories (dst))
+	  if (0 <= make_directories (dst, true))
 	    {
 	      f = fdbase (dst);
 	      if (f.fd != BADFD

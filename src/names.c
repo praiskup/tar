@@ -875,7 +875,7 @@ static idx_t name_buffer_length; /* allocated length of name_buffer */
 void
 name_init (void)
 {
-  chdir_do (chdir_arg ("."), false);
+  chdir_do (chdir_arg ((char *) "."), false);
   name_list_adjust ();
 }
 
