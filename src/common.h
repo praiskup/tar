@@ -782,7 +782,7 @@ idx_t blocking_write (int fd, void const *buf, idx_t count);
 enum { BADFD = AT_FDCWD == -1 ? -2 : -1 };
 
 extern idx_t chdir_current;
-idx_t chdir_arg (char const *dir, bool one_top_level);
+idx_t chdir_arg (char const *dir);
 void chdir_do (idx_t dir, bool create);
 struct chdir_id { int err; dev_t st_dev; ino_t st_ino; } chdir_id (void);
 struct fdbase fdbase (char const *);

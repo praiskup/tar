@@ -875,7 +875,7 @@ static idx_t name_buffer_length; /* allocated length of name_buffer */
 void
 name_init (void)
 {
-  chdir_do (chdir_arg (".", !!one_top_level_dir), false);
+  chdir_do (chdir_arg ("."), false);
   name_list_adjust ();
 }
 
@@ -1119,8 +1119,7 @@ name_next_elt (bool change_dirs)
 	case NELT_CHDIR:
 	  if (change_dirs)
 	    {
-	      chdir_do (chdir_arg (xstrdup (ep->v.name), !!one_top_level_dir),
-			false);
+	      chdir_do (chdir_arg (xstrdup (ep->v.name)), false);
 	      name_list_advance ();
 	      break;
 	    }
@@ -1183,7 +1182,7 @@ name_gather (void)
       static idx_t change_dir;
 
       while ((ep = name_next_elt (false)) && ep->type == NELT_CHDIR)
-	change_dir = chdir_arg (xstrdup (ep->v.name), !!one_top_level_dir);
+	change_dir = chdir_arg (xstrdup (ep->v.name));
 
       if (ep)
 	{
@@ -1212,7 +1211,7 @@ name_gather (void)
 	{
 	  idx_t change_dir0 = change_dir;
 	  while ((ep = name_next_elt (false)) && ep->type == NELT_CHDIR)
-	    change_dir = chdir_arg (xstrdup (ep->v.name), !!one_top_level_dir);
+	    change_dir = chdir_arg (xstrdup (ep->v.name));
 
 	  if (ep)
 	    addname (ep->v.name, change_dir, true, NULL);

@@ -1015,65 +1015,69 @@ chdir_count (void)
   return count;
 }
 
-/* Grow the WD table by at least one entry.  */
+/* Add DIR to the WD table.  If one_top_level_dir, add that too.
+   There must already be room.
+   DFD is either AT_FDWD for the initial "." entry,
+   or 0 meaning the file descriptor is not open yet.  */
 static void
-grow_wd (void)
+add_wd (char const *dir, int dfd)
 {
-  wd = xpalloc (wd, &wd_alloc, wd_alloc ? 1 : 2, -1, sizeof *wd);
+  wd[wd_count].name = dir;
+  wd[wd_count].abspath = NULL;
+  wd[wd_count].fd = dfd;
+  wd[wd_count].id.err = -1;
+  wd[wd_count].one_top_level = false;
+  wd_count++;
 
-  if (! wd_count)
+  if (one_top_level_dir)
     {
-      wd[wd_count].name = ".";
+      wd[wd_count].name = one_top_level_dir;
       wd[wd_count].abspath = NULL;
-      wd[wd_count].fd = AT_FDCWD;
+      wd[wd_count].fd = 0;
       wd[wd_count].id.err = -1;
-      wd[wd_count].one_top_level = false;
+      wd[wd_count].one_top_level = true;
       wd_count++;
-      if (one_top_level_dir)
-	{
-	  wd[wd_count].name = one_top_level_dir;
-	  wd[wd_count].abspath = NULL;
-	  wd[wd_count].fd = 0;
-	  wd[wd_count].id.err = -1;
-	  wd[wd_count].one_top_level = true;
-	  wd_count++;
-	}
+    }
+}
+
+/* Ensure that WD exists, with an initial "." entry.  */
+static void
+ensure_wd (void)
+{
+  if (!wd)
+    {
+      /* This must be at least 1 + !!top_level_dir.  Make it 4, to lessen
+	 reallocation effort when -C and --one-top-level are both used.  */
+      int n_incr_min = 4;
+
+      wd = xpalloc (NULL, &wd_alloc, n_incr_min, -1, sizeof *wd);
+      add_wd (".", AT_FDCWD);
     }
 }
 
 /* DIR is the operand of a -C option; add it to vector of chdir targets,
-   and return the index of its location.  */
+   and return the index of its location.  If --one-top-level-dir, add
+   two targets to the vector.  However, if DIR is "." or an equivalent,
+   just reuse the last item in the vector.  */
 idx_t
-chdir_arg (char const *dir, bool one_top_level)
+chdir_arg (char const *dir)
 {
-  if (one_top_level)
-    chdir_arg (dir, false);
-  if (wd_count == wd_alloc)
-    grow_wd ();
+  ensure_wd ();
 
   /* Optimize the common special case of the working directory,
      or the working directory as a prefix.  */
   if (dir[0])
     {
       dir += dotslashlen (dir);
-      if (! dir[dir[0] == '.'])
-	{
-	  if (wd[wd_count - 1].one_top_level == one_top_level)
-	    return wd_count - 1;
-	  else
-	    return wd_count - 2;
-	}
+      if (!dir[dir[0] == '.'])
+	return wd_count - 1;
     }
 
-  if (one_top_level)
-    dir = one_top_level_dir;
-
-  wd[wd_count].name = dir;
-  wd[wd_count].abspath = NULL;
-  wd[wd_count].fd = 0;
-  wd[wd_count].id.err = -1;
-  wd[wd_count].one_top_level = one_top_level;
-  return wd_count++;
+  ptrdiff_t shortage = 1 + !!one_top_level_dir - (wd_alloc - wd_count);
+  if (0 < shortage)
+    wd = xpalloc (wd, &wd_alloc, shortage, -1, sizeof *wd);
+  add_wd (dir, 0);
+  return wd_count - 1;
 }
 
 /* Index of current directory.  */
@@ -1202,8 +1206,7 @@ chdir_do (idx_t i, bool create)
 struct chdir_id
 chdir_id (void)
 {
-  if (!wd)
-    grow_wd ();
+  ensure_wd ();
 
   struct wd *curr = &wd[chdir_current];
   if (curr->id.err < 0)
@@ -1418,8 +1421,8 @@ transform_top_level (const char *name)
 /* Return the absolute path that represents the working
    directory referenced by IDX.
 
-   If wd is empty, then there were no -C options given, and
-   chdir_args() has never been called, so we simply return the
+   If wd is empty, then no -C options were given, and
+   chdir_arg has never been called, so simply return the
    process's actual cwd.  (Note that in this case IDX is ignored,
    since it should always be 0.) */
 static const char *
