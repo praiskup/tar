@@ -1139,7 +1139,7 @@ chdir_do (idx_t i, bool create)
 		    namebuf_add_dir (nbuf, ".");
 		    dir_with_dot = namebuf_finish (nbuf);
 		  }
-		  if (make_directories (dir_with_dot, NULL) == 0)
+		  if (0 <= make_directories (dir_with_dot))
 		    /* Directory created, retry */
 		    fd = openat (chdir_fd, curr->name,
 				 open_searchdir_how.flags & ~O_NOFOLLOW);

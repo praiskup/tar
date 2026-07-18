@@ -558,7 +558,7 @@ void verify_volume (void);
 extern dev_t root_device;
 
 void extr_init (void);
-int make_directories (char *file_name, bool *interdir_made);
+int make_directories (char *file_name);
 void extract_archive (void);
 void extract_finish (void);
 bool rename_directory (char *src, char *dst);
