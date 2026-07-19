@@ -24,7 +24,6 @@
 #include <xgetcwd.h>
 #include <unlinkdir.h>
 #include <utimens.h>
-#include <assert.h>
 
 #ifndef DOUBLE_SLASH_IS_DISTINCT_ROOT
 # define DOUBLE_SLASH_IS_DISTINCT_ROOT 0
@@ -969,15 +968,17 @@ struct wd
      the working directory.  If zero, the directory needs to be opened
      to be used.  */
   int fd;
-
-  bool one_top_level;
   /* If ID.err is zero, the directory's identity;
      if positive, a failure indication with errno = ID.err;
      if negative, no attempt has been made yet to get the identity.  */
   struct chdir_id id;
 };
 
-/* A vector of chdir targets.  wd[0] is the initial working directory.  */
+/* A vector of chdir targets.  wd[0] is the initial working
+   directory.  Ordinarily the remaining entries are for -C options.
+   But if --one-top-level, each entry is followed by another entry for
+   its --one-top-level counterpart, so that ordinary entries are
+   even-numbered and --one-top-level entries are odd-numbered.  */
 static struct wd *wd;
 
 /* The number of working directories in the vector.  */
@@ -1002,17 +1003,7 @@ static idx_t wdcache_count;
 idx_t
 chdir_count (void)
 {
-  idx_t count = 0;
-  if (wd_count)
-    {
-      /* Do not count the initial CWD entry -> start at 1.  */
-      for (idx_t i = 1; i < wd_count; i++)
-	{
-	  if (! wd[i].one_top_level)
-	    count++;
-	}
-    }
-  return count;
+  return (wd_count - !!wd_count) >> !!one_top_level_dir;
 }
 
 /* Add DIR to the WD table.  If one_top_level_dir, add that too.
@@ -1026,7 +1017,6 @@ add_wd (char *dir, int dfd)
   wd[wd_count].abspath = NULL;
   wd[wd_count].fd = dfd;
   wd[wd_count].id.err = -1;
-  wd[wd_count].one_top_level = false;
   wd_count++;
 
   if (one_top_level_dir)
@@ -1035,7 +1025,6 @@ add_wd (char *dir, int dfd)
       wd[wd_count].abspath = NULL;
       wd[wd_count].fd = 0;
       wd[wd_count].id.err = -1;
-      wd[wd_count].one_top_level = true;
       wd_count++;
     }
 }
@@ -1099,25 +1088,19 @@ chdir_do (idx_t i, bool create)
 {
   struct wd *curr = &wd[i];
   int fd = curr->fd;
+  bool one_top_level = !!one_top_level_dir;
 
   /* Nothing to create unless we are at the one_top_level dir that has
      not been created yet.  */
-  create = create && curr->one_top_level && (fd == BADFD || fd == 0);
+  create &= i & one_top_level & (fd == BADFD || fd == 0);
 
   if (chdir_current != i || create)
     {
       if (! fd || create)
 	{
 	  if (! IS_ABSOLUTE_FILE_NAME (curr->name))
-	    {
-	      idx_t j = i - 1;
-	      if (wd[j].one_top_level)
-		{
-		  j--;
-		  assert (! wd[j].one_top_level);
-		}
-	      chdir_do (j, false);
-	    }
+	    chdir_do ((i - 1) & ~+one_top_level, false);
+
 	  fd = openat (chdir_fd, curr->name,
 		       open_searchdir_how.flags & ~O_NOFOLLOW);
 	  if (fd < 0)
@@ -1138,7 +1121,7 @@ chdir_do (idx_t i, bool create)
 		  if (fd < 0)
 		    open_fatal (curr->name);
 		}
-	      else if (errno == ENOENT && curr->one_top_level)
+	      else if ((i & one_top_level) && errno == ENOENT)
 		{
 		  /* We are requested to not create the directory now. Mark it
 		     as to be created later when called with create == true. */
@@ -1389,7 +1372,7 @@ tar_dirname (void)
 char *
 transform_top_level (const char *name)
 {
-  if (wd[chdir_current].one_top_level)
+  if (chdir_current & !!one_top_level_dir)
     {
       if (streq (name, "."))
 	{
@@ -1431,13 +1414,14 @@ tar_getcdpath (idx_t idx)
 
   if (!wd[idx].abspath)
     {
+      bool one_top_level = !!one_top_level_dir;
       idx_t save_cwdi = chdir_current, i = idx;
-      while (0 < i && (!wd[i - 1].abspath || wd[i - 1].one_top_level))
+      while (0 < i && (((i - 1) & one_top_level) || !wd[i - 1].abspath))
 	i--;
 
       for (; i <= idx; i++)
 	{
-	  if (!wd[i].one_top_level)
+	  if (! (i & one_top_level))
 	    chdir_do (i, false);
 	  if (i == 0)
 	    {
@@ -1451,12 +1435,7 @@ tar_getcdpath (idx_t idx)
 	    wd[i].abspath = xstrdup (wd[i].name);
 	  else
 	    {
-	      idx_t j = i - 1;
-	      if (wd[j].one_top_level)
-		{
-		  j--;
-		  assert (! wd[j].one_top_level);
-		}
+	      idx_t j = (i - 1) & ~+one_top_level;
 	      namebuf_t nbuf = namebuf_create (wd[j].abspath);
 	      namebuf_add_dir (nbuf, wd[i].name);
 	      wd[i].abspath = namebuf_finish (nbuf);
