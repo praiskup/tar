@@ -770,46 +770,69 @@ fixup_delayed_set_stat (char const *src, char const *dst)
     }
 }
 
-/* Ensure that FILE_NAME is a directory by creating it and ancestors as needed.
-   If JUST_PARENT do so for FILE_NAME's parent directory, not FILE_NAME itself.
-   Do not overwrite existing files.
+/* Ensure that a directory exists by creating it and ancestors as needed.
+   If MAKEDIR == MAKEDIR_FULL the directory is FILE_NAME;
+   otherwise it is FILE_NAME's parent directory.
+   Follow symlinks.  Do not overwrite existing files.
+   Allow races with other processes that are also trying to create
+   the requested directory.
    Possibly temporarily modify FILE_NAME if it contains slashes,
-   but restore FILE_NAME before returning.
-   Return positive if the directory was created (either by us or by
-   some other process), zero if a directory is already there, and
-   negative (issuing a diagnostic) otherwise.  */
-int
-make_directories (char *file_name, bool just_parent)
+   but restore it before returning.
+   Return:
+    1 if this function creates the requested directory,
+    0 if the requested directory likely exists
+      (and if MAKEDIR == MAKEDIR_PARENT_CHECK, check that it does exist),
+   -1 (issuing a diagnostic) otherwise.  */
+enum makedir { MAKEDIR_PARENT_CHECK = -1, MAKEDIR_PARENT, MAKEDIR_FULL };
+static int
+make_directories (char *file_name, enum makedir makedir)
 {
   char *cursor0 = file_name + FILE_SYSTEM_PREFIX_LEN (file_name);
-  char *cursor;	        	/* points into the file name */
-  char *parent_end = NULL;
-  int parent_errno;
-  int result = 0;
 
-  for (cursor = cursor0; ; cursor++)
+ /* This function checks directories by trying to mkdir them left to right.
+    If PARENT_ERRNO is negative, no directories have been checked;
+    if zero, the last mkdir succeeded;
+    otherwise, the last mkdir failed with this errno value,
+    and PARENT_END addresses the byte just after the name of the last
+    directory checked.  */
+
+  char *parent_end;
+  #ifdef lint
+  parent_end = NULL;
+  #endif
+  int parent_errno = -1;
+
+  for (char *cursor = cursor0; ; cursor++)
     {
       mode_t mode;
       mode_t desired_mode;
-      int status;
 
       char c = *cursor;
       if (! ISSLASH (c))
 	{
 	  if (c)
 	    continue;
-	  if (just_parent)
+	  if (makedir <= MAKEDIR_PARENT)
 	    break;
 	}
 
       /* Avoid mkdir of empty string (if leading or double slash),
 	 or where last part of file name is "." or "..".  */
+      bool dotdot = false;
       if (cursor == cursor0 || ISSLASH (cursor[-1])
 	  || (cursor[-1] == '.'
 	      && (cursor == cursor0 + 1 || ISSLASH (cursor[-2])
-		  || (cursor[-2] == '.'
-		      && (cursor == cursor0 + 2 || ISSLASH (cursor[-3]))))))
+		  || (dotdot = (cursor[-2] == '.'
+				&& (cursor == cursor0 + 2
+				    || ISSLASH (cursor[-3])))))))
 	{
+	  if (dotdot)
+	    {
+	      /* Perhaps we created the parent earlier, perhaps not.
+		 Play it safe and assume we did not.  */
+	      parent_end = cursor;
+	      parent_errno = EEXIST;
+	    }
 	  if (c)
 	    continue;
 	  break;
@@ -819,9 +842,8 @@ make_directories (char *file_name, bool just_parent)
       desired_mode = MODE_RWX & ~ newdir_umask;
       mode = desired_mode | (we_are_root ? 0 : MODE_WXUSR);
       struct fdbase f = fdbase (file_name);
-      status = f.fd == BADFD ? -1 : mkdirat (f.fd, f.base, mode);
 
-      if (status == 0)
+      if (f.fd != BADFD && mkdirat (f.fd, f.base, mode) == 0)
 	{
 	  /* Create a struct delayed_set_stat even if
 	     mode == desired_mode, because
@@ -829,25 +851,25 @@ make_directories (char *file_name, bool just_parent)
 	  delay_set_stat (file_name,
 			  NULL, mode & ~ current_umask, MODE_RWX,
 			  desired_mode, AT_SYMLINK_NOFOLLOW);
-	  result = 1;
 	  print_for_mkdir (file_name, desired_mode);
-	  parent_end = NULL;
+	  parent_errno = 0;
 	}
       else
 	switch (errno)
 	  {
 	  case ELOOP: case ENAMETOOLONG: case ENOENT: case ENOTDIR:
-	    /* FILE_NAME doesn't exist and couldn't be created; fail now.  */
+	    /* FILE_NAME doesn't exist and can't plausibly have been created
+	       nearly-simultaneously by some other process; fail now.  */
 	    mkdir_error (file_name);
 	    *cursor = c;
 	    return -1;
 
 	  default:
 	    /* FILE_NAME may be an existing directory so do not fail now.
-	       Instead, arrange to check at loop exit, assuming this is
-	       the last loop iteration.  */
+	       Instead, remember this failure and keep going.  */
 	    parent_end = cursor;
 	    parent_errno = errno;
+	    assume (0 < parent_errno);
 	    break;
 	  }
 
@@ -856,27 +878,47 @@ make_directories (char *file_name, bool just_parent)
       *cursor = c;
     }
 
-  if (!parent_end)
-    return result;
+  if (parent_errno == 0)
+    return 1;
+  if (parent_errno < 0 || MAKEDIR_PARENT <= makedir)
+    return 0;
 
-  /* Although we did not create the parent directory, some other
-     process may have created it, so check whether it exists now.  */
-  char endch = *parent_end;
-  *parent_end = '\0';
-  struct stat st;
+  /* Although the caller wants us to check that the parent is a directory,
+     we did not create it and it is neither the root nor the current directory;
+     so check now.  faccessat of "NAME/" is a bit better than fstatat
+     of "NAME" here, as the latter might fail with EOVERFLOW.
+     PARENT_END must point to a nonempty string so it is safe to
+     access PARENT_END[1].  */
+  char endch1 = parent_end[1];
+  parent_end[1] = '\0';
   struct fdbase f = fdbase (file_name);
-  int stat_status = f.fd == BADFD ? -1 : fstatat (f.fd, f.base, &st, 0);
-  if (! (stat_status < 0 || S_ISDIR (st.st_mode)))
-    stat_status = -1;
-  if (stat_status < 0)
+  int result = f.fd == BADFD ? -1 : faccessat (f.fd, f.base, F_OK, AT_EACCESS);
+  parent_end[1] = endch1;
+  if (result < 0)
     {
       errno = parent_errno;
+      char endch0 = parent_end[0];
+      parent_end[0] = '\0';
       mkdir_error (file_name);
+      parent_end[0] = endch0;
       result = -1;
     }
-  *parent_end = endch;
 
   return result;
+}
+
+/* Ensure that the directory DIR exists by creating it and ancestors as needed.
+   Follow symlinks.  Do not overwrite existing files.
+   Allow races with other processes that are also trying to create
+   the requested directory.
+   Possibly temporarily modify DIR if it contains slashes,
+   but restore it before returning.
+   Return true if this function creates the requested directory
+   or if it likely exists, -1 (issuing a diagnostic) otherwise.  */
+bool
+create_dir (char *dir)
+{
+  return 0 <= make_directories (dir, MAKEDIR_FULL);
 }
 
 /* Return true if FILE_NAME (with status *STP, if STP) is not a
@@ -989,8 +1031,11 @@ maybe_recoverable (char *file_name, bool regular, bool *interdir_made)
 
     case ENOENT:
       /* Attempt creating missing intermediate directories. */
-      if (0 < make_directories (file_name, true))
-	return RECOVER_OK;
+      if (0 < make_directories (file_name, MAKEDIR_PARENT_CHECK))
+	{
+	  *interdir_made = true;
+	  return RECOVER_OK;
+	}
       break;
 
     default:
@@ -2093,7 +2138,7 @@ rename_directory (char *src, char *dst)
       switch (e)
 	{
 	case ENOENT:
-	  if (0 <= make_directories (dst, true))
+	  if (0 <= make_directories (dst, MAKEDIR_PARENT))
 	    {
 	      f = fdbase (dst);
 	      if (f.fd != BADFD

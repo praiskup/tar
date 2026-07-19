@@ -1129,8 +1129,8 @@ chdir_do (idx_t i, bool create)
 		     directory. The one-top-level directory is
 		     allowed to be given as an absolute path.  */
 		  open_searchdir_how.resolve = 0;
-		  if (0 <= make_directories (curr->name, false))
-		    /* Directory created, retry */
+		  if (create_dir (curr->name))
+		    /* Directory likely exists now; retry.  */
 		    fd = openat (chdir_fd, curr->name,
 				 open_searchdir_how.flags & ~O_NOFOLLOW);
 		  open_searchdir_how = saved_open_searchdir_how;
