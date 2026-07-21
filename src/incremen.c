@@ -123,6 +123,7 @@ dir_set_flag (struct directory *d, int f)
 {
   d->flags |= f;
 }
+
 static void
 dir_clear_flag (struct directory *d, int f)
 {
@@ -1525,6 +1526,12 @@ get_gnu_dumpdir (struct tar_stat_info *stat_info)
 
   mv_end ();
 
+  if (!dumpdir_ok (archive_dir, stat_info->stat.st_size))
+    {
+      stat_info->is_dumpdir = false;
+      free (archive_dir);
+      archive_dir = NULL;
+    }
   stat_info->dumpdir = archive_dir;
   stat_info->skipped = true; /* For skip_member() and friends
 				to work correctly */
@@ -1541,12 +1548,19 @@ is_dumpdir (struct tar_stat_info *stat_info)
   return stat_info->is_dumpdir;
 }
 
-static bool
-dumpdir_ok (char *dumpdir)
+bool
+dumpdir_ok (char const *dumpdir, idx_t size)
 {
-  char *p;
+  char const *p;
   bool has_tempdir = false;
   char expect = '\0';
+
+  if (!(size > 0 &&
+	dumpdir[size-1] == 0 && (size == 1 || dumpdir[size-2] == 0)))
+    {
+      paxerror (0, _("Malformed dumpdir: missing terminator"));
+      return false;
+    }
 
   for (p = dumpdir; *p; p += strlen (p) + 1)
     {
@@ -1638,10 +1652,6 @@ purge_directory (char const *directory_name)
   if (!current_dir)
     /* The directory doesn't exist now.  It'll be created.  In any
        case, we don't have to delete any files out of it.  */
-    return;
-
-  /* Verify if dump directory is sane */
-  if (!dumpdir_ok (current_stat_info.dumpdir))
     return;
 
   /* Process renames */

@@ -589,6 +589,7 @@ void purge_directory (char const *directory_name);
 void list_dumpdir (char *buffer, idx_t size);
 void update_parent_directory (struct tar_stat_info *st);
 
+bool dumpdir_ok (char const *dumpdir, idx_t size);
 idx_t dumpdir_size (const char *p);
 bool is_dumpdir (struct tar_stat_info *stat_info);
 void clear_directory_table (void);
