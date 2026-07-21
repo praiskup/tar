@@ -1483,8 +1483,13 @@ dumpdir_decoder (struct tar_stat_info *st,
 		 char const *arg,
 		 idx_t size)
 {
-  st->dumpdir = ximalloc (size);
-  memcpy (st->dumpdir, arg, size);
+  if (dumpdir_ok (arg, size))
+    {
+      st->dumpdir = ximalloc (size);
+      memcpy (st->dumpdir, arg, size);
+    }
+  else
+   paxerror (0, _("Malformed dumpdir: missing terminator"));
 }
 
 static void
