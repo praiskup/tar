@@ -1047,6 +1047,7 @@ ensure_wd (void)
 /* DIR is the operand of a -C option; add it to vector of chdir targets,
    and return the index of its location.  If --one-top-level-dir, add
    two targets to the vector.  However, if DIR is "." or an equivalent,
+   or if --one-top-level-dir is an absolute file name,
    just reuse the last item in the vector.  */
 idx_t
 chdir_arg (char *dir)
@@ -1061,6 +1062,10 @@ chdir_arg (char *dir)
       if (!dir[dir[0] == '.'])
 	return wd_count - 1;
     }
+
+  /* Optimize --one-top-level=X where X is an absolute file name.  */
+  if (one_top_level_dir && IS_ABSOLUTE_FILE_NAME (one_top_level_dir))
+    return wd_count - 1;
 
   ptrdiff_t shortage = 1 + !!one_top_level_dir - (wd_alloc - wd_count);
   if (0 < shortage)
