@@ -1079,7 +1079,8 @@ idx_t chdir_current;
 
 /* Value suitable for use as the first argument to openat, and in
    similar locations for fstatat, etc.  This is an open file
-   descriptor, or AT_FDCWD if the working directory is current.  It is
+   descriptor, or AT_FDCWD if the working directory is current,
+   or BADFD if the directory has not been opened yet.  It is
    valid until the next invocation of chdir_do.  */
 static int chdir_fd = AT_FDCWD;
 
@@ -1095,7 +1096,7 @@ chdir_do (idx_t i, bool create)
   int fd = curr->fd;
   bool one_top_level = !!one_top_level_dir;
 
-  /* Nothing to create unless we are at the one_top_level dir that has
+  /* Nothing to create unless we are at a one_top_level dir that has
      not been created yet.  */
   create &= i & one_top_level & (fd == BADFD || fd == 0);
 
@@ -1103,42 +1104,41 @@ chdir_do (idx_t i, bool create)
     {
       if (! fd || create)
 	{
-	  if (! IS_ABSOLUTE_FILE_NAME (curr->name))
-	    chdir_do ((i - 1) & ~+one_top_level, false);
+	  int dfd;
+	  if (IS_ABSOLUTE_FILE_NAME (curr->name))
+	    dfd = AT_FDCWD;
+	  else
+	    {
+	      chdir_do ((i - 1) & ~+one_top_level, false);
+	      dfd = chdir_fd;
+	    }
 
-	  fd = openat (chdir_fd, curr->name,
+	  fd = openat (dfd, curr->name,
 		       open_searchdir_how.flags & ~O_NOFOLLOW);
 	  if (fd < 0)
 	    {
-	      if (create)
+	      if (errno == ENOENT)
 		{
-		  struct open_how saved_open_searchdir_how = open_searchdir_how;
-		  /* Don't use O_BENEATH during creation of the
-		     directory. The one-top-level directory is
-		     allowed to be given as an absolute path.  */
-		  open_searchdir_how.resolve = 0;
-		  if (create_dir (curr->name))
-		    /* Directory likely exists now; retry.  */
-		    fd = openat (chdir_fd, curr->name,
-				 open_searchdir_how.flags & ~O_NOFOLLOW);
-		  open_searchdir_how = saved_open_searchdir_how;
-		  /* Either the creation or open failed */
-		  if (fd < 0)
-		    open_fatal (curr->name);
+		  if (create)
+		    {
+		      if (!create_dir (curr->name))
+			fatal_exit ();
+		      /* Directory likely exists now; retry.  */
+		      fd = openat (dfd, curr->name,
+				   open_searchdir_how.flags & ~O_NOFOLLOW);
+		    }
+		  else if (i & one_top_level)
+		    {
+		      /* Mark it to be created later if called with CREATE.  */
+		      chdir_fd = curr->fd = BADFD;
+		      chdir_current = i;
+		      /* Do not add it to the cache.  */
+		      return;
+		    }
 		}
-	      else if ((i & one_top_level) && errno == ENOENT)
-		{
-		  /* We are requested to not create the directory now. Mark it
-		     as to be created later when called with create == true. */
-		  chdir_fd = curr->fd = BADFD;
-		  chdir_current = i;
-		  /* Do not add it to the cache */
-		  return;
-		}
-	      else
-		{
-		  open_fatal (curr->name);
-		}
+
+	      if (fd < 0)
+		open_fatal (curr->name);
 	    }
 
 	  curr->fd = fd;

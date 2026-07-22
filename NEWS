@@ -1,4 +1,4 @@
-GNU tar NEWS - User visible changes. 2026-06-20
+GNU tar NEWS - User visible changes. 2026-07-22
 Please send GNU tar bug reports to <bug-tar@gnu.org>
 
 version 1.35.90 (git)
@@ -35,8 +35,8 @@ empty string that file or member is skipped and a warning is printed.
 The warning can be suppressed using the --warning=empty-transform
 option.
 
-** --one-top-level=DIR now requires DIR to be relative.
-   Previously this restriction was alluded to in the manual but not enforced.
+** The --one-top-level option now requires either -x or -d mode.
+   Previously the behavior was unspecified in other operation modes.
 
 * Bug fixes
 

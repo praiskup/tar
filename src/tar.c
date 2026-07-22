@@ -2656,6 +2656,10 @@ decode_options (int argc, char **argv)
 
   if (optloc_lookup (OC_ONE_TOP_LEVEL))
     {
+      if (!is_subcommand_class (SUBCL_READ))
+	option_conflict_error ("--one-top-level",
+			       subcommand_string (subcommand_option));
+
       if (absolute_names_option)
 	{
 	  struct option_locus *one_top_level_loc =
@@ -2712,6 +2716,7 @@ decode_options (int argc, char **argv)
     open_searchdir_how.flags = (search_flags | nofollow_flag
 				| O_BINARY | O_CLOEXEC | O_DIRECTORY);
     if (!absolute_names_option && !dereference_option
+	&& ! (one_top_level_dir && IS_ABSOLUTE_FILE_NAME (one_top_level_dir))
 	&& (subcommand_option == EXTRACT_SUBCOMMAND
 	    || subcommand_option == DIFF_SUBCOMMAND))
       open_searchdir_how.resolve = RESOLVE_BENEATH;

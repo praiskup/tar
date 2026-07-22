@@ -3287,20 +3287,23 @@ directory.
 
 @opsummary{one-top-level}
 @item --one-top-level[=@var{dir}]
-Tells @command{tar} to create a new directory beneath the extraction directory
-(or the one passed to @option{-C}) and use it to prevent @command{tar}
-from modifying files outside that directory.
-If @var{dir} is present, it must be a relative file name.
-If it is absent, the name of the new directory
+Tells @command{tar} to use a directory beneath the extraction directory
+(or the one passed to @option{-C}) to prevent @command{tar}
+from accessing files outside that directory.
+If @var{dir} is absent, the name of the directory
 is the base name of the archive minus any recognized archive suffix.
-If multiple @option{-C} options are present,
-each has its own subdirectory with the same name.
+If @var{dir} is an absolute file name, that is the only such directory;
+otherwise, the working directory and the directories specified by
+any @option{-C} options each have the named subdirectory.
 Any member names that do not begin
 with that directory name (after
 transformations from @option{--transform} and
 @option{--strip-components}) will be prefixed with it.  Recognized
 file name suffixes are @samp{.tar}, and any compression suffixes
 recognizable by @xref{--auto-compress}.
+
+This option can be used only when extracting, comparing, or reading
+from the archive.
 
 @opsummary{overwrite}
 @item --overwrite
