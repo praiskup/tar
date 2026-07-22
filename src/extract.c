@@ -1176,6 +1176,19 @@ safe_dir_mode (struct stat const *st)
 	  | (we_are_root ? 0 : MODE_WXUSR));
 }
 
+
+/* Return true if the base name BASE returned by fdbase corresponds to
+   a file that trivially exists.  This is true if BASE is the empty
+   string (which means the original name is a file system root); or if
+   BASE is "." or "..", possibly followed by slashes.  */
+static bool
+trivial_base_name (char const *base)
+{
+  bool dotted = base[0] == '.';
+  char const *p = base + dotted + (dotted & (base[dotted] == '.'));
+  return !*p | ISSLASH (*p);
+}
+
 /* Extractor functions for various member types */
 
 static bool
@@ -1210,7 +1223,17 @@ extract_dir (char *file_name, char UNNAMED (typeflag))
   for (;;)
     {
       struct fdbase f = fdbase (file_name);
-      status = f.fd == BADFD ? -1 : mkdirat (f.fd, f.base, mode);
+      if (f.fd == BADFD)
+	status = -1;
+      else if (trivial_base_name (f.base))
+	{
+	  /* Save a syscall.  */
+	  errno = EEXIST;
+	  status = -1;
+	}
+      else
+	status = mkdirat (f.fd, f.base, mode);
+
       if (status == 0)
 	{
 	  current_mode = mode & ~ current_umask;
