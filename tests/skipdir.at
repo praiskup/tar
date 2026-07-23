@@ -42,11 +42,15 @@ base64 -d < archive.in | xz -c -d > archive.tar
 AT_CHECK([tar tf archive.tar],
 [0],
 [owo1/
+owo2/
 ])
 AT_CHECK([tar vxf archive.tar],
 [0],
 [owo1/
+owo2/
 ])
 AT_CHECK([tar -xvf archive.tar --exclude owo1],
-[0])
+[0],
+[owo2/
+])
 AT_CLEANUP
