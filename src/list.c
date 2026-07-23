@@ -1437,6 +1437,24 @@ skip_member (void)
   skim_member (false);
 }
 
+static bool
+member_is_dir (struct tar_stat_info *info, char typeflag)
+{
+  switch (typeflag)
+    {
+    case AREGTYPE:
+    case REGTYPE:
+    case CONTTYPE:
+      return info->had_trailing_slash;
+
+    case DIRTYPE:
+      return true;
+
+    default:
+      return false;
+    }
+}
+
 /* Skip the current member in the archive.
    If MUST_COPY, always copy instead of skipping.  */
 void
@@ -1450,7 +1468,8 @@ skim_member (bool must_copy)
 
       if (current_stat_info.is_sparse)
 	sparse_skim_file (&current_stat_info, must_copy);
-      else
+      else if (!member_is_dir (&current_stat_info,
+			       current_header->header.typeflag))
 	skim_file (current_stat_info.stat.st_size, must_copy);
 
       mv_end ();
