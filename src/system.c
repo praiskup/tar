@@ -993,7 +993,7 @@ sys_exec_setmtime_script (const char *script_name,
 	    }
 	  if (nread == 0)
 	    break;
-	  buflen += n;
+	  buflen += nread;
 	}
       else if (pfd.revents & POLLHUP)
 	break;
