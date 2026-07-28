@@ -787,6 +787,8 @@ void chdir_do (idx_t dir, bool create);
 struct chdir_id { int err; dev_t st_dev; ino_t st_ino; } chdir_id (void);
 struct fdbase fdbase (char const *);
 struct fdbase fdbase1 (char const *);
+int open_searchdir (char const *);
+int fdbase_close (int);
 void fdbase_clear (void);
 idx_t chdir_count (void);
 

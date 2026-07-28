@@ -2716,7 +2716,6 @@ decode_options (int argc, char **argv)
     open_searchdir_how.flags = (search_flags | nofollow_flag
 				| O_BINARY | O_CLOEXEC | O_DIRECTORY);
     if (!absolute_names_option && !dereference_option
-	&& ! (one_top_level_dir && IS_ABSOLUTE_FILE_NAME (one_top_level_dir))
 	&& (subcommand_option == EXTRACT_SUBCOMMAND
 	    || subcommand_option == DIFF_SUBCOMMAND))
       open_searchdir_how.resolve = RESOLVE_BENEATH;
@@ -2965,7 +2964,7 @@ bool
 tar_stat_close (struct tar_stat_info *st)
 {
   int status = (st->dirstream ? closedir (st->dirstream)
-		: 0 < st->fd ? close (st->fd)
+		: 0 < st->fd ? fdbase_close (st->fd)
 		: 0);
   st->dirstream = NULL;
   st->fd = 0;

@@ -32,6 +32,7 @@
 static void namebuf_add_dir (namebuf_t, char const *);
 static char *namebuf_finish (namebuf_t);
 static const char *tar_getcdpath (idx_t);
+static struct fdbase fdbase_opendir (char const *, bool, int);
 
 char const *
 quote_n_colon (int n, char const *arg)
@@ -1104,17 +1105,11 @@ chdir_do (idx_t i, bool create)
     {
       if (! fd || create)
 	{
-	  int dfd;
-	  if (IS_ABSOLUTE_FILE_NAME (curr->name))
-	    dfd = AT_FDCWD;
-	  else
-	    {
-	      chdir_do ((i - 1) & ~+one_top_level, false);
-	      dfd = chdir_fd;
-	    }
+	  if (! IS_ABSOLUTE_FILE_NAME (curr->name))
+	    chdir_do ((i - 1) & ~+one_top_level, false);
 
-	  fd = openat (dfd, curr->name,
-		       open_searchdir_how.flags & ~O_NOFOLLOW);
+	  int oflags = open_searchdir_how.flags & ~O_NOFOLLOW;
+	  fd = fdbase_opendir (curr->name, false, oflags).fd;
 	  if (fd < 0)
 	    {
 	      if (errno == ENOENT)
@@ -1124,8 +1119,7 @@ chdir_do (idx_t i, bool create)
 		      if (!create_dir (curr->name))
 			fatal_exit ();
 		      /* Directory likely exists now; retry.  */
-		      fd = openat (dfd, curr->name,
-				   open_searchdir_how.flags & ~O_NOFOLLOW);
+		      fd = fdbase_opendir (curr->name, false, oflags).fd;
 		    }
 		  else if (i & one_top_level)
 		    {
@@ -1150,7 +1144,7 @@ chdir_do (idx_t i, bool create)
 	  else
 	    {
 	      struct wd *stale = &wd[wdcache[CHDIR_CACHE_SIZE - 1]];
-	      if (close (stale->fd) < 0)
+	      if (fdbase_close (stale->fd) < 0)
 		close_diag (stale->name);
 	      stale->fd = 0;
 	      wdcache[CHDIR_CACHE_SIZE - 1] = i;
@@ -1219,6 +1213,22 @@ static struct fdbase_cache
   int fd;
 } fdbase_cache[2];
 
+
+/* Return true if positive FD is for a directory searched because of a
+   -C or a --one-top-dir option.  */
+static bool
+chdirable (int fd)
+{
+  /* Optimize for most common case.  */
+  if (fd == chdir_fd)
+    return true;
+
+  for (idx_t i = 0; i < wdcache_count; i++)
+    if (fd == wd[wdcache[i]].fd)
+      return true;
+  return false;
+}
+
 /* Clear the fdbase cache.  Call this after any action that might
    invalidate the cache.  Such actions include removing or renaming
    directories or symlinks to directories.  Call this if in doubt,
@@ -1232,41 +1242,61 @@ fdbase_clear (void)
       struct fdbase_cache *c = &fdbase_cache[i];
       if (c->subdirlen)
 	{
-	  if (0 <= c->fd)
+	  if (0 <= c->fd && !chdirable (c->fd))
 	    close (c->fd);
 	  c->subdirlen = 0;
 	}
     }
 }
 
-/* Starting from the directory FD, open a subdirectory SUBDIR for search.
-   If extracting or diffing and --absolute-names (-P) is not in effect,
-   do not let the subdirectory escape FD, i.e., the subdirectory must
-   be at or under FD in the directory hierarchy.  */
-static int
-open_subdir (int fd, char const *subdir)
+/* Close the file descriptor FD,
+   and remove from the fdbase cache any entry corresponding to FD.  */
+int
+fdbase_close (int fd)
 {
-  return openat2 (fd, subdir, &open_searchdir_how, sizeof open_searchdir_how);
+  for (int i = 0; i < 2; i++)
+    {
+      struct fdbase_cache *c = &fdbase_cache[i];
+      if (c->subdirlen && c->fd == fd)
+	c->subdirlen = 0;
+    }
+  return close (fd);
 }
 
-/* Return an fd open to FILE_NAME's parent directory,
-   along with the base name of FILE_NAME.
+/* Starting from the directory FD, open a subdirectory SUBDIR for search.
+   If OFLAGS, open with OFLAGS.  Otherwise, open_searchdir_how
+   determines whether SUBDIR can escape FD, i.e., whether it must
+   be at or under FD in the directory hierarchy.  */
+static int
+open_subdir (int fd, char const *subdir, int oflags)
+{
+  return
+    (oflags
+     ? openat (fd, subdir, oflags)
+     : openat2 (fd, subdir, &open_searchdir_how, sizeof open_searchdir_how));
+}
+
+/* Return an fd open to a directory related to FILE_NAME
+   along with the corresponding base name.
    Use the alternate cache if ALTERNATE, the main cache otherwise.
    If FILE_NAME is relative, it is relative to chdir_fd.
+   If CHILD_OFLAGS, open FILE_NAME itself, posssibly letting it escape from
+   chdir_fd; otherwise, open FILE_NAME's parent but do not let it escape.
    Return AT_FDCWD if FILE_NAME is relative to the working directory.
    Return BADFD (setting errno) on failure.  */
 static struct fdbase
-fdbase_opendir (char const *file_name, bool alternate)
+fdbase_opendir (char const *file_name, bool alternate, int child_oflags)
 {
   char const *name = file_name;
+  int dfd = IS_ABSOLUTE_FILE_NAME (file_name) ? AT_FDCWD : chdir_fd;
 
-  if (chdir_fd == BADFD && ! IS_ABSOLUTE_FILE_NAME (file_name))
+  if (dfd == BADFD)
     {
       /* BADFD is a sentinel value meaning that the chdir directory
 	 needs to be created lazily, therefore if we encounter it, the
 	 directory does not exist yet. */
       errno = ENOENT;
-      return (struct fdbase) { .fd = chdir_fd, .base = name };
+      return (struct fdbase) { .fd = BADFD, .base = name };
     }
   /* Skip past leading "./"s,
      but not past the last "./" if that ends the name.  */
@@ -1280,11 +1310,16 @@ fdbase_opendir (char const *file_name, bool alternate)
     }
 
   /* For files immediately under CHDIR_FD, and for root directories,
-     just use CHDIR_FD and NAME.  */
+     just use CHDIR_FD and NAME.  Empty NAME is invalid, though.  */
   char const *base = last_component (name);
-  idx_t subdirlen = base - name;
+  idx_t subdirlen = base + (child_oflags ? strlen (base) : 0) - name;
   if (!subdirlen | !*base)
-    return (struct fdbase) { .fd = chdir_fd, .base = name };
+    {
+      if (*name)
+	return (struct fdbase) { .fd = dfd, .base = name };
+      errno = EINVAL;
+      return (struct fdbase) { .fd = BADFD, .base = name };
+    }
 
   struct fdbase_cache *c = &fdbase_cache[alternate];
   int fd = c->fd;
@@ -1308,7 +1343,7 @@ fdbase_opendir (char const *file_name, bool alternate)
 	{
 	  /* The new directory is a subdirectory of the old,
 	     so open relative to FD rather than to chdir_fd.  */
-	  int subfd = open_subdir (fd, &subdir[c->subdirlen]);
+	  int subfd = open_subdir (fd, &subdir[c->subdirlen], child_oflags);
 	  if (subfd < 0)
 	    {
 	      /* Keep the old directory cached and report open failure,
@@ -1324,28 +1359,24 @@ fdbase_opendir (char const *file_name, bool alternate)
 	  else
 	    {
 	      /* Replace the old directory with the new one.  */
-	      close (fd);
+	      if (!chdirable (fd))
+		close (fd);
 	      c->fd = subfd;
 	      c->subdirlen = subdirlen;
 	      return (struct fdbase) { .fd = subfd, .base = base };
 	    }
 	}
 
-      /* Remove any old directory info,
-	 and add new info if the new directory can be opened.  */
-      if (0 < c->subdirlen)
-	close (fd);
-      fd = open_subdir (chdir_fd, c->subdir);
-      if (fd < 0)
-	{
-	  if (BADFD != -1 && fd < 0)
-	    fd = BADFD;
-	  c->subdirlen = 0;
-	}
+      int newfd = open_subdir (chdir_fd, c->subdir, child_oflags);
+      if (newfd < 0)
+	fd = BADFD == -1 ? newfd : BADFD;
       else
 	{
+	  /* Remove any old directory info, and add new info.  */
+	  if (0 < c->subdirlen && !chdirable (fd))
+	    close (fd);
 	  c->chdir_current = chdir_current;
-	  c->fd = fd;
+	  c->fd = fd = newfd;
 	  c->subdirlen = subdirlen;
 	}
     }
@@ -1356,13 +1387,19 @@ fdbase_opendir (char const *file_name, bool alternate)
 struct fdbase
 fdbase (char const *name)
 {
-  return fdbase_opendir (name, false);
+  return fdbase_opendir (name, false, 0);
 }
 
 struct fdbase
 fdbase1 (char const *name)
 {
-  return fdbase_opendir (name, true);
+  return fdbase_opendir (name, true, 0);
+}
+
+int
+open_searchdir (char const *name)
+{
+  return fdbase_opendir (name, false, open_searchdir_how.flags).fd;
 }
 
 
