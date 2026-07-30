@@ -92,7 +92,7 @@ flush_deferred_unlinks (bool force)
       if (force
 	  || p->records_written < records_written)
 	{
-	  chdir_do (p->dir_idx);
+	  chdir_do (p->dir_idx, false);
 	  if (p->is_dir)
 	    {
 	      const char *fname;
@@ -163,11 +163,11 @@ flush_deferred_unlinks (bool force)
 	  struct deferred_unlink *next = p->next;
 	  const char *fname;
 
-	  chdir_do (p->dir_idx);
+	  chdir_do (p->dir_idx, false);
 	  if (p->dir_idx && is_cwd (p))
 	    {
 	      fname = tar_dirname ();
-	      chdir_do (p->dir_idx - 1);
+	      chdir_do (p->dir_idx - 1, false);
 	    }
 	  else
 	    fname = p->file_name;
@@ -184,7 +184,7 @@ flush_deferred_unlinks (bool force)
       dunlink_head = dunlink_tail = NULL;
     }
 
-  chdir_do (saved_chdir);
+  chdir_do (saved_chdir, false);
 }
 
 void

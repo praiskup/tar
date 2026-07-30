@@ -770,47 +770,80 @@ fixup_delayed_set_stat (char const *src, char const *dst)
     }
 }
 
-/* After a file/link/directory creation has failed due to ENOENT,
-   create all required directories.  Return zero if all the required
-   directories were created, nonzero (issuing a diagnostic) otherwise.
-   Set *INTERDIR_MADE (unless NULL) if at least one directory was created. */
+/* Ensure that a directory exists by creating it and ancestors as needed.
+   If MAKEDIR == MAKEDIR_FULL the directory is FILE_NAME;
+   otherwise it is FILE_NAME's parent directory.
+   Follow symlinks.  Do not overwrite existing files.
+   Allow races with other processes that are also trying to create
+   the requested directory.
+   Possibly temporarily modify FILE_NAME if it contains slashes,
+   but restore it before returning.
+   Return:
+    1 if this function creates the requested directory,
+    0 if the requested directory likely exists
+      (and if MAKEDIR == MAKEDIR_PARENT_CHECK, check that it does exist),
+   -1 (issuing a diagnostic) otherwise.  */
+enum makedir { MAKEDIR_PARENT_CHECK = -1, MAKEDIR_PARENT, MAKEDIR_FULL };
 static int
-make_directories (char *file_name, bool *interdir_made)
+make_directories (char *file_name, enum makedir makedir)
 {
   char *cursor0 = file_name + FILE_SYSTEM_PREFIX_LEN (file_name);
-  char *cursor;	        	/* points into the file name */
-  char *parent_end = NULL;
-  int parent_errno;
 
-  for (cursor = cursor0; *cursor; cursor++)
+ /* This function checks directories by trying to mkdir them left to right.
+    If PARENT_ERRNO is negative, no directories have been checked;
+    if zero, the last mkdir succeeded;
+    otherwise, the last mkdir failed with this errno value,
+    and PARENT_END addresses the byte just after the name of the last
+    directory checked.  */
+
+  char *parent_end;
+  #ifdef lint
+  parent_end = NULL;
+  #endif
+  int parent_errno = -1;
+
+  for (char *cursor = cursor0; ; cursor++)
     {
       mode_t mode;
       mode_t desired_mode;
-      int status;
 
-      if (! ISSLASH (*cursor))
-	continue;
+      char c = *cursor;
+      if (! ISSLASH (c))
+	{
+	  if (c)
+	    continue;
+	  if (makedir <= MAKEDIR_PARENT)
+	    break;
+	}
 
-      /* Avoid mkdir of empty string, if leading or double '/'.  */
-
-      if (cursor == cursor0 || ISSLASH (cursor[-1]))
-	continue;
-
-      /* Avoid mkdir where last part of file name is "." or "..".  */
-
-      if (cursor[-1] == '.'
-	  && (cursor == cursor0 + 1 || ISSLASH (cursor[-2])
-	      || (cursor[-2] == '.'
-		  && (cursor == cursor0 + 2 || ISSLASH (cursor[-3])))))
-	continue;
+      /* Avoid mkdir of empty string (if leading or double slash),
+	 or where last part of file name is "." or "..".  */
+      bool dotdot = false;
+      if (cursor == cursor0 || ISSLASH (cursor[-1])
+	  || (cursor[-1] == '.'
+	      && (cursor == cursor0 + 1 || ISSLASH (cursor[-2])
+		  || (dotdot = (cursor[-2] == '.'
+				&& (cursor == cursor0 + 2
+				    || ISSLASH (cursor[-3])))))))
+	{
+	  if (dotdot)
+	    {
+	      /* Perhaps we created the parent earlier, perhaps not.
+		 Play it safe and assume we did not.  */
+	      parent_end = cursor;
+	      parent_errno = EEXIST;
+	    }
+	  if (c)
+	    continue;
+	  break;
+	}
 
       *cursor = '\0';		/* truncate the name there */
       desired_mode = MODE_RWX & ~ newdir_umask;
       mode = desired_mode | (we_are_root ? 0 : MODE_WXUSR);
       struct fdbase f = fdbase (file_name);
-      status = f.fd == BADFD ? -1 : mkdirat (f.fd, f.base, mode);
 
-      if (status == 0)
+      if (f.fd != BADFD && mkdirat (f.fd, f.base, mode) == 0)
 	{
 	  /* Create a struct delayed_set_stat even if
 	     mode == desired_mode, because
@@ -818,54 +851,74 @@ make_directories (char *file_name, bool *interdir_made)
 	  delay_set_stat (file_name,
 			  NULL, mode & ~ current_umask, MODE_RWX,
 			  desired_mode, AT_SYMLINK_NOFOLLOW);
-	  if (interdir_made)
-	    *interdir_made = true;
 	  print_for_mkdir (file_name, desired_mode);
-	  parent_end = NULL;
+	  parent_errno = 0;
 	}
       else
 	switch (errno)
 	  {
 	  case ELOOP: case ENAMETOOLONG: case ENOENT: case ENOTDIR:
-	    /* FILE_NAME doesn't exist and couldn't be created; fail now.  */
+	    /* FILE_NAME doesn't exist and can't plausibly have been created
+	       nearly-simultaneously by some other process; fail now.  */
 	    mkdir_error (file_name);
-	    *cursor = '/';
-	    return status;
+	    *cursor = c;
+	    return -1;
 
 	  default:
 	    /* FILE_NAME may be an existing directory so do not fail now.
-	       Instead, arrange to check at loop exit, assuming this is
-	       the last loop iteration.  */
+	       Instead, remember this failure and keep going.  */
 	    parent_end = cursor;
 	    parent_errno = errno;
+	    assume (0 < parent_errno);
 	    break;
 	  }
 
-      *cursor = '/';
+      if (!c)
+	break;
+      *cursor = c;
     }
 
-  if (!parent_end)
+  if (parent_errno == 0)
+    return 1;
+  if (parent_errno < 0 || MAKEDIR_PARENT <= makedir)
     return 0;
 
-  /* Although we did not create the parent directory, some other
-     process may have created it, so check whether it exists now.  */
-  *parent_end = '\0';
-  struct stat st;
+  /* Although the caller wants us to check that the parent is a directory,
+     we did not create it and it is neither the root nor the current directory;
+     so check now.  faccessat of "NAME/" is a bit better than fstatat
+     of "NAME" here, as the latter might fail with EOVERFLOW.
+     PARENT_END must point to a nonempty string so it is safe to
+     access PARENT_END[1].  */
+  char endch1 = parent_end[1];
+  parent_end[1] = '\0';
   struct fdbase f = fdbase (file_name);
-  int stat_status = f.fd == BADFD ? -1 : fstatat (f.fd, f.base, &st, 0);
-  if (! (stat_status < 0 || S_ISDIR (st.st_mode)))
-    stat_status = -1;
-  if (stat_status < 0)
+  int result = f.fd == BADFD ? -1 : faccessat (f.fd, f.base, F_OK, AT_EACCESS);
+  parent_end[1] = endch1;
+  if (result < 0)
     {
       errno = parent_errno;
+      char endch0 = parent_end[0];
+      parent_end[0] = '\0';
       mkdir_error (file_name);
+      parent_end[0] = endch0;
+      result = -1;
     }
-  else if (interdir_made)
-    *interdir_made = true;
 
-  *parent_end = '/';
+  return result;
+}
 
-  return stat_status;
+/* Ensure that the directory DIR exists by creating it and ancestors as needed.
+   Follow symlinks.  Do not overwrite existing files.
+   Allow races with other processes that are also trying to create
+   the requested directory.
+   Possibly temporarily modify DIR if it contains slashes,
+   but restore it before returning.
+   Return true if this function creates the requested directory
+   or if it likely exists, -1 (issuing a diagnostic) otherwise.  */
+bool
+create_dir (char *dir)
+{
+  return 0 <= make_directories (dir, MAKEDIR_FULL);
 }
 
 /* Return true if FILE_NAME (with status *STP, if STP) is not a
@@ -978,8 +1031,11 @@ maybe_recoverable (char *file_name, bool regular, bool *interdir_made)
 
     case ENOENT:
       /* Attempt creating missing intermediate directories. */
-      if (make_directories (file_name, interdir_made) == 0 && *interdir_made)
-	return RECOVER_OK;
+      if (0 < make_directories (file_name, MAKEDIR_PARENT_CHECK))
+	{
+	  *interdir_made = true;
+	  return RECOVER_OK;
+	}
       break;
 
     default:
@@ -1049,7 +1105,7 @@ apply_nonancestor_delayed_set_stat (char const *file_name, bool metadata_set)
 	      && memeq (file_name, data->file_name, data->file_name_len)))
 	break;
 
-      chdir_do (data->change_dir);
+      chdir_do (data->change_dir, false);
 
       if (check_for_renamed_directories)
 	{
@@ -1100,15 +1156,6 @@ apply_nonancestor_delayed_set_stat (char const *file_name, bool metadata_set)
 }
 
 
-static bool
-is_directory_link (char const *file_name, struct stat *st)
-{
-  struct fdbase f = fdbase (file_name);
-  return (f.fd != BADFD && issymlinkat (f.fd, f.base)
-	  && fstatat (f.fd, f.base, st, 0) == 0
-	  && S_ISDIR (st->st_mode));
-}
-
 /* Given struct stat of a directory (or directory member) whose ownership
    or permissions of will be restored later, return the temporary permissions
    for that directory, sufficiently restrictive so that in the meantime
@@ -1127,6 +1174,19 @@ safe_dir_mode (struct stat const *st)
 	      ? S_IRWXU
 	      : MODE_RWX))
 	  | (we_are_root ? 0 : MODE_WXUSR));
+}
+
+
+/* Return true if the base name BASE returned by fdbase corresponds to
+   a file that trivially exists.  This is true if BASE is the empty
+   string (which means the original name is a file system root); or if
+   BASE is "." or "..", possibly followed by slashes.  */
+static bool
+trivial_base_name (char const *base)
+{
+  bool dotted = base[0] == '.';
+  char const *p = base + dotted + (dotted & (base[dotted] == '.'));
+  return !*p | ISSLASH (*p);
 }
 
 /* Extractor functions for various member types */
@@ -1163,7 +1223,17 @@ extract_dir (char *file_name, char UNNAMED (typeflag))
   for (;;)
     {
       struct fdbase f = fdbase (file_name);
-      status = f.fd == BADFD ? -1 : mkdirat (f.fd, f.base, mode);
+      if (f.fd == BADFD)
+	status = -1;
+      else if (trivial_base_name (f.base))
+	{
+	  /* Save a syscall.  */
+	  errno = EEXIST;
+	  status = -1;
+	}
+      else
+	status = mkdirat (f.fd, f.base, mode);
+
       if (status == 0)
 	{
 	  current_mode = mode & ~ current_umask;
@@ -1181,20 +1251,16 @@ extract_dir (char *file_name, char UNNAMED (typeflag))
 	      || old_files_option == OVERWRITE_OLD_FILES)
 	    {
 	      struct stat st;
-	      st.st_mode = 0;
-
-	      if (keep_directory_symlink_option
-		  && is_directory_link (file_name, &st))
-		return true;
-
-	      if ((st.st_mode != 0 && fstatat_flags == 0)
-		  || deref_stat (file_name, &st) == 0)
+	      if (fstatat (f.fd, f.base, &st, fstatat_flags) == 0)
 		{
 		  current_mode = st.st_mode;
 		  current_mode_mask = all_mode_bits;
 
 		  if (S_ISDIR (current_mode))
 		    {
+		      if (keep_directory_symlink_option && !fstatat_flags
+			  && issymlinkat (f.fd, f.base))
+			return true;
 		      if (interdir_made)
 			{
 			  repair_delayed_set_stat (file_name, &st);
@@ -1202,6 +1268,12 @@ extract_dir (char *file_name, char UNNAMED (typeflag))
 			}
 		      break;
 		    }
+
+		  struct stat dirst;
+		  if (S_ISLNK (st.st_mode) && keep_directory_symlink_option
+		      && fstatat (f.fd, f.base, &dirst, 0) == 0
+		      && S_ISDIR (dirst.st_mode))
+		    return true;
 		}
 	    }
 	  else if (update_interdir_set_stat (file_name))
@@ -1895,7 +1967,7 @@ extract_archive (void)
     {
       idx_t dir = chdir_current;
       apply_nonancestor_delayed_set_stat (current_stat_info.file_name, false);
-      chdir_do (dir);
+      chdir_do (dir, false);
     }
 
   /* Take a safety backup of a previously existing file.  */
@@ -1916,7 +1988,35 @@ extract_archive (void)
 
   tar_extractor_t fun = prepare_to_extract (current_stat_info.file_name,
 					    typeflag);
-  bool ok = fun && fun (current_stat_info.file_name, typeflag);
+  bool ok = false;
+  if (fun)
+    {
+      if (one_top_level_dir)
+	{
+	  /* Create one_top_level dir if it does not exist.  */
+	  chdir_do (chdir_current, true);
+	  /* Flush delayed stat to mirror the code above that does it
+	     before extracting a new entry. Creating the one_top_level
+	     dir may have created new delayed_set_stat interdir
+	     entries, so repeat the operation. Ideally this should not
+	     be needed, but the newly-created interdir entries have
+	     st_dev/st_ino uninitialized, which would be a problem if
+	     there is a "." entry afterwards:
+	     apply_nonancestor_delayed_set_stat would use the
+	     uninitialized values. Ideally, st_dev/st_ino would be
+	     initialized by mark_metadata_set, but this one does not
+	     take chdir into account, so it stats a wrong file. */
+	  if (!delay_directory_restore_option)
+	    {
+	      idx_t dir = chdir_current;
+	      apply_nonancestor_delayed_set_stat (current_stat_info.file_name,
+						  false);
+	      chdir_do (dir, false);
+	    }
+	}
+      if (fun (current_stat_info.file_name, typeflag))
+	ok = true;
+    }
   skip_member ();
   if (!ok && backup_option)
     undo_last_backup ();
@@ -1928,7 +2028,7 @@ apply_delayed_link (struct delayed_link *ds)
 {
   char const *valid_source = NULL;
 
-  chdir_do (ds->change_dir);
+  chdir_do (ds->change_dir, false);
 
   for (struct string_list *sources = ds->sources;
        sources;
@@ -2047,24 +2147,27 @@ extract_finish (void)
 bool
 rename_directory (char *src, char *dst)
 {
-  struct fdbase f1 = fdbase1 (src);
-  struct fdbase f = f1.fd == BADFD ? f1 : fdbase (dst);
-  if (f.fd != BADFD && renameat (f1.fd, f1.base, f.fd, f.base) == 0)
+  struct fdbase f = fdbase (src);
+  struct fdbase f1 = f.fd == BADFD ? f : fdbase1 (dst);
+  if (f1.fd != BADFD && renameat (f.fd, f.base, f1.fd, f1.base) == 0)
     {
       fdbase_clear ();
       fixup_delayed_set_stat (src, dst);
     }
-  else if (f1.fd != BADFD)
+  else if (f.fd != BADFD)
     {
       int e = errno;
 
       switch (e)
 	{
 	case ENOENT:
-	  if (make_directories (dst, NULL) == 0)
+	  if (0 <= make_directories (dst, MAKEDIR_PARENT))
 	    {
+	      /* make_directories likely cached DST and evicted SRC,
+		 so try to reuse the cached DST and then reget SRC.  */
 	      f = fdbase (dst);
-	      if (f.fd != BADFD
+	      f1 = f.fd == BADFD ? f : fdbase1 (src);
+	      if (f1.fd != BADFD
 		  && renameat (f1.fd, f1.base, f.fd, f.base) == 0)
 		{
 		  fdbase_clear ();

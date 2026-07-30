@@ -2656,6 +2656,10 @@ decode_options (int argc, char **argv)
 
   if (optloc_lookup (OC_ONE_TOP_LEVEL))
     {
+      if (!is_subcommand_class (SUBCL_READ))
+	option_conflict_error ("--one-top-level",
+			       subcommand_string (subcommand_option));
+
       if (absolute_names_option)
 	{
 	  struct option_locus *one_top_level_loc =
@@ -2673,7 +2677,9 @@ decode_options (int argc, char **argv)
 
       if (!absolute_names_option && !one_top_level_dir)
 	{
-	  /* Determine name now; the directory is created later if needed.  */
+	  /* Determine name now; the directory (or directories, if -C
+	     means there are multiple top-level directories) are
+	     created later if needed.  */
 	  char *base = base_name (archive_name_array[0]);
 	  one_top_level_dir = strip_compression_suffix (base);
 	  free (base);
@@ -2683,10 +2689,7 @@ decode_options (int argc, char **argv)
 			"please set it explicitly with --one-top-level=DIR"));
 	}
 
-      if (one_top_level_dir
-	  && ! (*one_top_level_dir
-		&& IS_RELATIVE_FILE_NAME (one_top_level_dir)))
-	paxusage(_("--one-top-level=DIR must use a relative file name"));
+      normalize_filename_x (one_top_level_dir);
     }
 
   /* If ready to unlink hierarchies, so we are for simpler files.  */
@@ -2961,7 +2964,7 @@ bool
 tar_stat_close (struct tar_stat_info *st)
 {
   int status = (st->dirstream ? closedir (st->dirstream)
-		: 0 < st->fd ? close (st->fd)
+		: 0 < st->fd ? fdbase_close (st->fd)
 		: 0);
   st->dirstream = NULL;
   st->fd = 0;
