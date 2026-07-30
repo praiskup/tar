@@ -2147,14 +2147,14 @@ extract_finish (void)
 bool
 rename_directory (char *src, char *dst)
 {
-  struct fdbase f1 = fdbase1 (src);
-  struct fdbase f = f1.fd == BADFD ? f1 : fdbase (dst);
-  if (f.fd != BADFD && renameat (f1.fd, f1.base, f.fd, f.base) == 0)
+  struct fdbase f = fdbase (src);
+  struct fdbase f1 = f.fd == BADFD ? f : fdbase1 (dst);
+  if (f1.fd != BADFD && renameat (f.fd, f.base, f1.fd, f1.base) == 0)
     {
       fdbase_clear ();
       fixup_delayed_set_stat (src, dst);
     }
-  else if (f1.fd != BADFD)
+  else if (f.fd != BADFD)
     {
       int e = errno;
 
@@ -2163,8 +2163,11 @@ rename_directory (char *src, char *dst)
 	case ENOENT:
 	  if (0 <= make_directories (dst, MAKEDIR_PARENT))
 	    {
+	      /* make_directories likely cached DST and evicted SRC,
+		 so try to reuse the cached DST and then reget SRC.  */
 	      f = fdbase (dst);
-	      if (f.fd != BADFD
+	      f1 = f.fd == BADFD ? f : fdbase1 (src);
+	      if (f1.fd != BADFD
 		  && renameat (f1.fd, f1.base, f.fd, f.base) == 0)
 		{
 		  fdbase_clear ();
